@@ -16,43 +16,45 @@ export function checkWalletInstalled(walletType: string): boolean {
  * @param walletType The type of wallet to connect to (phantom, solflare, backpack)
  * @returns The wallet address
  */
-export async function connectWallet(walletType: string, silentMode: boolean = false): Promise<string> {
+export async function connectWallet(walletType: string): Promise<string> {
   try {
-    // Check if the wallet is installed
     const provider = getWalletProvider(walletType);
     if (!provider) {
       throw new Error(`${walletType} wallet not found. Please install the extension.`);
     }
 
-    // Check if already connected first
-    if (provider.isConnected && provider.publicKey) {
-      console.log(`${walletType} wallet is already connected with public key:`, provider.publicKey.toString());
-      return provider.publicKey.toString();
+    // For Phantom wallet, we need to use the correct API
+    if (walletType === 'phantom') {
+      try {
+        // First check if already connected
+        if (window.phantom?.solana?.isConnected) {
+          // Force disconnect
+          await window.phantom.solana.disconnect();
+          // Wait a bit to ensure disconnect is complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // Force showing the connect popup even if trusted
+        const resp = await window.phantom?.solana?.connect({ onlyIfTrusted: false });
+        if (!resp?.publicKey) {
+          throw new Error('Failed to get public key from wallet');
+        }
+        return resp.publicKey.toString();
+      } catch (error) {
+        console.error('Phantom wallet connection error:', error);
+        throw error;
+      }
     }
 
-    // Request connection to the wallet
-    let response;
-    switch (walletType) {
-      case 'phantom':
-        response = await connectPhantomWallet(provider, silentMode);
-        break;
-      case 'solflare':
-        response = await connectSolflareWallet(provider, silentMode);
-        break;
-      case 'backpack':
-        response = await connectBackpackWallet(provider, silentMode);
-        break;
-      default:
-        throw new Error(`Unsupported wallet type: ${walletType}`);
+    // For other wallets, use the standard connection
+    const response = await provider.connect({ onlyIfTrusted: false });
+    if (!response.publicKey) {
+      throw new Error('Failed to get public key from wallet');
     }
-
-    // At this point, the user has confirmed in their wallet extension
     return response.publicKey.toString();
   } catch (error: any) {
     console.error(`Error connecting to ${walletType} wallet:`, error);
-    if (!silentMode) {
-      toast.error(error.message || `Failed to connect to ${walletType} wallet`);
-    }
+    toast.error(error.message || `Failed to connect to ${walletType} wallet`);
     throw error;
   }
 }
@@ -68,27 +70,17 @@ export async function disconnectWallet(walletType: string): Promise<void> {
       throw new Error(`${walletType} wallet not found.`);
     }
 
-    // Different wallets may have different disconnect methods
-    switch (walletType) {
-      case 'phantom':
-      case 'solflare':
-      case 'backpack':
-        if (typeof provider.disconnect === 'function') {
-          await provider.disconnect();
-        }
-        break;
-      default:
-        throw new Error(`Unsupported wallet type: ${walletType}`);
-    }
-    
-    // Clean up any cookies related to wallet connection
-    document.cookie.split(';').forEach((c) => {
-      const cookieName = c.trim().split('=')[0];
-      if (cookieName.includes('wallet') || cookieName.includes('solana')) {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    if (walletType === 'phantom') {
+      // For Phantom, we need to use the correct disconnect method
+      if (window.phantom?.solana?.isConnected) {
+        await window.phantom.solana.disconnect();
+        // Clear any stored connection data
+        localStorage.removeItem('connectedWalletInfo');
       }
-    });
-    
+    } else if (typeof provider.disconnect === 'function') {
+      await provider.disconnect();
+    }
+
     toast.success(`Disconnected from ${walletType} wallet`);
   } catch (error: any) {
     console.error(`Error disconnecting from ${walletType} wallet:`, error);
@@ -104,7 +96,7 @@ export async function disconnectWallet(walletType: string): Promise<void> {
  */
 function getWalletProvider(walletType: string): any {
   if (typeof window === 'undefined') return null;
-  
+
   switch (walletType) {
     case 'phantom':
       return window.phantom?.solana;
@@ -118,120 +110,10 @@ function getWalletProvider(walletType: string): any {
 }
 
 /**
- * Connect to Phantom wallet
- * @param provider The Phantom wallet provider
- * @param silentMode If true, will not force signature for already connected wallets
- * @returns The connection response
- */
-async function connectPhantomWallet(provider: any, silentMode: boolean = false) {
-  try {
-    // First check if already connected
-    const isConnected = provider.isConnected;
-    
-    // If already connected and in silent mode, just return the public key
-    if (isConnected && silentMode) {
-      console.log('Phantom wallet already connected, using existing connection');
-      const publicKey = provider.publicKey;
-      return { publicKey };
-    }
-    // If already connected but not in silent mode, force the user to sign a message to verify ownership
-    else if (isConnected) {
-      // We'll sign a dummy message to force the wallet UI to open
-      const message = new TextEncoder().encode(`Welcome to SolDart: ${new Date().toISOString()}`);
-      const signedMessage = await provider.signMessage(message, 'utf8');
-      
-      // Get the connected public key
-      const publicKey = provider.publicKey;
-      return { publicKey };
-    } else {
-      // Not connected, so connect first
-      console.log('Connecting to Phantom wallet...');
-      const resp = await provider.connect({
-        onlyIfTrusted: silentMode // Only use trusted connections in silent mode
-      });
-      
-      // Optionally sign a message after connect for extra verification (skip in silent mode)
-      if (!silentMode) {
-        const message = new TextEncoder().encode(`Welcome to SolDart: ${new Date().toISOString()}`);
-        await provider.signMessage(message, 'utf8');
-      }
-      
-      return resp;
-    }
-  } catch (err) {
-    console.error('Phantom connection error:', err);
-    throw new Error('Failed to connect to Phantom wallet. Please approve the connection in your wallet extension.');
-  }
-}
-
-/**
- * Connect to Solflare wallet
- * @param provider The Solflare wallet provider
- * @param silentMode If true, will not force signature for already connected wallets
- * @returns The connection response
- */
-async function connectSolflareWallet(provider: any, silentMode: boolean = false) {
-  try {
-    // Check if already connected
-    if (provider.isConnected && silentMode) {
-      console.log('Solflare wallet already connected, using existing connection');
-      return { publicKey: provider.publicKey };
-    }
-    
-    // Similar approach as Phantom
-    console.log('Connecting to Solflare wallet...');
-    const resp = await provider.connect({ onlyIfTrusted: silentMode });
-    
-    // Force a signature to ensure wallet UI opens (skip in silent mode)
-    if (!silentMode) {
-      const message = new TextEncoder().encode(`Welcome to SolDart: ${new Date().toISOString()}`);
-      await provider.signMessage(message);
-    }
-    
-    return resp;
-  } catch (err) {
-    console.error('Solflare connection error:', err);
-    throw new Error('Failed to connect to Solflare wallet. Please approve the connection in your wallet extension.');
-  }
-}
-
-/**
- * Connect to Backpack wallet
- * @param provider The Backpack wallet provider
- * @param silentMode If true, will not force signature for already connected wallets
- * @returns The connection response
- */
-async function connectBackpackWallet(provider: any, silentMode: boolean = false) {
-  try {
-    // Check if already connected
-    if (provider.isConnected && silentMode) {
-      console.log('Backpack wallet already connected, using existing connection');
-      return { publicKey: provider.publicKey };
-    }
-    
-    // Similar approach as Phantom
-    console.log('Connecting to Backpack wallet...');
-    const resp = await provider.connect({ onlyIfTrusted: silentMode });
-    
-    // Force a signature to ensure wallet UI opens (skip in silent mode)
-    if (!silentMode) {
-      const message = new TextEncoder().encode(`Welcome to SolDart: ${new Date().toISOString()}`);
-      await provider.signMessage(message);
-    }
-    
-    return resp;
-  } catch (err) {
-    console.error('Backpack connection error:', err);
-    throw new Error('Failed to connect to Backpack wallet. Please approve the connection in your wallet extension.');
-  }
-}
-
-/**
  * Associate a wallet with a user account
  * @param walletType The type of wallet
  * @param walletAddress The wallet address
  */
-// lib/walletUtils.js
 export const connectWalletToAccount = async (walletType: string, walletAddress: string) => {
   try {
     const response = await axios.post(
@@ -239,7 +121,7 @@ export const connectWalletToAccount = async (walletType: string, walletAddress: 
       { walletType, walletAddress },
       { withCredentials: true }
     );
-    
+
     if (response.data.success) {
       console.log("Wallet connected to account:", response.data);
       return response.data.wallet;
@@ -253,11 +135,6 @@ export const connectWalletToAccount = async (walletType: string, walletAddress: 
 };
 
 /**
- * Shorten a wallet address for display
- * @param address The full wallet address
- * @returns The shortened address
- */
-/**
  * Check if a wallet is already connected
  * @param walletType The type of wallet to check
  * @returns The wallet address if connected, null otherwise
@@ -269,12 +146,12 @@ export function checkWalletConnection(walletType: string): string | null {
       console.log(`${walletType} wallet provider not found`);
       return null;
     }
-    
+
     if (provider.isConnected && provider.publicKey) {
       console.log(`${walletType} wallet is already connected`);
       return provider.publicKey.toString();
     }
-    
+
     console.log(`${walletType} wallet is not connected`);
     return null;
   } catch (error) {
@@ -283,6 +160,11 @@ export function checkWalletConnection(walletType: string): string | null {
   }
 }
 
+/**
+ * Shorten a wallet address for display
+ * @param address The full wallet address
+ * @returns The shortened address
+ */
 export function shortenWalletAddress(address: string): string {
   if (!address) return '';
   return `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;

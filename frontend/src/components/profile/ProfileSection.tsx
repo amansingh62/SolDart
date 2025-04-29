@@ -402,6 +402,65 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     }
   }, [profileData._id, isOwnProfile]);
 
+  // Add this useEffect after the other useEffect hooks
+  useEffect(() => {
+    const checkWalletConnection = () => {
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (storedWalletInfo) {
+        try {
+          const walletInfo = JSON.parse(storedWalletInfo);
+          if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
+            // Update profile data with the connected wallet address
+            setProfileData(prevData => ({
+              ...prevData,
+              walletAddress: walletInfo.data.address
+            }));
+
+            // Also update the profile on the server
+            handleEditProfile({
+              walletAddress: walletInfo.data.address
+            }).catch(error => {
+              console.error("Error updating wallet address on server:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing stored wallet info:", error);
+        }
+      } else {
+        // If no wallet info is found, clear the wallet address
+        setProfileData(prevData => ({
+          ...prevData,
+          walletAddress: ""
+        }));
+      }
+    };
+
+    // Check wallet connection on mount
+    checkWalletConnection();
+
+    // Listen for storage events to detect wallet connection changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'connectedWalletInfo') {
+        checkWalletConnection();
+      }
+    };
+
+    // Also listen for custom event for wallet connection changes
+    const handleWalletChange = () => {
+      checkWalletConnection();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('walletConnected', handleWalletChange);
+    window.addEventListener('walletDisconnected', handleWalletChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('walletConnected', handleWalletChange);
+      window.removeEventListener('walletDisconnected', handleWalletChange);
+    };
+  }, []);
+
   const handleFollow = async () => {
     try {
       // Use the follow endpoint for both follow and unfollow actions
@@ -841,13 +900,29 @@ const handleLikePost = async (postId: string) => {
               <p className="mb-4 text-black text-sm md:text-base">{profileData.bio || <span className="text-gray-400"></span>}</p>
             )}
 
-            <div className="flex items-center gap-2 text-black text-xs md:text-sm">
-              <Icon icon="lucide:wallet" />
-              {isAuthenticated === false ? (
-                <span><span className="text-gray-400"></span></span>
-              ) : (
-                <span>{profileData.walletAddress || <span className="text-gray-400"></span>}</span>
-              )}
+            <div className="flex items-center gap-2 text-white text-xs md:text-sm">
+              <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg">
+                <Icon icon="lucide:wallet" className="text-[#B671FF]" />
+                {profileData.walletAddress ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium">{profileData.walletAddress}</span>
+                    <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(profileData.walletAddress);
+                          toast.success('Wallet address copied to clipboard!');
+                        }}
+                        className="text-gray-400 hover:text-[#B671FF] transition-colors"
+                      >
+                        <Icon icon="lucide:copy" className="text-sm" />
+                      </button>
+                    </Tooltip>
+                    <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+                  </div>
+                ) : (
+                  <span className="text-gray-400">No wallet connected</span>
+                )}
+              </div>
             </div>
 
             <div className="flex w-full rounded-lg border-b mt-10 border-default-200 shadow-[0px_4px_15px_rgba(128,128,128,0.4)]">

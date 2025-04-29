@@ -22,6 +22,7 @@ import EventsPopup from "@/components/home/EventsPopUP";
 import { LanguageSelector } from "@/components/home/LanguageSelector";
 import { useLanguage } from "@/context/LanguageContext";
 import { RecentSearches } from "@/components/home/RecentSearches";
+import { WalletDropdown } from "@/components/wallet/WalletDropdown";
 
 const EMOJIS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐙", "🦄", "🐳", "🦋", "🐝", "🦖", "🐢"];
 
@@ -57,6 +58,7 @@ export default function Layout({ children }: LayoutProps) {
     email?: string;
     emoji?: string;
   } | null>(null);
+  const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -323,15 +325,12 @@ export default function Layout({ children }: LayoutProps) {
           // Check if user has a connected wallet
           if (response.data.wallet) {
             const walletInfo = {
-              type: "wallet",
+              type: "wallet" as const,
               data: { blockchain: response.data.wallet.type },
               emoji: randomEmoji,
               address: response.data.wallet.address
             };
-            setConnectedWallet({
-              ...walletInfo,
-              type: walletInfo.type === "wallet" || walletInfo.type === "email" ? walletInfo.type : "wallet",
-            });
+            setConnectedWallet(walletInfo);
 
             // Store wallet info in localStorage for persistence
             localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
@@ -346,141 +345,35 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const handleConnect = (type: "wallet" | "email", data: any) => {
-    console.log("Handling wallet connection:", { type, data });
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-
-    const walletInfo: {
-      type: "wallet" | "email";
-      data: any;
-      emoji: string;
-      address?: string;
-    } = {
-      type: type,
+    const walletInfo = {
+      type,
       data,
-      emoji: randomEmoji
+      emoji: randomEmoji,
+      address: type === "wallet" ? data.address : undefined
     };
 
-    // Add wallet address if available from blockchain wallet connection
-    if (type === "wallet" && data.address) {
-      walletInfo.address = data.address;
-      console.log("Wallet address from blockchain:", data.address);
+    setConnectedWallet(walletInfo);
+    localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
 
-      // If it's a Phantom wallet, store the address with the email if available
-      if (data.blockchain === "phantom" && data.email) {
-        // Store the wallet address with the user's email
-        // Note: We're not checking for authentication here, just storing the wallet info
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-            // Don't show error toast, just log it
-            // This prevents the "user not found" toast
-          });
-      }
-    }
-    // Add wallet address if available from email login with associated wallet
-    else if (type === "email" && data.user?.wallet?.address) {
-      walletInfo.address = data.user.wallet.address;
-      console.log("Wallet address from user wallet:", data.user.wallet.address);
-    }
-    // Check if wallet info is in the data object directly (for email login)
-    else if (type === "email" && data.wallet?.address) {
-      walletInfo.address = data.wallet.address;
-      console.log("Wallet address from data wallet:", data.wallet.address);
-    }
-    // Check if wallet is in the defaultWallet property (from Google auth)
-    else if (type === "email" && data.defaultWallet?.address) {
-      walletInfo.address = data.defaultWallet.address;
-      console.log("Wallet address from defaultWallet:", data.defaultWallet.address);
-    }
-    // For Google auth, check if wallet is in the user property
-    else if (type === "email" && data.user?.defaultWallet?.address) {
-      walletInfo.address = data.user.defaultWallet.address;
-      console.log("Wallet address from user defaultWallet:", data.user.defaultWallet.address);
-    }
-    // Check for wallets array and use the default or first wallet
-    else if (type === "email" && data.wallets && data.wallets.length > 0) {
-      const defaultWallet = data.wallets.find((w: any) => w.isDefault) || data.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from wallets array:", defaultWallet.address);
-      }
-    }
-    // Check for wallets array in user object
-    else if (type === "email" && data.user?.wallets && data.user.wallets.length > 0) {
-      const defaultWallet = data.user.wallets.find((w: any) => w.isDefault) || data.user.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from user wallets array:", defaultWallet.address);
-      }
-    }
-    // Check specifically for Phantom wallet connection
-    else if (type === "email" && data.blockchain === "phantom") {
-      walletInfo.address = data.address;
-      console.log("Wallet address from Phantom connection:", data.address);
-
-      // If we have an email, store the Phantom wallet address with it
-      if (data.email) {
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-          });
-      }
-    }
-    // If user logs in with email, check if they have a Phantom wallet associated
-    else if (type === "email" && data.email) {
-      // Check if this email has any associated Phantom wallets
-      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/check-wallets-by-email`, {
+    if (type === "wallet" && data.blockchain === "phantom" && data.email) {
+      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
+        walletType: "phantom",
+        walletAddress: data.address,
         email: data.email
       }, { withCredentials: true })
         .then(response => {
-          if (response.data.defaultWallet && response.data.defaultWallet.type === "phantom") {
-            walletInfo.address = response.data.defaultWallet.address;
-            walletInfo.type = "wallet";
-            console.log("Found Phantom wallet for email:", response.data.defaultWallet.address);
-            setConnectedWallet(walletInfo);
-          }
+          console.log("Phantom wallet linked to account:", response.data);
         })
         .catch(error => {
-          console.error("Error checking for Phantom wallets:", error);
+          console.error("Error linking Phantom wallet to account:", error);
         });
     }
-
-    // If we have a wallet address, update the type to wallet to ensure proper display
-    if (walletInfo.address && type === "email") {
-      walletInfo.type = "wallet";
-    }
-
-    console.log("Final wallet info:", walletInfo);
-
-    // Save wallet info to localStorage for persistence
-    if (walletInfo.address) {
-      localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-    }
-
-    setConnectedWallet(walletInfo);
-    // Close modal after successful connection
-    setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
     setConnectedWallet(null);
-    // Remove wallet info from localStorage
     localStorage.removeItem('connectedWalletInfo');
-    // Don't close the modal immediately to allow the user to connect another wallet
   };
 
   const toggleWalletModal = () => {
@@ -493,25 +386,49 @@ export default function Layout({ children }: LayoutProps) {
 
   const { t } = useLanguage();
 
+  // Add click outside handler for the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.wallet-dropdown-container')) {
+        setIsWalletDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const renderConnectButton = () => {
     return (
-      <Button
-        className="w-full bg-[#9dfc3f] hover:text-white hover:bg-black text-black px-4 py-2 rounded-md border border-white shadow-md"
-        onPress={() => toggleWalletModal()}
-      >
-        {connectedWallet ? (
-          <div className="flex items-center justify-center gap-2">
-            <span>{connectedWallet.emoji}</span>
-            {connectedWallet.address && (
-              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-              </span>
-            )}
-          </div>
-        ) : (
-          t('connectWallet')
-        )}
-      </Button>
+      <div className="relative wallet-dropdown-container">
+        <Button
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
+             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+          onPress={() => setIsWalletDropdownOpen(!isWalletDropdownOpen)}
+        >
+          {connectedWallet ? (
+            <div className="flex items-center justify-center gap-2">
+              <span>{connectedWallet.emoji}</span>
+              {connectedWallet.address && (
+                <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                  {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+                </span>
+              )}
+            </div>
+          ) : (
+            "Connect"
+          )}
+        </Button>
+        <WalletDropdown
+          isOpen={isWalletDropdownOpen}
+          onClose={() => setIsWalletDropdownOpen(false)}
+          connectedWallet={connectedWallet}
+          onConnect={handleConnect}
+          onDisconnect={handleDisconnect}
+        />
+      </div>
     );
   };
 
@@ -540,22 +457,25 @@ export default function Layout({ children }: LayoutProps) {
       );
     }
 
-    // Default: Show Sign In button
+    // Default: Show Sign In button and Connect Wallet button
     return (
-      <Button
-        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+      <div className="flex gap-2">
+        <Button
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
              hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-        onPress={() => {
-          // Set flag to indicate modal is opened from sign-in button
-          localStorage.setItem("walletModalSource", "signIn");
-          // Force the ConnectWalletModal to open with email tab
-          setIsWalletModalOpen(true);
-        }}
-        data-auth-allowed="true"
-      >
-        {t('sign in')}
-      </Button>
+          onPress={() => {
+            // Set flag to indicate modal is opened from sign-in button
+            localStorage.setItem("walletModalSource", "signIn");
+            // Force the ConnectWalletModal to open with email tab
+            setIsWalletModalOpen(true);
+          }}
+          data-auth-allowed="true"
+        >
+          {t('sign in')}
+        </Button>
+        {renderConnectButton()}
+      </div>
     );
   };
 
