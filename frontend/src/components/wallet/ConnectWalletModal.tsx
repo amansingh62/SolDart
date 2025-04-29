@@ -251,6 +251,9 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
           });
         }
 
+        // Dispatch custom event for wallet connection
+        window.dispatchEvent(new Event('walletConnected'));
+
         // Clear the walletModalSource flag if it exists
         if (typeof window !== 'undefined' && localStorage.getItem("walletModalSource") === "userProfile") {
           localStorage.removeItem("walletModalSource");
@@ -375,6 +378,9 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         setSelectedChain(null);
         setConnectedWallet(null);
         setUserWallet(null);
+
+        // Dispatch custom event for wallet disconnection
+        window.dispatchEvent(new Event('walletDisconnected'));
 
         // Inform parent component
         onDisconnect();
