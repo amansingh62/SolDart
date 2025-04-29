@@ -20,6 +20,10 @@ export interface FearGreedData {
   value_classification: string;
   timestamp: string;
   time_until_update: string;
+  btc_dominance?: number;
+  eth_dominance?: number;
+  alt_dominance?: number;
+  volume_to_cap_ratio?: number;
 }
 
 // Function to fetch trending Solana cryptocurrencies from CoinMarketCap API
@@ -150,53 +154,33 @@ export const fetchGraduatedTokens = async (): Promise<TrendingCoin[]> => {
   }
 };
 
-// Function to fetch Fear & Greed Index from CoinMarketCap API
+// Function to fetch Fear & Greed Index from backend API
 export const fetchFearGreedIndex = async (): Promise<FearGreedData> => {
   try {
-    const response = await axios.get(
-      'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest',
-      {
-        headers: {
-          'X-CMC_PRO_API_KEY': process.env.NEXT_PUBLIC_COIN_MARKET_API_KEY,
-        },
-      }
-    );
-
-    // Calculate Fear & Greed Index based on market metrics
-    const data = response.data.data;
-    const marketMetrics = data.market_cap_percentage;
-    const btcDominance = marketMetrics.btc || 0;
-    const ethDominance = marketMetrics.eth || 0;
-    const altDominance = 100 - (btcDominance + ethDominance);
-
-    // Calculate value based on market metrics
-    // Higher BTC dominance and lower alt dominance typically indicates fear
-    // Higher alt dominance and lower BTC dominance typically indicates greed
-    const value = Math.round(
-      50 + // Base neutral value
-      (altDominance - 30) * 0.5 + // Alt dominance impact
-      (btcDominance - 40) * -0.3 // BTC dominance impact
-    );
-
-    // Clamp value between 0 and 100
-    const clampedValue = Math.max(0, Math.min(100, value));
-
-    // Determine classification
-    let value_classification = 'Neutral';
-    if (clampedValue >= 75) value_classification = 'Extreme Greed';
-    else if (clampedValue >= 55) value_classification = 'Greed';
-    else if (clampedValue >= 45) value_classification = 'Neutral';
-    else if (clampedValue >= 25) value_classification = 'Fear';
-    else value_classification = 'Extreme Fear';
-
-    return {
-      value: clampedValue,
-      value_classification,
-      timestamp: new Date().toISOString(),
-      time_until_update: '05:00:00' // Next update in 5 minutes
-    };
+    // Use the backend API endpoint instead of calling CoinMarketCap directly
+    // This ensures proper handling of API keys and CORS
+    const response = await axios.get('/api/fear-greed', {
+      // Add a timestamp to prevent caching
+      params: { _t: new Date().getTime() }
+    });
+    
+    // Store in localStorage as a backup
+    localStorage.setItem('fearGreedData', JSON.stringify(response.data));
+    
+    return response.data;
   } catch (error) {
     console.error('Error fetching Fear & Greed Index:', error);
+    
+    // Try to get data from localStorage first
+    const cachedData = localStorage.getItem('fearGreedData');
+    if (cachedData) {
+      try {
+        return JSON.parse(cachedData);
+      } catch (e) {
+        console.error('Error parsing cached fear & greed data:', e);
+      }
+    }
+    
     // Return fallback data in case of error
     return {
       value: 45,

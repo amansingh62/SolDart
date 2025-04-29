@@ -13,6 +13,7 @@ interface CoinDisplay {
   percentChange: number;
   color: string;
   image?: string; // URL to the coin's image/logo
+  price?: number; // Price of the coin in USD
 }
 
 export function HotCoins() {
@@ -54,7 +55,9 @@ export function HotCoins() {
           symbol: coin.symbol,
           number: index + 1,
           percentChange: coin.percent_change_24h,
-          color: getColorClass(coin.percent_change_24h)
+          color: getColorClass(coin.percent_change_24h),
+          image: coin.image, // Include the coin image URL
+          price: coin.price // Include the coin price
         }));
 
         // Save to localStorage for future page loads
@@ -83,7 +86,9 @@ export function HotCoins() {
         symbol: coin.symbol,
         number: index + 1,
         percentChange: coin.percent_change_24h,
-        color: getColorClass(coin.percent_change_24h)
+        color: getColorClass(coin.percent_change_24h),
+        image: coin.image,
+        price: coin.price
       }));
 
       setTrendingCoins(formattedCoins);
@@ -126,16 +131,16 @@ export function HotCoins() {
 
   // Fallback data in case API fails
   const fallbackCoins: CoinDisplay[] = [
-    { symbol: "BTC", number: 1, percentChange: 2.5, color: "text-green-500" },
-    { symbol: "ETH", number: 2, percentChange: 1.8, color: "text-green-400" },
-    { symbol: "SOL", number: 3, percentChange: 5.2, color: "text-green-500" },
-    { symbol: "DOGE", number: 4, percentChange: -1.3, color: "text-red-400" },
-    { symbol: "SHIB", number: 5, percentChange: -2.7, color: "text-red-500" },
-    { symbol: "ADA", number: 6, percentChange: 0.5, color: "text-green-400" },
-    { symbol: "DOT", number: 7, percentChange: -0.8, color: "text-red-400" },
-    { symbol: "AVAX", number: 8, percentChange: 3.2, color: "text-green-500" },
-    { symbol: "MATIC", number: 9, percentChange: 1.1, color: "text-green-400" },
-    { symbol: "LINK", number: 10, percentChange: 4.3, color: "text-green-500" },
+    { symbol: "BTC", number: 1, percentChange: 2.5, color: "text-green-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png", price: 65432.10 },
+    { symbol: "ETH", number: 2, percentChange: 1.8, color: "text-green-400", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png", price: 3456.78 },
+    { symbol: "SOL", number: 3, percentChange: 5.2, color: "text-green-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/5426.png", price: 123.45 },
+    { symbol: "DOGE", number: 4, percentChange: -1.3, color: "text-red-400", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/74.png", price: 0.12 },
+    { symbol: "SHIB", number: 5, percentChange: -2.7, color: "text-red-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/5994.png", price: 0.00002 },
+    { symbol: "ADA", number: 6, percentChange: 0.5, color: "text-green-400", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/2010.png", price: 0.45 },
+    { symbol: "DOT", number: 7, percentChange: -0.8, color: "text-red-400", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/6636.png", price: 7.89 },
+    { symbol: "AVAX", number: 8, percentChange: 3.2, color: "text-green-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/5805.png", price: 34.56 },
+    { symbol: "MATIC", number: 9, percentChange: 1.1, color: "text-green-400", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/3890.png", price: 0.78 },
+    { symbol: "LINK", number: 10, percentChange: 4.3, color: "text-green-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1975.png", price: 15.67 },
   ];
 
   // Only use fallback data if we have no trending coins and no cached data
@@ -169,6 +174,13 @@ export function HotCoins() {
               key={`${coin.symbol}-${index}`}
               className={clsx("font-medium px-3 py-1.5 flex items-center bg-white/20 rounded-lg hover:bg-white/30 transition-all duration-300", coin.color)}
             >
+              {coin.image && (
+                <img 
+                  src={coin.image} 
+                  alt={coin.symbol} 
+                  className="w-4 h-4 mr-1.5 rounded-full" 
+                />
+              )}
               <span className="text-xs font-bold mr-1">#{coin.number}</span> {coin.symbol}
               <span className={clsx("ml-1.5 text-xs font-bold flex items-center", coin.color)}>
                 {coin.percentChange > 0 ? (
@@ -178,6 +190,11 @@ export function HotCoins() {
                 )}
                 {Math.abs(coin.percentChange).toFixed(1)}%
               </span>
+              {coin.price !== undefined && (
+                <span className="ml-1.5 text-xs font-bold text-white bg-black/30 px-1.5 py-0.5 rounded">
+                  ${coin.price < 0.01 ? coin.price.toFixed(6) : coin.price < 1 ? coin.price.toFixed(4) : coin.price < 1000 ? coin.price.toFixed(2) : coin.price.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                </span>
+              )}
             </span>
           ))}
         </div>

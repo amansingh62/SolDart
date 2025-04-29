@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify/react";
 import { fetchFearGreedIndex, FearGreedData } from '@/lib/coinMarketCapApi';
+import { subscribeToFearGreedUpdates } from '@/lib/cryptoWebSocket';
 
 export function FearGreedIndex() {
   const [fearGreedData, setFearGreedData] = useState<FearGreedData | null>(null);
@@ -44,6 +45,7 @@ export function FearGreedIndex() {
       try {
         setLoading(true);
         const data = await fetchFearGreedIndex();
+        console.log('Fetched Fear & Greed data via API call:', data);
         setFearGreedData(data);
         setError(null);
       } catch (err) {
@@ -57,11 +59,31 @@ export function FearGreedIndex() {
     // Initial fetch
     fetchData();
 
-    // Set up real-time updates every 5 minutes
-    const intervalId = setInterval(fetchData, 5 * 60 * 1000);
+    // Set up real-time updates via WebSocket
+    const unsubscribe = subscribeToFearGreedUpdates((data) => {
+      console.log('Received real-time Fear & Greed update:', data);
+      if (data && data.value !== undefined) {
+        setFearGreedData(data);
+        setLoading(false);
+        setError(null);
+      } else {
+        console.warn('Received invalid Fear & Greed data:', data);
+      }
+    });
 
-    return () => clearInterval(intervalId);
+    // Set up a refresh interval as a fallback in case WebSocket fails
+    // Reduced to 2 minutes for more frequent updates
+    const refreshInterval = setInterval(() => {
+      console.log('Refreshing Fear & Greed data...');
+      fetchData();
+    }, 2 * 60 * 1000); // Refresh every 2 minutes
+
+    return () => {
+      unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, []);
+
 
   // Fallback data in case API fails
   const fallbackData: FearGreedData = {

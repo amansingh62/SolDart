@@ -8,7 +8,7 @@ import { HotCoins } from "@/components/home/HotCoins";
 import { FearGreedIndex } from "@/components/home/FearGreedIndex";
 import { TrendingSection } from "@/components/home/TrendingSection";
 import { TrendingHashtags } from "@/components/home/TrendingHashtags";
-import { SolanaTrendingSection } from "@/components/home/SolanaTrendingSection";
+import SolanaTrendingSection from "@/components/home/SolanaTrendingSection";
 import SupportChat from "@/components/home/SupportChat";
 import { AdsSection } from "@/components/home/AdsSection";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
@@ -878,8 +878,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="flex justify-center">
                 <FearGreedIndex />
               </div>
-              <TrendingSection />
-
+              <SolanaTrendingSection />
             </div>
           </aside>
         </div>

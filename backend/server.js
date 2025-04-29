@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const { router: cryptoRoutes, setupCryptoWebSocket } = require('./routes/cryptoRoutes');
 const { router: solanaRoutes, setupSolanaWebSocket } = require('./routes/solanaRoutes');
 const { router: graduatedTokensRoutes, setupGraduatedTokensWebSocket } = require('./routes/graduatedTokensRoutes');
+const { router: fearGreedRoutes, setupFearGreedWebSocket } = require('./routes/fearGreedRoutes');
 const authRoutes = require("./routes/authRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const postRoutes = require("./routes/postRoutes");
@@ -57,6 +58,7 @@ app.use("/posts", postRoutes);
 app.use("/api/crypto", cryptoRoutes);
 app.use("/api/solana", solanaRoutes);
 app.use("/api/graduated-tokens", graduatedTokensRoutes);
+app.use("/api/fear-greed", fearGreedRoutes);
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -204,4 +206,46 @@ setupSolanaWebSocket(io);
 
 // Setup WebSocket handlers for graduated tokens updates
 setupGraduatedTokensWebSocket(io);
+
+// Setup WebSocket handlers for Fear & Greed Index updates
+setupFearGreedWebSocket(io);
+
+// Migration for savedPosts structure (run once on server start)
+const migrateSavedPosts = async () => {
+  try {
+    console.log('Starting savedPosts migration...');
+    const User = require('./models/User');
+    
+    // Find all users with the old savedPosts structure (array of ObjectIds)
+    const users = await User.find({ 'savedPosts.0': { $exists: true, $type: 'objectId' } });
+    
+    console.log(`Found ${users.length} users with old savedPosts structure`);
+    
+    for (const user of users) {
+      // Convert old format to new format with timestamps
+      const oldSavedPosts = [...user.savedPosts]; // Create a copy of the old array
+      
+      // Clear the array and add new format objects
+      user.savedPosts = [];
+      
+      // Add each post with current timestamp (newest posts will have same timestamp)
+      // In a production environment, you might want to add some time variation
+      oldSavedPosts.forEach(postId => {
+        user.savedPosts.push({
+          post: postId,
+          savedAt: new Date()
+        });
+      });
+      
+      await user.save();
+    }
+    
+    console.log('SavedPosts migration completed successfully');
+  } catch (error) {
+    console.error('Error during savedPosts migration:', error);
+  }
+};
+
+// Run migration after database connection is established
+migrateSavedPosts();
 

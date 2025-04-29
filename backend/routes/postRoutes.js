@@ -619,14 +619,17 @@ router.post('/save/:id', auth, async (req, res) => {
     }
 
     // Check if post is already saved
-    const postIndex = user.savedPosts.indexOf(req.params.id);
+    const postIndex = user.savedPosts.findIndex(item => item.post.toString() === req.params.id);
     
     if (postIndex > -1) {
       // Unsave the post
       user.savedPosts.splice(postIndex, 1);
     } else {
-      // Save the post
-      user.savedPosts.push(req.params.id);
+      // Save the post with current timestamp
+      user.savedPosts.push({
+        post: req.params.id,
+        savedAt: new Date()
+      });
     }
 
     await user.save();
@@ -645,7 +648,7 @@ router.post('/save/:id', auth, async (req, res) => {
 router.get('/saved', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate({
-      path: 'savedPosts',
+      path: 'savedPosts.post',
       populate: {
         path: 'user',
         select: 'username profileImage walletAddress'
@@ -656,7 +659,12 @@ router.get('/saved', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    res.json({ success: true, posts: user.savedPosts });
+    // Sort saved posts by savedAt timestamp in descending order (newest first)
+    const sortedSavedPosts = user.savedPosts
+      .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+      .map(item => item.post);
+
+    res.json({ success: true, posts: sortedSavedPosts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -56,8 +56,11 @@ const UserSchema = new mongoose.Schema({
   followersList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   followingList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  // Array to store saved posts
-  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+  // Array to store saved posts with timestamps
+  savedPosts: [{
+    post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
+    savedAt: { type: Date, default: Date.now }
+  }],
 });
 
 module.exports = mongoose.model('User', UserSchema);

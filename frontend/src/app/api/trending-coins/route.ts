@@ -54,8 +54,8 @@ export async function GET() {
           'X-CMC_PRO_API_KEY': apiKey,
         },
         params: {
-          limit: 10, // Get top 10 coins
-          sort: 'percent_change_24h', // Sort by 24h change to get trending coins
+          limit: 100, // Get more coins to filter for trending
+          sort: 'volume_24h', // Sort by 24h volume to get most active coins
           sort_dir: 'desc', // Sort in descending order
           convert: 'USD', // Convert prices to USD
         },
@@ -63,7 +63,7 @@ export async function GET() {
     );
     
     // Get top trending coins
-    const topCoins = response.data.data.slice(0, 5); // Get top 5 trending coins
+    const topCoins = response.data.data.slice(0, 10); // Get top 10 trending coins by volume
     
     // Get coin IDs for metadata request
     const coinIds = topCoins.map((coin: CoinMarketCapCoin) => coin.id).join(',');
