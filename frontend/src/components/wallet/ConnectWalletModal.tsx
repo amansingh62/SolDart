@@ -5,17 +5,24 @@ import axios from "axios";
 import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { connectWallet, disconnectWallet, checkWalletInstalled, connectWalletToAccount, shortenWalletAddress } from "@/lib/walletUtils";
+import { toast } from "react-hot-toast";
+import api from "@/lib/apiUtils";
+
+type Wallet = "phantom" | "solflare" | "backpack";
 
 interface ConnectWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (type: "wallet" | "email", data: any) => void;
-  onDisconnect: () => void;
+  isFromUserProfile?: boolean;
+  isFromSignIn?: boolean;
+  onConnect?: (walletAddress: string) => void;
+  onDisconnect?: () => void;
   connectedWalletInfo?: {
-    type: "wallet" | "email";
-    data: any;
-    emoji: string;
+    type: string;
     address?: string;
+    data?: {
+      blockchain?: string;
+    };
   } | null;
 }
 
@@ -25,21 +32,17 @@ interface WalletInfo {
   address: string;
 }
 
-export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, connectedWalletInfo }: ConnectWalletModalProps) {
-  // Default to email tab for sign-in experience
-  const [activeTab, setActiveTab] = useState<"wallet" | "email">("email");
-  // Track if modal is opened from sign-in button or profile modal
-  const [isFromSignIn, setIsFromSignIn] = useState(false);
-  // Check if this modal is being opened from the user profile (after login)
-  const [isFromUserProfile, setIsFromUserProfile] = useState(false);
+export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromSignIn, onConnect, onDisconnect, connectedWalletInfo }: ConnectWalletModalProps) {
+  // Default to wallet tab for sign-in experience
+  const [activeTab, setActiveTab] = useState<"wallet" | "email">("wallet");
   const [isSignUp, setIsSignUp] = useState(false);
-  const [selectedChain, setSelectedChain] = useState<string | null>(null);
+  const [selectedChain, setSelectedChain] = useState<string | null | undefined>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | React.ReactNode>("");
   const [token, setToken] = useState<string | null>(null);
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
   // Add userWallet state
@@ -61,10 +64,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         setActiveTab('wallet');
 
         // Notify parent component
-        onConnect("wallet", {
-          blockchain: walletType,
-          address: walletAddress
-        });
+        onConnect?.(walletAddress);
 
         // Clear the URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -86,18 +86,12 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
       // Check if the modal was opened from user profile using localStorage flag
       const walletModalSource = typeof window !== 'undefined' ? localStorage.getItem("walletModalSource") : null;
       if (walletModalSource === "userProfile") {
-        setIsFromUserProfile(true);
-        setIsFromSignIn(false);
         setActiveTab("wallet"); // Default to wallet tab when opened from user profile
-        // Don't remove the flag immediately to prevent modal from closing too soon
-        // We'll remove it after the user completes an action or manually closes the modal
         return;
       }
 
       // Check if the modal was opened from sign-in button
       if (walletModalSource === "signIn") {
-        setIsFromUserProfile(false);
-        setIsFromSignIn(true);
         setActiveTab("email"); // Force email tab when opened from sign-in button
         return;
       }
@@ -105,18 +99,12 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`, { withCredentials: true });
         if (response.data) {
-          setIsFromUserProfile(true);
-          setIsFromSignIn(false);
           setActiveTab("wallet"); // Default to wallet tab when opened from user profile
         } else {
-          setIsFromUserProfile(false);
-          setIsFromSignIn(true);
           setActiveTab("email"); // Default to email tab for initial sign in
         }
       } catch (error) {
         // Not authenticated, so not from user profile
-        setIsFromUserProfile(false);
-        setIsFromSignIn(true);
         setActiveTab("email");
       }
     };
@@ -172,7 +160,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
 
           // Only call onConnect if we don't already have a connected wallet from parent
           if (!connectedWalletInfo) {
-            onConnect("email", response.data);
+            onConnect?.(response.data.wallet?.address || "");
           }
         }
       } catch (error) {
@@ -189,7 +177,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setError(null);
+      setError("");
     }
   }, [isOpen]);
 
@@ -198,6 +186,50 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
     { id: "solflare", name: "Solflare", icon: "cryptocurrency:solflare" },
     { id: "backpack", name: "Backpack", icon: "cryptocurrency:backpack" }
   ];
+
+  const handleWalletConnect = async (walletType: Wallet) => {
+    try {
+      setError("");
+      const isInstalled = checkWalletInstalled(walletType);
+      if (!isInstalled) {
+        const walletUrls: Record<Wallet, string> = {
+          phantom: "https://phantom.app/",
+          solflare: "https://solflare.com/",
+          backpack: "https://www.backpack.app/"
+        };
+        window.open(walletUrls[walletType], "_blank");
+        return;
+      }
+
+      // Disconnect current wallet if any
+      if (connectedWalletInfo) {
+        await disconnectWallet(connectedWalletInfo.type);
+        onDisconnect?.();
+      }
+
+      // Connect new wallet
+      const walletAddress = await connectWallet(walletType);
+      if (walletAddress) {
+        onConnect?.(walletAddress);
+        onClose();
+
+        // Update user profile with wallet address
+        try {
+          await api.put("/users/profile", { walletAddress });
+          toast.success("Wallet connected successfully");
+        } catch (error) {
+          console.error("Failed to update profile:", error);
+          toast.error("Wallet connected but failed to update profile");
+          // Disconnect wallet if profile update fails
+          await disconnectWallet(walletType);
+          onDisconnect?.();
+        }
+      }
+    } catch (error) {
+      console.error("Wallet connection error:", error);
+      setError("Failed to connect wallet. Please try again.");
+    }
+  };
 
   const handleConnect = async () => {
     setLoading(true);
@@ -209,7 +241,26 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         const isInstalled = checkWalletInstalled(selectedChain);
 
         if (!isInstalled) {
-          setError(`${selectedChain} wallet is not installed. Please install the extension first.`);
+          const walletLinks = {
+            phantom: "https://phantom.app/download",
+            solflare: "https://solflare.com/download",
+            backpack: "https://www.backpack.app/download"
+          };
+          
+          setError(
+            <div className="text-red-400 text-sm">
+              {`${selectedChain} wallet is not installed. `}
+              <a 
+                href={walletLinks[selectedChain as keyof typeof walletLinks]} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#B671FF] hover:text-[#E282CA] underline font-medium"
+              >
+                Download {selectedChain} wallet
+              </a>
+            </div>
+          );
+          toast.error(`${selectedChain} wallet is not installed. Please install it first.`);
           setLoading(false);
           return;
         }
@@ -219,6 +270,23 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         const walletAddress = await connectWallet(selectedChain);
         console.log(`Successfully connected to ${selectedChain} wallet:`, walletAddress);
         setConnectedWallet(walletAddress);
+
+        // Show success toast
+        toast.success(
+          <div className="flex items-center gap-2">
+            <span>Wallet connected successfully!</span>
+          </div>,
+          {
+            duration: 4000,
+            style: {
+              background: '#1F2937',
+              color: '#fff',
+              border: '1px solid #374151',
+              padding: '12px 16px',
+              borderRadius: '8px',
+            }
+          }
+        );
 
         // Get user email if authenticated
         let userEmail = null;
@@ -237,18 +305,10 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         }
 
         // Now pass the address to the parent component
-        // Include email if available for Phantom wallet
         if (selectedChain === "phantom" && userEmail) {
-          onConnect("wallet", {
-            blockchain: selectedChain,
-            address: walletAddress,
-            email: userEmail
-          });
+          onConnect?.(walletAddress);
         } else {
-          onConnect("wallet", {
-            blockchain: selectedChain,
-            address: walletAddress
-          });
+          onConnect?.(walletAddress);
         }
 
         // Dispatch custom event for wallet connection
@@ -257,8 +317,6 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         // Clear the walletModalSource flag if it exists
         if (typeof window !== 'undefined' && localStorage.getItem("walletModalSource") === "userProfile") {
           localStorage.removeItem("walletModalSource");
-          // Don't close the modal automatically when coming from user profile
-          // Let the parent component handle it
           if (!isFromUserProfile) {
             onClose();
           }
@@ -299,10 +357,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
             setActiveTab("wallet");
 
 
-            onConnect("wallet", {
-              blockchain: response.data.user.wallet.type,
-              address: response.data.user.wallet.address
-            });
+            onConnect?.(response.data.user.wallet.address);
 
           } else {
             // If no wallet found, check by email
@@ -324,22 +379,36 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                   emailCheckResponse.data.defaultWallet.type,
                   emailCheckResponse.data.defaultWallet.address
                 );
-                onConnect("wallet", {
-                  blockchain: emailCheckResponse.data.defaultWallet.type,
-                  address: emailCheckResponse.data.defaultWallet.address
-                });
+                onConnect?.(emailCheckResponse.data.defaultWallet.address);
               }
             } catch (checkError) {
               console.error("Error checking wallets by email:", checkError);
             }
           }
 
-          onConnect("email", response.data);
+          onConnect?.(response.data.user.wallet?.address || "");
           onClose();
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Something went wrong!");
+      const errorMessage = err.response?.data?.message || err.message || "Something went wrong!";
+      setError(errorMessage);
+      toast.error(
+        <div className="flex items-center gap-2">
+          <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
+          <span>{errorMessage}</span>
+        </div>,
+        {
+          duration: 4000,
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+            padding: '12px 16px',
+            borderRadius: '8px',
+          }
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -355,9 +424,39 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         // First try to disconnect from wallet extension
         try {
           await disconnectWallet(selectedChain);
+          toast.success(
+            <div className="flex items-center gap-2">
+              <span>Wallet disconnected successfully!</span>
+            </div>,
+            {
+              duration: 4000,
+              style: {
+                background: '#1F2937',
+                color: '#fff',
+                border: '1px solid #374151',
+                padding: '12px 16px',
+                borderRadius: '8px',
+              }
+            }
+          );
         } catch (walletErr) {
           console.error("Error disconnecting from wallet extension:", walletErr);
-          // Continue anyway, as we want to clear the state
+          toast.error(
+            <div className="flex items-center gap-2">
+              <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
+              <span>Error disconnecting wallet</span>
+            </div>,
+            {
+              duration: 4000,
+              style: {
+                background: '#1F2937',
+                color: '#fff',
+                border: '1px solid #374151',
+                padding: '12px 16px',
+                borderRadius: '8px',
+              }
+            }
+          );
         }
 
         // If authenticated, update backend
@@ -383,7 +482,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         window.dispatchEvent(new Event('walletDisconnected'));
 
         // Inform parent component
-        onDisconnect();
+        onDisconnect?.();
       }
       // Handle email logout
       else if (activeTab === "email" && token) {
@@ -406,13 +505,30 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
         setUserWallet(null);
 
         // Inform parent component
-        onDisconnect();
+        onDisconnect?.();
       }
 
       // Don't close modal - let user connect another wallet or email if desired
     } catch (err: any) {
       console.error("Disconnect error:", err);
-      setError(err.message || "Failed to disconnect");
+      const errorMessage = err.message || "Failed to disconnect";
+      setError(errorMessage);
+      toast.error(
+        <div className="flex items-center gap-2">
+          <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
+          <span>{errorMessage}</span>
+        </div>,
+        {
+          duration: 4000,
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+            padding: '12px 16px',
+            borderRadius: '8px',
+          }
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -420,86 +536,89 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md" placement="center" className="z-[100] modal">
-      <ModalContent className="bg-white rounded-lg shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto p-4 sm:p-6 modal-content">
+      <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 modal-content min-h-[400px] flex flex-col">
         {() => (
           <>
             <ModalHeader className="flex flex-col gap-1 text-center">
-              <h3 className="text-lg font-bold">
+              <h3 className="text-xl font-bold text-white">
                 {activeTab === "wallet" ? (connectedWallet ? "Wallet Connected" : "Connect Wallet") : isSignUp ? "Create Account" : "Sign In"}
               </h3>
             </ModalHeader>
-            <ModalBody className="px-2 sm:px-4 py-4">
-              {/* Only show tab selection if not opened from user profile and not from sign-in button */}
-              {!isFromUserProfile && !isFromSignIn && (
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    className={`flex-1 rounded-lg px-3 py-2 bg-black text-white ${activeTab === "wallet" ? "border-2 border-[#9dfc3f]" : ""
-                      }`}
-                    onPress={() => setActiveTab("wallet")}
-                  >
-                    Blockchain
-                  </Button>
-                  <Button
-                    className={`flex-1 rounded-lg px-3 py-2 bg-black text-white ${activeTab === "email" ? "border-2 border-[#9dfc3f]" : ""
-                      }`}
-                    onPress={() => setActiveTab("email")}
-                  >
-                    Email
-                  </Button>
-                </div>
-              )}
+            <ModalBody className="px-2 sm:px-4 py-4 flex-1 flex flex-col">
+              {/* Always show tab selection */}
+              <div className="flex gap-2 mb-6">
+                <Button
+                  className={`flex-1 rounded-lg px-3 py-2 font-medium transition-all duration-200 ${
+                    activeTab === "wallet" 
+                      ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                  onPress={() => setActiveTab("wallet")}
+                >
+                  Wallet Connect
+                </Button>
+                <Button
+                  className={`flex-1 rounded-lg px-3 py-2 font-medium transition-all duration-200 ${
+                    activeTab === "email" 
+                      ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                  onPress={() => setActiveTab("email")}
+                >
+                  Email
+                </Button>
+              </div>
 
-              {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+              {error && <p className="text-red-400 text-sm mb-4 font-medium">{error}</p>}
 
-              {activeTab === "wallet" ? (
-                connectedWallet ? (
-                  <div className="space-y-3">
-                    <Button
-                      className="w-full rounded-lg bg-[#9dfc3f] text-black font-semibold flex items-center justify-between px-4 py-3"
-                      onPress={handleDisconnect}
-                      isDisabled={loading}
-                    >
-                      {shortenWalletAddress(connectedWallet)}
-                      <Icon icon="mdi:logout" className="text-lg" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {blockchains.map((chain) => (
+              <div className="flex-1 flex flex-col">
+                {activeTab === "wallet" ? (
+                  connectedWallet ? (
+                    <div className="space-y-3 flex-1 flex flex-col justify-center">
                       <Button
-                        key={chain.id}
-                        variant="flat"
-                        className={`w-full justify-start gap-2 h-12 rounded-lg transition ${selectedChain === chain.id ? "bg-[#9dfc3f] text-black" : "bg-gray-100 hover:bg-[#e0ffa3]"
-                          }`}
-                        onPress={() => setSelectedChain(chain.id)}
+                        className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold flex items-center justify-between px-4 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                        onPress={handleDisconnect}
+                        isDisabled={loading}
                       >
-                        <Icon icon={chain.icon} className="text-xl" />
-                        {chain.name}
-                        {selectedChain === chain.id && <Icon icon="mdi:check" className="ml-auto text-black text-lg" />}
-                      </Button>
-                    ))}
-                    {connectedWallet ? (
-                      <p className="w-full text-center text-lg font-semibold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
-             hover:text-white rounded-lg py-3 shadow-xl mt-4">
                         {shortenWalletAddress(connectedWallet)}
-                      </p>
-                    ) : (
-                      <Button
-                        className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
-             hover:text-white shadow-xl mt-4"
-                        onPress={handleConnect}
-                        isDisabled={loading || !selectedChain}
-                      >
-                        {loading ? "Connecting..." : "Connect Wallet"}
+                        <Icon icon="mdi:logout" className="text-lg" />
                       </Button>
-                    )}
-                  </div>
-                )
-              ) :
-                (
-                  <div className="space-y-4 sm:space-y-6 mt-4">
+                    </div>
+                  ) : (
+                    <div className="space-y-3 flex-1 flex flex-col justify-center">
+                      {blockchains.map((chain) => (
+                        <Button
+                          key={chain.id}
+                          variant="flat"
+                          className={`w-full justify-start gap-2 h-12 rounded-lg transition-all duration-200 font-medium ${
+                            selectedChain === chain.id 
+                              ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
+                              : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                          }`}
+                          onPress={() => setSelectedChain(chain.id)}
+                        >
+                          <Icon icon={chain.icon} className="text-xl" />
+                          {chain.name}
+                          {selectedChain === chain.id && <Icon icon="mdi:check" className="ml-auto text-white text-lg" />}
+                        </Button>
+                      ))}
+                      {connectedWallet ? (
+                        <p className="w-full text-center text-lg font-semibold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white rounded-lg py-3 shadow-lg">
+                          {shortenWalletAddress(connectedWallet)}
+                        </p>
+                      ) : (
+                        <Button
+                          className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 mt-4"
+                          onPress={handleConnect}
+                          isDisabled={loading || !selectedChain}
+                        >
+                          {loading ? "Connecting..." : "Connect Wallet"}
+                        </Button>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-4 sm:space-y-6 mt-4 flex-1 flex flex-col justify-center">
                     {isSignUp && (
                       <>
                         <Input
@@ -507,14 +626,14 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           isRequired
-                          className="w-full"
+                          className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
                         />
                         <Input
                           placeholder="Username"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
                           isRequired
-                          className="w-full"
+                          className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
                         />
                       </>
                     )}
@@ -524,7 +643,7 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       isRequired
-                      className="w-full"
+                      className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
                     />
                     <Input
                       placeholder="Password"
@@ -532,12 +651,10 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       isRequired
-                      className="w-full"
+                      className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
                     />
                     <Button
-                      className="w-full rounded-lg mt-4 sm:mt-6 shadow-xl bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
-             hover:text-white"
+                      className="w-full rounded-lg mt-4 sm:mt-6 shadow-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold hover:shadow-xl transition-all duration-200"
                       onPress={handleConnect}
                       isDisabled={loading}
                     >
@@ -545,11 +662,11 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                     </Button>
 
                     {/* Toggle Between Sign In & Sign Up */}
-                    <p className="text-center text-sm text-gray-600 mt-2">
+                    <p className="text-center text-sm text-gray-400 mt-2">
                       {isSignUp ? "Already have an account? " : "Don't have an account? "}
                       <button
                         onClick={() => setIsSignUp(!isSignUp)}
-                        className="text-blue-500 hover:underline"
+                        className="text-[#B671FF] hover:text-[#E282CA] font-medium transition-colors duration-200"
                       >
                         {isSignUp ? "Sign In" : "Sign Up"}
                       </button>
@@ -557,9 +674,8 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
 
                     {/* "Continue with Google" Button */}
                     <Button
-                      className="w-full rounded-lg border-lime-400 border-1 text-black font-light mt-4 flex items-center justify-center gap-2 google-auth-button"
+                      className="w-full rounded-lg bg-white text-gray-800 font-medium mt-4 flex items-center justify-center gap-2 hover:bg-gray-100 transition-all duration-200 shadow-lg"
                       onPress={() => {
-                        // Store current location to redirect back after Google auth
                         localStorage.setItem("redirectAfterAuth", window.location.href);
                         window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/google`;
                       }}
@@ -568,8 +684,8 @@ export function ConnectWalletModal({ isOpen, onClose, onConnect, onDisconnect, c
                       Continue with Google
                     </Button>
                   </div>
-
                 )}
+              </div>
             </ModalBody>
           </>
         )}
