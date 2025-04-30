@@ -344,31 +344,17 @@ export default function Layout({ children }: LayoutProps) {
     checkAuth();
   }, []);
 
-  const handleConnect = (type: "wallet" | "email", data: any) => {
+  const handleConnect = (walletAddress: string) => {
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
     const walletInfo = {
-      type,
-      data,
+      type: "wallet" as const,
+      data: { blockchain: "phantom", address: walletAddress },
       emoji: randomEmoji,
-      address: type === "wallet" ? data.address : undefined
+      address: walletAddress
     };
 
     setConnectedWallet(walletInfo);
     localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-
-    if (type === "wallet" && data.blockchain === "phantom" && data.email) {
-      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-        walletType: "phantom",
-        walletAddress: data.address,
-        email: data.email
-      }, { withCredentials: true })
-        .then(response => {
-          console.log("Phantom wallet linked to account:", response.data);
-        })
-        .catch(error => {
-          console.error("Error linking Phantom wallet to account:", error);
-        });
-    }
   };
 
   const handleDisconnect = () => {
@@ -457,25 +443,20 @@ export default function Layout({ children }: LayoutProps) {
       );
     }
 
-    // Default: Show Sign In button and Connect Wallet button
+    // Default: Show Sign In button
     return (
-      <div className="flex gap-2">
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => {
-            // Set flag to indicate modal is opened from sign-in button
-            localStorage.setItem("walletModalSource", "signIn");
-            // Force the ConnectWalletModal to open with email tab
-            setIsWalletModalOpen(true);
-          }}
-          data-auth-allowed="true"
-        >
-          {t('sign in')}
-        </Button>
-        {renderConnectButton()}
-      </div>
+      <Button
+        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+           text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
+           hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+        onPress={() => {
+          // Just open the modal without forcing any tab
+          setIsWalletModalOpen(true);
+        }}
+        data-auth-allowed="true"
+      >
+        {t('sign in')}
+      </Button>
     );
   };
 

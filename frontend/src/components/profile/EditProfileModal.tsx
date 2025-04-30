@@ -89,34 +89,27 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
       if (newData.bio) formData.append("bio", newData.bio);
       if (newData.walletAddress) formData.append("walletAddress", newData.walletAddress);
   
-      // ✅ Ensure socialLinks exist and are properly formatted
+      // Ensure socialLinks exist and are properly formatted
       const socialLinksToSave = newData.socialLinks || profileData.socialLinks || {};
       formData.append("socialLinks", JSON.stringify(socialLinksToSave));
   
-      // ✅ Handle profile image (only upload if new)
+      // Handle profile image (only upload if new)
       if (newData.profileImage?.startsWith("data:image")) {
         const blob = await fetch(newData.profileImage).then((r) => r.blob());
         formData.append("profileImage", blob, "profile-image.jpg");
       }
   
-      // ✅ Handle cover image (only upload if new)
+      // Handle cover image (only upload if new)
       if (newData.coverImage?.startsWith("data:image")) {
         const blob = await fetch(newData.coverImage).then((r) => r.blob());
         formData.append("coverImage", blob, "cover-image.jpg");
       }
   
-      let response = null;
-      try{
       const response = await api.put("/users/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      console.log(response)
-    }
-      catch(ex){
-        console.log("error   this ");
-      }
   
-      if (response!.data.success) {
+      if (response.data.success) {
         setProfileData((prev) => ({
           ...prev,
           ...newData,
@@ -127,12 +120,30 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
         }));
   
         toast.success("Profile updated successfully");
-        // ✅ Immediately fetch the latest data to ensure it's properly saved
+        // Immediately fetch the latest data to ensure it's properly saved
         await fetchProfileData();
+      } else {
+        throw new Error(response.data.message || "Failed to update profile");
       }
-    } catch (error) {
-      console.error("❌ Error updating profile:", error);
-      toast.error("Failed to update profile");
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update profile";
+      toast.error(
+        <div className="flex items-center gap-2">
+          <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
+          <span>{errorMessage}</span>
+        </div>,
+        {
+          duration: 4000,
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+            padding: '12px 16px',
+            borderRadius: '8px',
+          }
+        }
+      );
     }
   };
   
