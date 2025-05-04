@@ -34,7 +34,6 @@ router.get('/', async (req, res) => {
 // Function to fetch graduated tokens from CoinMarketCap API
 async function fetchGraduatedTokens() {
   try {
-    // Get API key from environment variables
     const apiKey = process.env.COIN_MARKET_API_KEY;
     
     if (!apiKey) {
@@ -42,35 +41,34 @@ async function fetchGraduatedTokens() {
       return [];
     }
 
-    // Make request to CoinMarketCap API to get graduated tokens from pump.fun
-    // Using the dexer/pairs endpoint to get tokens from pump.fun
+    console.log('Fetching graduated tokens from CoinMarketCap API');
+    
+    // First, get the list of all tokens with their market data
     const response = await axios.get(
-      'https://pro-api.coinmarketcap.com/v1/dexer/pairs',
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
       {
         headers: {
           'X-CMC_PRO_API_KEY': apiKey,
         },
         params: {
-          dexId: 'pump.fun', // Specific dexscan ID for pump.fun graduated tokens
-          aux: 'is_graduated', // Request graduated status
-          limit: 20, // Get top 20 tokens
-          convert: 'USD', // Convert prices to USD
+          start: 1,
+          limit: 100,
+          convert: 'USD',
+          sort: 'market_cap',
+          sort_dir: 'desc'
         },
       }
     );
     
-    if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
+    if (!response.data || !response.data.data) {
       console.error('Invalid response format from CoinMarketCap API:', response.data);
       return [];
     }
-    
-    // Filter for graduated tokens only
-    const graduatedTokens = response.data.data.filter(token => token.is_graduated === true);
-    
+
     // Get token IDs for metadata request
-    const tokenIds = graduatedTokens.map(token => token.token_id).join(',');
+    const tokenIds = response.data.data.map(token => token.id).join(',');
     
-    // Fetch metadata for these tokens (including logos)
+    // Fetch detailed metadata including platform and date_added
     const metadataResponse = await axios.get(
       'https://pro-api.coinmarketcap.com/v2/cryptocurrency/info',
       {
@@ -78,31 +76,67 @@ async function fetchGraduatedTokens() {
           'X-CMC_PRO_API_KEY': apiKey,
         },
         params: {
-          id: tokenIds
+          id: tokenIds,
+          aux: 'platform,date_added,logo'
         },
       }
     );
     
     const metadataMap = metadataResponse.data.data || {};
 
+    // Graduation criteria
+    const MIN_DAYS_FOR_GRADUATION = 7; // Reduced from 30 to 7 days
+    const MIN_MARKET_CAP = 1000000; // Reduced from $10M to $1M
+    const MIN_VOLUME_24H = 100000; // Minimum 24h volume of $100k
+
     // Transform the data to match our frontend needs
-    return graduatedTokens.map(token => ({
-      id: token.token_id,
-      name: token.token_name,
-      symbol: token.token_symbol,
-      slug: token.token_slug,
-      price: token.quote.USD.price,
-      percent_change_24h: token.quote.USD.percent_change_24h || 0,
-      market_cap: token.quote.USD.market_cap || 0,
-      volume_24h: token.quote.USD.volume_24h || 0,
-      rank: token.rank || 0,
-      image: metadataMap[token.token_id]?.logo || null, // Add token logo URL
-      isGraduated: true,
-      graduationTime: Math.floor(Math.random() * 24) + 1 // Random hours between 1-24 for demo
-    }));
+    const tokens = response.data.data.map(token => {
+      const metadata = metadataMap[token.id] || {};
+      const dateAdded = new Date(metadata.date_added);
+      const now = new Date();
+      const daysSinceAdded = Math.floor((now - dateAdded) / (1000 * 60 * 60 * 24));
+      
+      // More lenient graduation criteria
+      const isGraduated = (
+        daysSinceAdded > MIN_DAYS_FOR_GRADUATION && 
+        token.quote.USD.market_cap > MIN_MARKET_CAP &&
+        token.quote.USD.volume_24h > MIN_VOLUME_24H
+      );
+
+      return {
+        id: token.id,
+        name: token.name,
+        symbol: token.symbol,
+        slug: token.slug,
+        price: token.quote.USD.price,
+        percent_change_24h: token.quote.USD.percent_change_24h || 0,
+        market_cap: token.quote.USD.market_cap || 0,
+        volume_24h: token.quote.USD.volume_24h || 0,
+        rank: token.cmc_rank || 0,
+        is_graduated: isGraduated,
+        logo: metadata.logo || null,
+        platform: metadata.platform || null,
+        days_since_added: daysSinceAdded,
+        graduation_criteria: {
+          min_days: MIN_DAYS_FOR_GRADUATION,
+          min_market_cap: MIN_MARKET_CAP,
+          min_volume_24h: MIN_VOLUME_24H
+        }
+      };
+    });
+
+    const graduatedTokens = tokens.filter(token => token.is_graduated);
+    console.log(`Found ${graduatedTokens.length} graduated tokens out of ${tokens.length} total tokens`);
+    
+    return graduatedTokens;
+
   } catch (error) {
-    console.error('Error fetching graduated tokens:', error.response?.data || error.message);
-    throw error; // Propagate the error to be handled by the route handler
+    console.error('Error in fetchGraduatedTokens:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    return [];
   }
 }
 

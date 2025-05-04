@@ -12,29 +12,82 @@ const path = require('path');
 const fs = require('fs');
 
 router.post('/register', async (req, res) => {
-  console.log("Received Data:", req.body); // Debugging: Check if 'name' is received
+  console.log("Received Data:", req.body);
 
   const { name, username, email, password } = req.body;
 
+  // Validate required fields
   if (!name || !username || !email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res.status(400).json({ 
+      statusCode: 400,
+      error: 'Bad Request',
+      message: "All fields are required",
+      details: {
+        name: !name ? "Name is required" : null,
+        username: !username ? "Username is required" : null,
+        email: !email ? "Email is required" : null,
+        password: !password ? "Password is required" : null
+      }
+    });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: "Invalid email format"
+    });
+  }
+
+  // Validate password strength
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    });
+  }
+
+  // Validate username format
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  if (!usernameRegex.test(username)) {
+    return res.status(400).json({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: "Username must be between 3 and 20 characters long and can only contain letters, numbers, and underscores"
+    });
   }
 
   try {
-    // Check if user already exists
-    let user = await User.findOne({ email });
-    
-    if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+    // Check if email already exists
+    let existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Email already registered'
+      });
+    }
+
+    // Check if username already exists
+    existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Username already taken'
+      });
     }
     
     // Create new user
-    user = new User({
+    const user = new User({
       name,
       username,
       email,
       password,
-      // Initialize socialLinks object to match schema
       socialLinks: {
         website: "",
         telegram: "",
@@ -49,6 +102,8 @@ router.post('/register', async (req, res) => {
     user.password = await bcrypt.hash(password, salt);
     
     await user.save();
+
+    console.log("User registered successfully:", user);
     
     // Generate JWT token
     const token = jwt.sign(
@@ -57,6 +112,8 @@ router.post('/register', async (req, res) => {
       { expiresIn: '1d' }
     );
     
+    
+    // Set secure cookie
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'Lax',
@@ -64,20 +121,35 @@ router.post('/register', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
     
-    res.json({ 
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        wallets: user.wallets || [],
-        defaultWallet: null,
-        socialLinks: user.socialLinks || []
+    // Return success response
+    res.status(201).json({ 
+      statusCode: 201,
+      message: 'User registered successfully',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          profileImage: user.profileImage,
+          wallets: user.wallets || [],
+          defaultWallet: null,
+          socialLinks: user.socialLinks || {},
+          isVerified: user.isVerified,
+          followers: user.followers,
+          following: user.following
+        }
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'Error during registration',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -472,6 +544,323 @@ router.delete('/delete-account', auth, async (req, res) => {
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete account' });
+  }
+});
+
+// Wallet-first signup
+router.post('/wallet-signup', async (req, res) => {
+  const { walletType, walletAddress } = req.body;
+
+  try {
+    // Check if wallet is already registered
+    const existingUser = await User.findOne({ 'wallets.address': walletAddress });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Wallet already registered' });
+    }
+
+    // Generate a temporary username based on wallet address
+    const tempUsername = `user_${walletAddress.slice(0, 8)}`;
+    
+    // Create new user with wallet
+    const user = new User({
+      name: tempUsername,
+      username: tempUsername,
+      email: `${tempUsername}@temp.com`, // Temporary email
+      password: '', // Empty password for now
+      wallets: [{
+        type: walletType,
+        address: walletAddress,
+        isDefault: true
+      }]
+    });
+
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        wallets: user.wallets,
+        defaultWallet: user.wallets[0]
+      }
+    });
+  } catch (error) {
+    console.error('Wallet signup error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Link email to wallet user
+router.post('/link-email', auth, async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find the user by their ID from the auth token
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if email is already taken
+    const emailExists = await User.findOne({ email });
+    if (emailExists && emailExists._id.toString() !== user._id.toString()) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
+
+    // Update user with email and password
+    user.email = email;
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Email linked successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        wallets: user.wallets,
+        defaultWallet: user.wallets.find(w => w.isDefault) || user.wallets[0]
+      }
+    });
+  } catch (error) {
+    console.error('Email linking error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update wallet-first user with email details or email-first user with wallet details
+router.put('/update-wallet-user', async (req, res) => {
+  const { username, name, email, password, walletType, walletAddress } = req.body;
+
+  try {
+    // Find user by username (which could be email for email-first users)
+    const user = await User.findOne({ 
+      $or: [
+        { username },
+        { email: username } // Also check by email for email-first users
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // If email is provided, check if it's already taken by another user
+    if (email) {
+      const emailExists = await User.findOne({ 
+        email, 
+        _id: { $ne: user._id } // Exclude current user
+      });
+
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already in use'
+        });
+      }
+    }
+
+    // Update user details
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    // Update wallet information if provided
+    if (walletType && walletAddress) {
+      // Check if wallet is already linked to another account
+      const walletExists = await User.findOne({
+        'wallets.address': walletAddress,
+        _id: { $ne: user._id }
+      });
+
+      if (walletExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Wallet is already linked to another account'
+        });
+      }
+
+      // Add or update wallet information
+      if (!user.wallets) {
+        user.wallets = [];
+      }
+
+      // Check if wallet already exists in user's wallets
+      const existingWalletIndex = user.wallets.findIndex(w => w.address === walletAddress);
+      
+      if (existingWalletIndex >= 0) {
+        // Update existing wallet
+        user.wallets[existingWalletIndex] = {
+          type: walletType,
+          address: walletAddress,
+          isDefault: user.wallets[existingWalletIndex].isDefault
+        };
+      } else {
+        // Add new wallet
+        user.wallets.push({
+          type: walletType,
+          address: walletAddress,
+          isDefault: user.wallets.length === 0 // Set as default if first wallet
+        });
+      }
+    }
+
+    await user.save();
+
+    // Generate new JWT token
+    const token = jwt.sign(
+      { id: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    // Set secure cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    });
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        wallets: user.wallets || [],
+        defaultWallet: user.wallets?.find(w => w.isDefault) || null,
+        socialLinks: user.socialLinks || {},
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Update wallet user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user details'
+    });
+  }
+});
+
+// Check username availability
+router.get('/check-username/:username', async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase().trim(); // Normalize input
+    const existingUser = await User.findOne({ username });
+
+    if (existingUser) {
+      return res.status(400).json({ message: "Username is already taken" });
+    }
+
+    res.status(200).json({ message: "Username is available" });
+  } catch (error) {
+    console.error("Error checking username:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Register wallet for existing user
+router.post('/register-wallet', auth, async (req, res) => {
+  const { walletType, walletAddress } = req.body;
+
+  try {
+    // Find the authenticated user
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if wallet is already linked to another account
+    const walletExists = await User.findOne({
+      'wallets.address': walletAddress,
+      _id: { $ne: user._id }
+    });
+
+    if (walletExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Wallet is already linked to another account'
+      });
+    }
+
+    // Initialize wallets array if it doesn't exist
+    if (!user.wallets) {
+      user.wallets = [];
+    }
+
+    // Check if wallet already exists in user's wallets
+    const existingWalletIndex = user.wallets.findIndex(w => w.address === walletAddress);
+    
+    if (existingWalletIndex >= 0) {
+      // Update existing wallet
+      user.wallets[existingWalletIndex] = {
+        type: walletType,
+        address: walletAddress,
+        isDefault: user.wallets[existingWalletIndex].isDefault
+      };
+    } else {
+      // Add new wallet
+      user.wallets.push({
+        type: walletType,
+        address: walletAddress,
+        isDefault: user.wallets.length === 0 // Set as default if first wallet
+      });
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        wallets: user.wallets || [],
+        defaultWallet: user.wallets?.find(w => w.isDefault) || null,
+        socialLinks: user.socialLinks || {},
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Register wallet error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error registering wallet'
+    });
   }
 });
 

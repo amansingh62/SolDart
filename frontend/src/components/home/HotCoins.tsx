@@ -38,7 +38,7 @@ export function HotCoins() {
     const loadTrendingCoins = async () => {
       try {
         // Check if we have cached data in localStorage
-        const cachedData = localStorage.getItem('hotCoinsData');
+        const cachedData = typeof window !== 'undefined' ? localStorage.getItem('hotCoinsData') : null;
         
         if (cachedData && initialLoadRef.current) {
           // Use cached data for initial render to prevent flickering
@@ -61,7 +61,9 @@ export function HotCoins() {
         }));
 
         // Save to localStorage for future page loads
-        localStorage.setItem('hotCoinsData', JSON.stringify(formattedCoins));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('hotCoinsData', JSON.stringify(formattedCoins));
+        }
         
         setTrendingCoins(formattedCoins);
         initialLoadRef.current = false;
@@ -69,7 +71,7 @@ export function HotCoins() {
         console.error('Error loading trending coins:', error);
         
         // If error and we have cached data, use it
-        const cachedData = localStorage.getItem('hotCoinsData');
+        const cachedData = typeof window !== 'undefined' ? localStorage.getItem('hotCoinsData') : null;
         if (cachedData) {
           setTrendingCoins(JSON.parse(cachedData));
         }
@@ -145,7 +147,7 @@ export function HotCoins() {
 
   // Only use fallback data if we have no trending coins and no cached data
   const displayCoins = trendingCoins.length > 0 ? trendingCoins : 
-    (localStorage.getItem('hotCoinsData') ? 
+    (typeof window !== 'undefined' && localStorage.getItem('hotCoinsData') ? 
       JSON.parse(localStorage.getItem('hotCoinsData')!) : 
       fallbackCoins);
 
