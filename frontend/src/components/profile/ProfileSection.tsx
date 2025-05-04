@@ -10,6 +10,8 @@ import axios from 'axios';
 import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
+import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
+import { AuthModal } from "../auth/AuthModal";
 
 interface ProfileData {
   _id?: string;
@@ -74,6 +76,17 @@ interface DartData {
   views: string;
 }
 
+interface Token {
+  name: string;
+  symbol: string;
+  mintAddress: string;
+  amount: number;
+  decimals: number;
+  price: number;
+  value: number;
+  logo: string | null;
+}
+
 // We're now using DynamicPostCard directly, so we don't need the PostCard wrapper component
 
 interface ProfileSectionProps {
@@ -92,6 +105,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // Track authentication status
   const [isMessageOpen, setIsMessageOpen] = useState(false); // State for message popup
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   const [profileData, setProfileData] = useState<ProfileData>({
     _id: "",
@@ -126,7 +140,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   // Initialize socket connections
   useEffect(() => {
     // Setup real-time socket connection
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
+    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000");
     setSocket(socketInstance);
     
     // Listen for new posts
@@ -401,65 +415,6 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       fetchSavedPosts(false);
     }
   }, [profileData._id, isOwnProfile]);
-
-  // Add this useEffect after the other useEffect hooks
-  useEffect(() => {
-    const checkWalletConnection = () => {
-      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
-      if (storedWalletInfo) {
-        try {
-          const walletInfo = JSON.parse(storedWalletInfo);
-          if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
-            // Update profile data with the connected wallet address
-            setProfileData(prevData => ({
-              ...prevData,
-              walletAddress: walletInfo.data.address
-            }));
-
-            // Also update the profile on the server
-            handleEditProfile({
-              walletAddress: walletInfo.data.address
-            }).catch(error => {
-              console.error("Error updating wallet address on server:", error);
-            });
-          }
-        } catch (error) {
-          console.error("Error parsing stored wallet info:", error);
-        }
-      } else {
-        // If no wallet info is found, clear the wallet address
-        setProfileData(prevData => ({
-          ...prevData,
-          walletAddress: ""
-        }));
-      }
-    };
-
-    // Check wallet connection on mount
-    checkWalletConnection();
-
-    // Listen for storage events to detect wallet connection changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'connectedWalletInfo') {
-        checkWalletConnection();
-      }
-    };
-
-    // Also listen for custom event for wallet connection changes
-    const handleWalletChange = () => {
-      checkWalletConnection();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('walletConnected', handleWalletChange);
-    window.addEventListener('walletDisconnected', handleWalletChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('walletConnected', handleWalletChange);
-      window.removeEventListener('walletDisconnected', handleWalletChange);
-    };
-  }, []);
 
   const handleFollow = async () => {
     try {
@@ -869,7 +824,7 @@ const handleLikePost = async (postId: string) => {
                     className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
              hover:text-white font-semibold rounded-md px-6 py-2 transition-all shadow-lg"
-                    onClick={() => window.location.href = '/login'}
+                    onClick={() => setIsAuthModalOpen(true)}
                   >
                     Log In
                   </Button>
@@ -928,7 +883,7 @@ const handleLikePost = async (postId: string) => {
             <div className="flex w-full rounded-lg border-b mt-10 border-default-200 shadow-[0px_4px_15px_rgba(128,128,128,0.4)]">
               <Button 
                 variant="light" 
-                className={`transition rounded-lg duration-200 w-1/2  ${activeTab === "Darts" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
+                className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Darts" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                 onClick={() => setActiveTab("Darts")}
               >
                 Echos
@@ -936,11 +891,8 @@ const handleLikePost = async (postId: string) => {
               {isOwnProfile ? (
                 <Button 
                   variant="light" 
-                  className={`transition rounded-lg duration-200 w-1/2  ${activeTab === "Saved" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
-                  onClick={() => {
-                    // Prevent loading state when switching to Saved tab if posts are already loaded
-                    setActiveTab("Saved");
-                  }}
+                  className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Saved" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
+                  onClick={() => setActiveTab("Saved")}
                 >
                   Saved
                 </Button>
@@ -1035,34 +987,46 @@ const handleLikePost = async (postId: string) => {
                 </div>
               </>
             )}
+
+            <EditProfileModal 
+              isOpen={isEditModalOpen} 
+              onClose={() => setIsEditModalOpen(false)}
+              profileData={profileData}
+              setProfileData={setProfileData}
+              fetchProfileData={fetchProfileData}
+              onSave={handleEditProfileModalSave}
+            />
+
+            {/* Add MessagePopup component for messaging functionality */}
+            {!isOwnProfile && (
+              <MessagePopup
+                isOpen={isMessageOpen}
+                setIsOpen={setIsMessageOpen}
+                initialContactId={profileData._id}
+                initialContactUsername={profileData.username}
+                initialContactProfileImage={profileData.profileImage}
+                fromUserProfile={true}
+              >
+                {/* PopoverTrigger requires a child element */}
+                <div></div>
+              </MessagePopup>
+            )}
+
+            <AuthModal
+              isOpen={isAuthModalOpen}
+              onClose={() => setIsAuthModalOpen(false)}
+              onSuccess={async () => {
+                setIsAuthModalOpen(false);
+                // Fetch profile data after successful login
+                await fetchProfileData();
+                // Then reload the page to ensure all state is updated
+                window.location.reload();
+              }}
+            />
+
           </div>
         </Card>
       )}
-
-<EditProfileModal 
-  isOpen={isEditModalOpen} 
-  onClose={() => setIsEditModalOpen(false)}
-  profileData={profileData}
-  setProfileData={setProfileData}  // ✅ Required for state update
-  fetchProfileData={fetchProfileData} // ✅ Fetch latest profile data
-  onSave={handleEditProfileModalSave}
-/>
-
-{/* Add MessagePopup component for messaging functionality */}
-{!isOwnProfile && (
-  <MessagePopup
-    isOpen={isMessageOpen}
-    setIsOpen={setIsMessageOpen}
-    initialContactId={profileData._id}
-    initialContactUsername={profileData.username}
-    initialContactProfileImage={profileData.profileImage}
-    fromUserProfile={true}
-  >
-    {/* PopoverTrigger requires a child element */}
-    <div></div>
-  </MessagePopup>
-)}
-
     </div>
   );
 };

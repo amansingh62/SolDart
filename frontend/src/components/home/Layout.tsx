@@ -355,11 +355,15 @@ export default function Layout({ children }: LayoutProps) {
 
     setConnectedWallet(walletInfo);
     localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
+    
+    // Close the wallet modal
+    setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
     setConnectedWallet(null);
     localStorage.removeItem('connectedWalletInfo');
+    localStorage.removeItem('walletModalSource');
   };
 
   const toggleWalletModal = () => {
@@ -385,39 +389,6 @@ export default function Layout({ children }: LayoutProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const renderConnectButton = () => {
-    return (
-      <div className="relative wallet-dropdown-container">
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => setIsWalletDropdownOpen(!isWalletDropdownOpen)}
-        >
-          {connectedWallet ? (
-            <div className="flex items-center justify-center gap-2">
-              <span>{connectedWallet.emoji}</span>
-              {connectedWallet.address && (
-                <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                  {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-                </span>
-              )}
-            </div>
-          ) : (
-            "Connect"
-          )}
-        </Button>
-        <WalletDropdown
-          isOpen={isWalletDropdownOpen}
-          onClose={() => setIsWalletDropdownOpen(false)}
-          connectedWallet={connectedWallet}
-          onConnect={handleConnect}
-          onDisconnect={handleDisconnect}
-        />
-      </div>
-    );
-  };
-
   const renderAuthButton = () => {
     // If user is logged in, show profile button
     if (userInfo) {
@@ -425,7 +396,7 @@ export default function Layout({ children }: LayoutProps) {
         <Button
           className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border-2 hover:border-[#B671FF] shadow-md"
+             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
           onPress={() => {
             // Set flag to indicate modal is opened from profile button
             localStorage.setItem("walletModalSource", "userProfile");
@@ -433,29 +404,43 @@ export default function Layout({ children }: LayoutProps) {
           }}
           data-auth-allowed="true"
         >
-          <div className="flex items-center justify-center gap-2">
-            <span>{userInfo.emoji}</span>
-            <span className="text-md truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-              {userInfo.username || userInfo.email?.split('@')[0]}
-            </span>
-          </div>
+          {connectedWallet?.address ? (
+            <div className="flex items-center justify-center gap-2">
+              <span>{connectedWallet.emoji}</span>
+              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+              </span>
+            </div>
+          ) : (
+            "Connect"
+          )}
         </Button>
       );
     }
 
-    // Default: Show Sign In button
+    // If user is not logged in, show Connect button
     return (
       <Button
         className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
            text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
            hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
-          // Just open the modal without forcing any tab
+          // Set flag to indicate modal is opened from connect button
+          localStorage.setItem("walletModalSource", "connect");
           setIsWalletModalOpen(true);
         }}
         data-auth-allowed="true"
       >
-        {t('sign in')}
+        {connectedWallet?.address ? (
+          <div className="flex items-center justify-center gap-2">
+            <span>{connectedWallet.emoji}</span>
+            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+              {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+            </span>
+          </div>
+        ) : (
+          "Connect"
+        )}
       </Button>
     );
   };

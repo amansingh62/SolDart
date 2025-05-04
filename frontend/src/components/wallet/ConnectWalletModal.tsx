@@ -32,7 +32,18 @@ interface WalletInfo {
   address: string;
 }
 
-export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromSignIn, onConnect, onDisconnect, connectedWalletInfo }: ConnectWalletModalProps) {
+// Update the API URL to use the proxy
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
+export function ConnectWalletModal({ 
+  isOpen, 
+  onClose, 
+  isFromUserProfile = false,
+  isFromSignIn = false,
+  onConnect,
+  onDisconnect,
+  connectedWalletInfo 
+}: ConnectWalletModalProps) {
   // Default to wallet tab for sign-in experience
   const [activeTab, setActiveTab] = useState<"wallet" | "email">("wallet");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -97,7 +108,7 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
       }
 
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`, { withCredentials: true });
+        const response = await axios.get(`${API_URL}/auth/user`, { withCredentials: true });
         if (response.data) {
           setActiveTab("wallet"); // Default to wallet tab when opened from user profile
         } else {
@@ -112,74 +123,24 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
     checkModalSource();
   }, [isOpen, connectedWalletInfo]);
 
-  // Check authentication status and fetch wallet info on component mount and when modal opens
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!isOpen) return;
-
-      try {
-        const response = await axios.get("http://localhost:5000/auth/user", { withCredentials: true });
-
-        if (response.data) {
-          setToken("authenticated"); // Set a dummy value to indicate login state
-
-          // Check if user has wallet information
-          if (response.data.wallet) {
-            setUserWallet(response.data.wallet);
-            setSelectedChain(response.data.wallet.type);
-            setConnectedWallet(response.data.wallet.address);
-            // Set active tab to wallet if we have wallet info
-            setActiveTab("wallet");
-          } else if (response.data.email) {
-            // If no wallet found in the user data, check if there's any wallet associated with this email
-            try {
-              const emailCheckResponse = await axios.post(
-                "http://localhost:5000/auth/check-wallets-by-email",
-                { email: response.data.email },
-                { withCredentials: true }
-              );
-
-              if (emailCheckResponse.data.defaultWallet) {
-                setUserWallet(emailCheckResponse.data.defaultWallet);
-                setSelectedChain(emailCheckResponse.data.defaultWallet.type);
-                setConnectedWallet(emailCheckResponse.data.defaultWallet.address);
-                setActiveTab("wallet");
-
-                // Link this wallet to the user account
-                if (emailCheckResponse.data.defaultWallet.address) {
-                  await connectWalletToAccount(
-                    emailCheckResponse.data.defaultWallet.type,
-                    emailCheckResponse.data.defaultWallet.address
-                  );
-                }
-              }
-            } catch (checkError) {
-              console.error("Error checking wallets by email:", checkError);
-            }
-          }
-
-          // Only call onConnect if we don't already have a connected wallet from parent
-          if (!connectedWalletInfo) {
-            onConnect?.(response.data.wallet?.address || "");
-          }
-        }
-      } catch (error) {
-        console.log("Not authenticated");
-        setToken(null);
-      }
-    };
-
-    if (isOpen) {
-      checkAuth();
-    }
-  }, [isOpen, onConnect, connectedWalletInfo]);
-
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setError("");
     }
   }, [isOpen]);
+
+  // Update the useEffect that handles wallet state changes
+  useEffect(() => {
+    // Only sync with parent component's connectedWalletInfo
+    if (connectedWalletInfo?.address) {
+      setConnectedWallet(connectedWalletInfo.address);
+      setSelectedChain(connectedWalletInfo.type || null);
+    } else {
+      setConnectedWallet(null);
+      setSelectedChain(null);
+    }
+  }, [connectedWalletInfo]);
 
   const blockchains = [
     { id: "phantom", name: "Phantom", icon: "cryptocurrency:phantom" },
@@ -210,13 +171,37 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
       // Connect new wallet
       const walletAddress = await connectWallet(walletType);
       if (walletAddress) {
-        onConnect?.(walletAddress);
-        onClose();
-
-        // Update user profile with wallet address
         try {
-          await api.put("/users/profile", { walletAddress });
-          toast.success("Wallet connected successfully");
+          // First check if user is already authenticated
+          const authResponse = await axios.get(API_URL + "/auth/user", { withCredentials: true });
+          
+          if (authResponse.data) {
+            // User is authenticated, link wallet to existing account
+            await api.put("/users/profile", { walletAddress });
+            toast.success("Wallet connected successfully");
+          } else {
+            // User is not authenticated, create new wallet-first account
+            const signupResponse = await axios.post(API_URL + "/auth/register", {
+              username: walletAddress, // Use wallet address as temporary username
+              name: walletAddress, // Use wallet address as temporary name
+              email: `${walletAddress}@temp.com`, // Temporary email
+              password: "", // Empty password for wallet-first users
+              walletType,
+              walletAddress
+            }, { withCredentials: true });
+
+            if (signupResponse.data.statusCode === 201) {
+              // Store token in localStorage
+              localStorage.setItem('token', signupResponse.data.data.token);
+              setToken(signupResponse.data.data.token);
+              toast.success("Wallet connected successfully");
+            } else {
+              throw new Error(signupResponse.data.message || "Failed to connect wallet");
+            }
+          }
+
+          onConnect?.(walletAddress);
+          onClose();
         } catch (error) {
           console.error("Failed to update profile:", error);
           toast.error("Wallet connected but failed to update profile");
@@ -228,6 +213,138 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
     } catch (error) {
       console.error("Wallet connection error:", error);
       setError("Failed to connect wallet. Please try again.");
+    }
+  };
+
+  const handleEmailAuth = async (e: any) => {
+    e?.preventDefault?.();
+    setLoading(true);
+    setError("");
+
+    try {
+      if (isSignUp) {
+        console.log("Attempting signup with data:", { name, username, email, password });
+        
+        // First check if user exists with wallet address as username
+        const checkUserResponse = await axios.get(`${API_URL}/auth/check-username/${username}`, {
+          withCredentials: true
+        });
+        
+        if (checkUserResponse.data.message === "Username is available") {
+          // Regular email signup for new user
+          const response = await axios.post(`${API_URL}/auth/register`, {
+            name,
+            username,
+            email,
+            password
+          }, { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          console.log("Signup response:", response.data);
+
+          if (response.data.statusCode === 201) {
+            // Store token in localStorage
+            localStorage.setItem('token', response.data.data.token);
+            setToken(response.data.data.token);
+            
+            // Clear form fields
+            setName("");
+            setUsername("");
+            setEmail("");
+            setPassword("");
+            setIsSignUp(false);
+            
+            toast.success(response.data.message || "Account created successfully");
+            onClose();
+            return;
+          } else {
+            throw new Error(response.data.message || "Registration failed");
+          }
+        } else {
+          // User exists with wallet address, update with email details
+          const updateResponse = await axios.put(`${API_URL}/auth/update-wallet-user`, {
+            username,
+            name,
+            email,
+            password
+          }, {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (updateResponse.data.success) {
+            // Store token in localStorage
+            localStorage.setItem('token', updateResponse.data.token);
+            setToken(updateResponse.data.token);
+            
+            // Clear form fields
+            setName("");
+            setUsername("");
+            setEmail("");
+            setPassword("");
+            setIsSignUp(false);
+            
+            toast.success("Account updated successfully");
+            onClose();
+            return;
+          } else {
+            throw new Error(updateResponse.data.message || "Failed to update account");
+          }
+        }
+      } else {
+        // Login logic remains the same
+        console.log("Attempting login with data:", { email, password });
+        
+        const response = await axios.post(`${API_URL}/auth/login`, {
+          email,
+          password
+        }, { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log("Login response:", response.data);
+
+        if (response.data.success) {
+          // Store token in localStorage
+          localStorage.setItem('token', response.data.token);
+          setToken(response.data.token);
+          
+          // Clear form fields
+          setEmail("");
+          setPassword("");
+          
+          toast.success("Logged in successfully");
+          onClose();
+          return;
+        } else {
+          throw new Error(response.data.message || "Login failed");
+        }
+      }
+    } catch (error: any) {
+      // More robust error handling
+      let errorMessage = "An error occurred during authentication";
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = "No response from server. Please try again.";
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -265,272 +382,58 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
           return;
         }
 
-        console.log(`Attempting to connect to ${selectedChain} wallet...`);
-        // Call the wallet connection function
+        // Connect wallet
         const walletAddress = await connectWallet(selectedChain);
-        console.log(`Successfully connected to ${selectedChain} wallet:`, walletAddress);
-        setConnectedWallet(walletAddress);
+        if (walletAddress) {
+          setConnectedWallet(walletAddress);
+          
+          // Show success toast
+          toast.success("Wallet connected successfully");
 
-        // Show success toast
-        toast.success(
-          <div className="flex items-center gap-2">
-            <span>Wallet connected successfully!</span>
-          </div>,
-          {
-            duration: 4000,
-            style: {
-              background: '#1F2937',
-              color: '#fff',
-              border: '1px solid #374151',
-              padding: '12px 16px',
-              borderRadius: '8px',
-            }
-          }
-        );
-
-        // Get user email if authenticated
-        let userEmail = null;
-        if (token) {
-          try {
-            const userResponse = await axios.get("http://localhost:5000/auth/user", { withCredentials: true });
-            if (userResponse.data && userResponse.data.email) {
-              userEmail = userResponse.data.email;
-            }
-          } catch (error) {
-            console.error("Error fetching user data:", error);
-          }
-
-          // Link wallet to account
-          await connectWalletToAccount(selectedChain, walletAddress);
-        }
-
-        // Now pass the address to the parent component
-        if (selectedChain === "phantom" && userEmail) {
+          // Pass the address to the parent component
           onConnect?.(walletAddress);
-        } else {
-          onConnect?.(walletAddress);
-        }
 
-        // Dispatch custom event for wallet connection
-        window.dispatchEvent(new Event('walletConnected'));
+          // Dispatch custom event for wallet connection
+          window.dispatchEvent(new Event('walletConnected'));
 
-        // Clear the walletModalSource flag if it exists
-        if (typeof window !== 'undefined' && localStorage.getItem("walletModalSource") === "userProfile") {
-          localStorage.removeItem("walletModalSource");
-          if (!isFromUserProfile) {
-            onClose();
-          }
-        }
-
-      } else {
-        if (isSignUp) {
-          await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/register`, { email, password, username, name });
-
-          setError(null);
-          setName("");
-          setUsername("");
-          setEmail("");
-          setPassword("");
-          setIsSignUp(false);
-        } else {
-          const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/login`,
-            { email, password },
-            { withCredentials: true }
-          );
-
-          if (!response.data.token) {
-            throw new Error("Token not received");
-          }
-
-          localStorage.setItem("token", response.data.token);
-          setToken(response.data.token);
-          setEmail("");
-          setPassword("");
-          setUsername("");
-          setName("");
-
-          if (response.data.user.wallet) {
-            setUserWallet(response.data.user.wallet);
-            setSelectedChain(response.data.user.wallet.type);
-            setConnectedWallet(response.data.user.wallet.address);
-            setActiveTab("wallet");
-
-
-            onConnect?.(response.data.user.wallet.address);
-
-          } else {
-            // If no wallet found, check by email
-            try {
-              const emailCheckResponse = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/check-wallets-by-email`,
-                { email },
-                { withCredentials: true }
-              );
-
-              if (emailCheckResponse.data.defaultWallet) {
-                setUserWallet(emailCheckResponse.data.defaultWallet);
-                setSelectedChain(emailCheckResponse.data.defaultWallet.type);
-                setConnectedWallet(emailCheckResponse.data.defaultWallet.address);
-                setActiveTab("wallet");
-
-                // Link this wallet to the user account
-                await connectWalletToAccount(
-                  emailCheckResponse.data.defaultWallet.type,
-                  emailCheckResponse.data.defaultWallet.address
-                );
-                onConnect?.(emailCheckResponse.data.defaultWallet.address);
-              }
-            } catch (checkError) {
-              console.error("Error checking wallets by email:", checkError);
-            }
-          }
-
-          onConnect?.(response.data.user.wallet?.address || "");
+          // Close the modal
           onClose();
         }
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || "Something went wrong!";
       setError(errorMessage);
-      toast.error(
-        <div className="flex items-center gap-2">
-          <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
-          <span>{errorMessage}</span>
-        </div>,
-        {
-          duration: 4000,
-          style: {
-            background: '#1F2937',
-            color: '#fff',
-            border: '1px solid #374151',
-            padding: '12px 16px',
-            borderRadius: '8px',
-          }
-        }
-      );
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDisconnect = async () => {
-    setLoading(true);
-    setError(null);
-
     try {
-      // Handle wallet disconnection
-      if (activeTab === "wallet" && connectedWallet && selectedChain) {
-        // First try to disconnect from wallet extension
-        try {
-          await disconnectWallet(selectedChain);
-          toast.success(
-            <div className="flex items-center gap-2">
-              <span>Wallet disconnected successfully!</span>
-            </div>,
-            {
-              duration: 4000,
-              style: {
-                background: '#1F2937',
-                color: '#fff',
-                border: '1px solid #374151',
-                padding: '12px 16px',
-                borderRadius: '8px',
-              }
-            }
-          );
-        } catch (walletErr) {
-          console.error("Error disconnecting from wallet extension:", walletErr);
-          toast.error(
-            <div className="flex items-center gap-2">
-              <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
-              <span>Error disconnecting wallet</span>
-            </div>,
-            {
-              duration: 4000,
-              style: {
-                background: '#1F2937',
-                color: '#fff',
-                border: '1px solid #374151',
-                padding: '12px 16px',
-                borderRadius: '8px',
-              }
-            }
-          );
-        }
+      // Clear wallet info from localStorage
+      localStorage.removeItem('connectedWalletInfo');
+      localStorage.removeItem('walletModalSource');
+      
+      // Reset all state variables
+      setConnectedWallet(null);
+      setUserWallet(null);
+      setSelectedChain(null);
+      
+      // Close the modal
+      onClose();
+      
+      // Show success message
+      toast.success("Wallet disconnected successfully");
+      
+      // Dispatch custom event for wallet disconnection
+      window.dispatchEvent(new Event('walletDisconnected'));
 
-        // If authenticated, update backend
-        if (token) {
-          try {
-            await axios.post(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/disconnect-wallet`,
-              { walletType: selectedChain, walletAddress: connectedWallet },
-              { withCredentials: true }
-            );
-          } catch (backendErr) {
-            console.error("Error disconnecting wallet on backend:", backendErr);
-            // Continue anyway to maintain UI consistency
-          }
-        }
-
-        // Clear local state
-        setSelectedChain(null);
-        setConnectedWallet(null);
-        setUserWallet(null);
-
-        // Dispatch custom event for wallet disconnection
-        window.dispatchEvent(new Event('walletDisconnected'));
-
-        // Inform parent component
-        onDisconnect?.();
-      }
-      // Handle email logout
-      else if (activeTab === "email" && token) {
-        try {
-          // Call logout endpoint to clear server-side session
-          await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/logout`, {}, { withCredentials: true });
-        } catch (logoutErr) {
-          console.error("Error logging out on backend:", logoutErr);
-          // Continue anyway to maintain UI consistency
-        }
-
-        // Clear localStorage and cookies (if any)
-        localStorage.removeItem("token");
-        document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-        // Reset state
-        setToken(null);
-        setSelectedChain(null);
-        setConnectedWallet(null);
-        setUserWallet(null);
-
-        // Inform parent component
-        onDisconnect?.();
-      }
-
-      // Don't close modal - let user connect another wallet or email if desired
-    } catch (err: any) {
-      console.error("Disconnect error:", err);
-      const errorMessage = err.message || "Failed to disconnect";
-      setError(errorMessage);
-      toast.error(
-        <div className="flex items-center gap-2">
-          <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
-          <span>{errorMessage}</span>
-        </div>,
-        {
-          duration: 4000,
-          style: {
-            background: '#1F2937',
-            color: '#fff',
-            border: '1px solid #374151',
-            padding: '12px 16px',
-            borderRadius: '8px',
-          }
-        }
-      );
-    } finally {
-      setLoading(false);
+      // Call onDisconnect to update parent component
+      onDisconnect?.();
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+      toast.error("Failed to disconnect wallet");
     }
   };
 
@@ -541,7 +444,9 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
           <>
             <ModalHeader className="flex flex-col gap-1 text-center">
               <h3 className="text-xl font-bold text-white">
-                {activeTab === "wallet" ? (connectedWallet ? "Wallet Connected" : "Connect Wallet") : isSignUp ? "Create Account" : "Sign In"}
+                {isFromUserProfile ? "Connect Wallet to Access Profile" : 
+                 isFromSignIn ? "Sign In to Continue" : 
+                 "Connect Your Wallet"}
               </h3>
             </ModalHeader>
             <ModalBody className="px-2 sm:px-4 py-4 flex-1 flex flex-col">
@@ -573,8 +478,8 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
 
               <div className="flex-1 flex flex-col">
                 {activeTab === "wallet" ? (
-                  connectedWallet ? (
-                    <div className="space-y-3 flex-1 flex flex-col justify-center">
+                  <div className="space-y-3 flex-1 flex flex-col justify-center">
+                    {connectedWallet ? (
                       <Button
                         className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold flex items-center justify-between px-4 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
                         onPress={handleDisconnect}
@@ -583,30 +488,24 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                         {shortenWalletAddress(connectedWallet)}
                         <Icon icon="mdi:logout" className="text-lg" />
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 flex-1 flex flex-col justify-center">
-                      {blockchains.map((chain) => (
-                        <Button
-                          key={chain.id}
-                          variant="flat"
-                          className={`w-full justify-start gap-2 h-12 rounded-lg transition-all duration-200 font-medium ${
-                            selectedChain === chain.id 
-                              ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
-                              : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          }`}
-                          onPress={() => setSelectedChain(chain.id)}
-                        >
-                          <Icon icon={chain.icon} className="text-xl" />
-                          {chain.name}
-                          {selectedChain === chain.id && <Icon icon="mdi:check" className="ml-auto text-white text-lg" />}
-                        </Button>
-                      ))}
-                      {connectedWallet ? (
-                        <p className="w-full text-center text-lg font-semibold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white rounded-lg py-3 shadow-lg">
-                          {shortenWalletAddress(connectedWallet)}
-                        </p>
-                      ) : (
+                    ) : (
+                      <>
+                        {blockchains.map((chain) => (
+                          <Button
+                            key={chain.id}
+                            variant="flat"
+                            className={`w-full justify-start gap-2 h-12 rounded-lg transition-all duration-200 font-medium ${
+                              selectedChain === chain.id 
+                                ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
+                                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                            }`}
+                            onPress={() => setSelectedChain(chain.id)}
+                          >
+                            <Icon icon={chain.icon} className="text-xl" />
+                            {chain.name}
+                            {selectedChain === chain.id && <Icon icon="mdi:check" className="ml-auto text-white text-lg" />}
+                          </Button>
+                        ))}
                         <Button
                           className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 mt-4"
                           onPress={handleConnect}
@@ -614,9 +513,9 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                         >
                           {loading ? "Connecting..." : "Connect Wallet"}
                         </Button>
-                      )}
-                    </div>
-                  )
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4 sm:space-y-6 mt-4 flex-1 flex flex-col justify-center">
                     {isSignUp && (
@@ -655,8 +554,8 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                     />
                     <Button
                       className="w-full rounded-lg mt-4 sm:mt-6 shadow-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold hover:shadow-xl transition-all duration-200"
-                      onPress={handleConnect}
-                      isDisabled={loading}
+                      onPress={handleEmailAuth}
+                      isDisabled={loading || (isSignUp && (!name || !username))}
                     >
                       {loading ? "Processing..." : isSignUp ? "Sign Up" : "Sign In"}
                     </Button>
@@ -665,7 +564,14 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                     <p className="text-center text-sm text-gray-400 mt-2">
                       {isSignUp ? "Already have an account? " : "Don't have an account? "}
                       <button
-                        onClick={() => setIsSignUp(!isSignUp)}
+                        onClick={() => {
+                          setIsSignUp(!isSignUp);
+                          // Clear form fields when switching modes
+                          setName("");
+                          setUsername("");
+                          setEmail("");
+                          setPassword("");
+                        }}
                         className="text-[#B671FF] hover:text-[#E282CA] font-medium transition-colors duration-200"
                       >
                         {isSignUp ? "Sign In" : "Sign Up"}
@@ -677,7 +583,7 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                       className="w-full rounded-lg bg-white text-gray-800 font-medium mt-4 flex items-center justify-center gap-2 hover:bg-gray-100 transition-all duration-200 shadow-lg"
                       onPress={() => {
                         localStorage.setItem("redirectAfterAuth", window.location.href);
-                        window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/google`;
+                        window.location.href = `${API_URL}/auth/google`;
                       }}
                     >
                       <Icon icon="logos:google-icon" className="text-lg" />
@@ -686,6 +592,13 @@ export function ConnectWalletModal({ isOpen, onClose, isFromUserProfile, isFromS
                   </div>
                 )}
               </div>
+
+              {isFromUserProfile && (
+                <div className="text-center text-sm text-gray-400 mt-4">
+                  <p>Connect your wallet to access your profile and start sharing content.</p>
+                  <p className="mt-2">You can also sign in with email after connecting your wallet.</p>
+                </div>
+              )}
             </ModalBody>
           </>
         )}
