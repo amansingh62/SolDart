@@ -59,6 +59,7 @@ export default function Layout({ children }: LayoutProps) {
     emoji?: string;
   } | null>(null);
   const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
+  const router = useRouter();
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -123,7 +124,6 @@ export default function Layout({ children }: LayoutProps) {
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
-      // Show recent searches if available
       if (recentSearches.length > 0) {
         setShowRecentSearches(true);
       } else {
@@ -134,47 +134,72 @@ export default function Layout({ children }: LayoutProps) {
 
     try {
       setIsSearching(true);
-      // Hide recent searches when searching
       setShowRecentSearches(false);
 
-      // Check if the search term is a hashtag (starts with #)
-      if (searchTerm.startsWith('#')) {
-        // Only process hashtag search if it has content after the # symbol
-        if (searchTerm.length > 1) {
-          // Save the hashtag search to recent searches
-          saveToRecentSearches(searchTerm);
-
-          // Clear search results and hide them
-          setSearchResults([]);
-          setShowSearchResults(false);
-
-          // Close search on mobile
-          setSearchOpen(false);
-          setSearchQuery('');
-
-          // Use the HashtagContext from the parent component
+      // Check if the search term looks like a Solana wallet address
+      const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+      
+      if (isSolanaAddress) {
+        try {
+          // Search for user by wallet address using the same endpoint as username search
+          const response = await axios.get(`/auth/user/wallet/${searchTerm}`, { withCredentials: true });
+          if (response.data.success && response.data.user) {
+            setSearchResults([{
+              _id: response.data.user._id,
+              username: response.data.user.username,
+              profileImage: response.data.user.profileImage
+            }]);
+            setShowSearchResults(true);
+            saveToRecentSearches(searchTerm);
+            // Navigate to profile page directly
+            router.push(`/profile/${response.data.user.username}`);
+          } else if (response.data.success && response.data.users && response.data.users.length > 0) {
+            // If we got users array instead of single user
+            setSearchResults(response.data.users);
+            setShowSearchResults(true);
+            saveToRecentSearches(searchTerm);
+            // Navigate to the first user's profile if there's a match
+            router.push(`/profile/${response.data.users[0].username}`);
+          } else {
+            toast.error('No user found with this wallet address');
+            setSearchResults([]);
+            setShowSearchResults(false);
+          }
           setIsSearching(false);
-
-          // Navigate to home page with the hashtag in the URL
-          const hashtag = encodeURIComponent(searchTerm);
-          window.location.href = `/?hashtag=${hashtag}`;
           return;
-        } else {
-          // If only # is typed, don't do anything yet
+        } catch (error) {
+          console.error('Error searching by wallet:', error);
+          toast.error('No user found with this wallet address');
           setIsSearching(false);
           return;
         }
       }
 
-      // For user searches, remove @ symbol if it's at the beginning of the search term
-      // This ensures the backend search works correctly while the UI still shows the @ symbol
-      const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+      // Check if the search term is a hashtag
+      if (searchTerm.startsWith('#')) {
+        if (searchTerm.length > 1) {
+          saveToRecentSearches(searchTerm);
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          setSearchQuery('');
+          setIsSearching(false);
+          const hashtag = encodeURIComponent(searchTerm);
+          router.push(`/?hashtag=${hashtag}`);
+          return;
+        } else {
+          setIsSearching(false);
+          return;
+        }
+      }
 
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/messages/search/${termForSearch}`, { withCredentials: true });
+      // Regular user search
+      const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+      const response = await axios.get(`/messages/search/${termForSearch}`, { withCredentials: true });
+      
       if (response.data.success) {
         setSearchResults(response.data.users);
         setShowSearchResults(true);
-        // Save the successful search to recent searches (with @ if it was included)
         saveToRecentSearches(searchTerm);
       } else {
         setSearchResults([]);
@@ -224,7 +249,7 @@ export default function Layout({ children }: LayoutProps) {
 
   // Navigate to user profile
   const navigateToProfile = (username: string) => {
-    window.location.href = `/profile/${username}`;
+    router.push(`/profile/${username}`);
     setSearchQuery('');
     setSearchResults([]);
     setShowSearchResults(false);
@@ -312,7 +337,7 @@ export default function Layout({ children }: LayoutProps) {
 
     const checkAuth = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`, { withCredentials: true });
+        const response = await axios.get(`/auth/user`, { withCredentials: true });
         if (response.data) {
           // User is authenticated
           const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
@@ -447,7 +472,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`/auth/logout`, {}, { withCredentials: true });
       setUserInfo(null);
       setConnectedWallet(null);
       // Remove wallet info from localStorage
@@ -466,6 +491,31 @@ export default function Layout({ children }: LayoutProps) {
 
   // Calculate the available height for the columns (viewport height minus navbar and HotCoins section)
   const columnHeight = "calc(105vh - 140px)";
+
+  // Desktop search bar button
+  const handleSearchButtonClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const searchTerm = searchQuery.trim();
+    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+
+    if (isSolanaAddress) {
+      try {
+        const response = await axios.get(
+          `/auth/user/wallet/${searchTerm}`,
+          { withCredentials: true }
+        );
+        if (response.data.success && response.data.user) {
+          router.push(`/profile/${response.data.user.username}`);
+        } else {
+          toast.error('No user found with this wallet address');
+        }
+      } catch (error) {
+        toast.error('No user found with this wallet address');
+      }
+    } else {
+      searchUsers(undefined, true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -504,12 +554,7 @@ export default function Layout({ children }: LayoutProps) {
         />
         <div
           className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
-          onClick={(e) => {
-            e.preventDefault();
-            // When search button is clicked, immediately execute the search
-            // This allows users to manually trigger hashtag search when they're done typing
-            searchUsers(undefined, true);
-          }}
+          onClick={handleSearchButtonClick}
         >
           <Icon icon="lucide:search" className="text-black" />
         </div>
@@ -612,12 +657,7 @@ export default function Layout({ children }: LayoutProps) {
               />
               <div
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // When search button is clicked, immediately execute the search
-                  // This allows users to manually trigger hashtag search when they're done typing
-                  searchUsers(undefined, true);
-                }}
+                onClick={handleSearchButtonClick}
               >
                 <Icon icon="lucide:search" className="text-black" />
               </div>
@@ -765,7 +805,6 @@ export default function Layout({ children }: LayoutProps) {
                 <FearGreedIndex />
               </div>
               <TrendingSection />
-
             </div>
           </aside>
         </div>

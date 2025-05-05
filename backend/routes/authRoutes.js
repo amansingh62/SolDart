@@ -328,6 +328,33 @@ router.get('/user', auth, async (req, res) => {
   }
 });
 
+// Public: Get user by wallet address
+router.get('/user/wallet/:address', async (req, res) => {
+  const { address } = req.params;
+  try {
+    // Find a user where any wallet in the array matches the address
+    const user = await User.findOne({ 'wallets.address': address }).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    // Return only public profile info
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        name: user.name,
+        profileImage: user.profileImage,
+        bio: user.bio,
+        wallets: user.wallets,
+        // add more fields as needed
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Set up multer for file uploads
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
