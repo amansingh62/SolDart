@@ -59,6 +59,7 @@ export default function Layout({ children }: LayoutProps) {
     emoji?: string;
   } | null>(null);
   const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
+  const router = useRouter();
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -123,7 +124,6 @@ export default function Layout({ children }: LayoutProps) {
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
-      // Show recent searches if available
       if (recentSearches.length > 0) {
         setShowRecentSearches(true);
       } else {
@@ -134,47 +134,72 @@ export default function Layout({ children }: LayoutProps) {
 
     try {
       setIsSearching(true);
-      // Hide recent searches when searching
       setShowRecentSearches(false);
 
-      // Check if the search term is a hashtag (starts with #)
-      if (searchTerm.startsWith('#')) {
-        // Only process hashtag search if it has content after the # symbol
-        if (searchTerm.length > 1) {
-          // Save the hashtag search to recent searches
-          saveToRecentSearches(searchTerm);
-
-          // Clear search results and hide them
-          setSearchResults([]);
-          setShowSearchResults(false);
-
-          // Close search on mobile
-          setSearchOpen(false);
-          setSearchQuery('');
-
-          // Use the HashtagContext from the parent component
+      // Check if the search term looks like a Solana wallet address
+      const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+      
+      if (isSolanaAddress) {
+        try {
+          // Search for user by wallet address using the same endpoint as username search
+          const response = await axios.get(`/auth/user/wallet/${searchTerm}`, { withCredentials: true });
+          if (response.data.success && response.data.user) {
+            setSearchResults([{
+              _id: response.data.user._id,
+              username: response.data.user.username,
+              profileImage: response.data.user.profileImage
+            }]);
+            setShowSearchResults(true);
+            saveToRecentSearches(searchTerm);
+            // Navigate to profile page directly
+            router.push(`/profile/${response.data.user.username}`);
+          } else if (response.data.success && response.data.users && response.data.users.length > 0) {
+            // If we got users array instead of single user
+            setSearchResults(response.data.users);
+            setShowSearchResults(true);
+            saveToRecentSearches(searchTerm);
+            // Navigate to the first user's profile if there's a match
+            router.push(`/profile/${response.data.users[0].username}`);
+          } else {
+            toast.error('No user found with this wallet address');
+            setSearchResults([]);
+            setShowSearchResults(false);
+          }
           setIsSearching(false);
-
-          // Navigate to home page with the hashtag in the URL
-          const hashtag = encodeURIComponent(searchTerm);
-          window.location.href = `/?hashtag=${hashtag}`;
           return;
-        } else {
-          // If only # is typed, don't do anything yet
+        } catch (error) {
+          console.error('Error searching by wallet:', error);
+          toast.error('No user found with this wallet address');
           setIsSearching(false);
           return;
         }
       }
 
-      // For user searches, remove @ symbol if it's at the beginning of the search term
-      // This ensures the backend search works correctly while the UI still shows the @ symbol
-      const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+      // Check if the search term is a hashtag
+      if (searchTerm.startsWith('#')) {
+        if (searchTerm.length > 1) {
+          saveToRecentSearches(searchTerm);
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          setSearchQuery('');
+          setIsSearching(false);
+          const hashtag = encodeURIComponent(searchTerm);
+          router.push(`/?hashtag=${hashtag}`);
+          return;
+        } else {
+          setIsSearching(false);
+          return;
+        }
+      }
 
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/messages/search/${termForSearch}`, { withCredentials: true });
+      // Regular user search
+      const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+      const response = await axios.get(`/messages/search/${termForSearch}`, { withCredentials: true });
+      
       if (response.data.success) {
         setSearchResults(response.data.users);
         setShowSearchResults(true);
-        // Save the successful search to recent searches (with @ if it was included)
         saveToRecentSearches(searchTerm);
       } else {
         setSearchResults([]);
@@ -224,7 +249,7 @@ export default function Layout({ children }: LayoutProps) {
 
   // Navigate to user profile
   const navigateToProfile = (username: string) => {
-    window.location.href = `/profile/${username}`;
+    router.push(`/profile/${username}`);
     setSearchQuery('');
     setSearchResults([]);
     setShowSearchResults(false);
@@ -312,7 +337,7 @@ export default function Layout({ children }: LayoutProps) {
 
     const checkAuth = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`, { withCredentials: true });
+        const response = await axios.get(`/auth/user`, { withCredentials: true });
         if (response.data) {
           // User is authenticated
           const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
@@ -355,11 +380,15 @@ export default function Layout({ children }: LayoutProps) {
 
     setConnectedWallet(walletInfo);
     localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
+    
+    // Close the wallet modal
+    setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
     setConnectedWallet(null);
     localStorage.removeItem('connectedWalletInfo');
+    localStorage.removeItem('walletModalSource');
   };
 
   const toggleWalletModal = () => {
@@ -385,39 +414,6 @@ export default function Layout({ children }: LayoutProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const renderConnectButton = () => {
-    return (
-      <div className="relative wallet-dropdown-container">
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => setIsWalletDropdownOpen(!isWalletDropdownOpen)}
-        >
-          {connectedWallet ? (
-            <div className="flex items-center justify-center gap-2">
-              <span>{connectedWallet.emoji}</span>
-              {connectedWallet.address && (
-                <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                  {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-                </span>
-              )}
-            </div>
-          ) : (
-            "Connect"
-          )}
-        </Button>
-        <WalletDropdown
-          isOpen={isWalletDropdownOpen}
-          onClose={() => setIsWalletDropdownOpen(false)}
-          connectedWallet={connectedWallet}
-          onConnect={handleConnect}
-          onDisconnect={handleDisconnect}
-        />
-      </div>
-    );
-  };
-
   const renderAuthButton = () => {
     // If user is logged in, show profile button
     if (userInfo) {
@@ -425,7 +421,7 @@ export default function Layout({ children }: LayoutProps) {
         <Button
           className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border-2 hover:border-[#B671FF] shadow-md"
+             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
           onPress={() => {
             // Set flag to indicate modal is opened from profile button
             localStorage.setItem("walletModalSource", "userProfile");
@@ -433,36 +429,50 @@ export default function Layout({ children }: LayoutProps) {
           }}
           data-auth-allowed="true"
         >
-          <div className="flex items-center justify-center gap-2">
-            <span>{userInfo.emoji}</span>
-            <span className="text-md truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-              {userInfo.username || userInfo.email?.split('@')[0]}
-            </span>
-          </div>
+          {connectedWallet?.address ? (
+            <div className="flex items-center justify-center gap-2">
+              <span>{connectedWallet.emoji}</span>
+              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+              </span>
+            </div>
+          ) : (
+            "Connect"
+          )}
         </Button>
       );
     }
 
-    // Default: Show Sign In button
+    // If user is not logged in, show Connect button
     return (
       <Button
         className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
            text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
            hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
-          // Just open the modal without forcing any tab
+          // Set flag to indicate modal is opened from connect button
+          localStorage.setItem("walletModalSource", "connect");
           setIsWalletModalOpen(true);
         }}
         data-auth-allowed="true"
       >
-        {t('sign in')}
+        {connectedWallet?.address ? (
+          <div className="flex items-center justify-center gap-2">
+            <span>{connectedWallet.emoji}</span>
+            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+              {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+            </span>
+          </div>
+        ) : (
+          "Connect"
+        )}
       </Button>
     );
   };
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`/auth/logout`, {}, { withCredentials: true });
       setUserInfo(null);
       setConnectedWallet(null);
       // Remove wallet info from localStorage
@@ -481,6 +491,31 @@ export default function Layout({ children }: LayoutProps) {
 
   // Calculate the available height for the columns (viewport height minus navbar and HotCoins section)
   const columnHeight = "calc(105vh - 140px)";
+
+  // Desktop search bar button
+  const handleSearchButtonClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const searchTerm = searchQuery.trim();
+    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+
+    if (isSolanaAddress) {
+      try {
+        const response = await axios.get(
+          `/auth/user/wallet/${searchTerm}`,
+          { withCredentials: true }
+        );
+        if (response.data.success && response.data.user) {
+          router.push(`/profile/${response.data.user.username}`);
+        } else {
+          toast.error('No user found with this wallet address');
+        }
+      } catch (error) {
+        toast.error('No user found with this wallet address');
+      }
+    } else {
+      searchUsers(undefined, true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -519,12 +554,7 @@ export default function Layout({ children }: LayoutProps) {
         />
         <div
           className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
-          onClick={(e) => {
-            e.preventDefault();
-            // When search button is clicked, immediately execute the search
-            // This allows users to manually trigger hashtag search when they're done typing
-            searchUsers(undefined, true);
-          }}
+          onClick={handleSearchButtonClick}
         >
           <Icon icon="lucide:search" className="text-black" />
         </div>
@@ -627,12 +657,7 @@ export default function Layout({ children }: LayoutProps) {
               />
               <div
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // When search button is clicked, immediately execute the search
-                  // This allows users to manually trigger hashtag search when they're done typing
-                  searchUsers(undefined, true);
-                }}
+                onClick={handleSearchButtonClick}
               >
                 <Icon icon="lucide:search" className="text-black" />
               </div>
@@ -780,7 +805,6 @@ export default function Layout({ children }: LayoutProps) {
                 <FearGreedIndex />
               </div>
               <TrendingSection />
-
             </div>
           </aside>
         </div>
