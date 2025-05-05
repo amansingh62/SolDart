@@ -19,8 +19,6 @@ interface Token {
   address: string;
 }
 
-const WALLET_ADDRESS = "oQPnhXAbLbMuKHESaGrbXT17CyvWCpLyERSJA9HCYd7";
-
 export default function WalletPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [portfolio, setPortfolio] = useState<Token[]>([]);
