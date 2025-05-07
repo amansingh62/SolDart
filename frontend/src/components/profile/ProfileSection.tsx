@@ -681,6 +681,44 @@ const handleLikePost = async (postId: string) => {
 
   // Function to create a new dart/post
 
+  useEffect(() => {
+    // Listen for wallet connection changes
+    const handleWalletChange = () => {
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (storedWalletInfo) {
+        try {
+          const walletInfo = JSON.parse(storedWalletInfo);
+          if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
+            setProfileData(prev => ({
+              ...prev,
+              walletAddress: walletInfo.data.address
+            }));
+          }
+        } catch (error) {
+          console.error("Error parsing wallet info:", error);
+        }
+      }
+    };
+
+    // Initial check
+    handleWalletChange();
+
+    // Add event listeners
+    window.addEventListener('storage', handleWalletChange);
+    window.addEventListener('walletConnected', handleWalletChange);
+    window.addEventListener('walletDisconnected', () => {
+      setProfileData(prev => ({
+        ...prev,
+        walletAddress: ""
+      }));
+    });
+
+    return () => {
+      window.removeEventListener('storage', handleWalletChange);
+      window.removeEventListener('walletConnected', handleWalletChange);
+      window.removeEventListener('walletDisconnected', () => {});
+    };
+  }, []);
 
   return (
     <div className="max-w-full md:max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">

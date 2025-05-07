@@ -298,7 +298,7 @@ export function ConnectWalletModal({
           }
         }
       } else {
-        // Login logic remains the same
+        // Login logic
         console.log("Attempting login with data:", { email, password });
         
         const response = await axios.post(`${API_URL}/auth/login`, {
@@ -324,6 +324,9 @@ export function ConnectWalletModal({
           
           toast.success("Logged in successfully");
           onClose();
+          
+          // Reload the page to update the UI state
+          window.location.reload();
           return;
         } else {
           throw new Error(response.data.message || "Login failed");

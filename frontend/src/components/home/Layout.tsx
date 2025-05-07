@@ -34,6 +34,7 @@ export default function Layout({ children }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
   const [isEventsOpen, setIsEventsOpen] = useState(false);
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export default function Layout({ children }: LayoutProps) {
     emoji?: string;
   } | null>(null);
   const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
   // Load recent searches from localStorage on component mount
@@ -359,10 +361,19 @@ export default function Layout({ children }: LayoutProps) {
 
             // Store wallet info in localStorage for persistence
             localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
+          } else {
+            // If user is authenticated but doesn't have a wallet, still show their profile
+            setConnectedWallet({
+              type: "email" as const,
+              data: { email: response.data.email },
+              emoji: randomEmoji
+            });
           }
         }
       } catch (error) {
         console.log("Not authenticated");
+        setUserInfo(null);
+        setConnectedWallet(null);
       }
     };
 
@@ -473,19 +484,18 @@ export default function Layout({ children }: LayoutProps) {
   const handleLogout = async () => {
     try {
       await axios.post(`/auth/logout`, {}, { withCredentials: true });
-      setUserInfo(null);
-      setConnectedWallet(null);
-      // Remove wallet info from localStorage
+      localStorage.removeItem('token');
+      setToken(null);
+      toast.success("Logged out successfully");
+      
+      // Clear any wallet info
       localStorage.removeItem('connectedWalletInfo');
-      // Remove walletModalSource flag
-      localStorage.removeItem('walletModalSource');
-      setIsProfileModalOpen(false);
-      // Reset wallet modal state
-      setIsWalletModalOpen(false);
-      toast.success(t('success.loggedOut'));
+      
+      // Reload the page to clear all state
+      window.location.reload();
     } catch (error) {
       console.error("Logout error:", error);
-      toast.error(t('errors.failedLogout'));
+      toast.error("Failed to logout");
     }
   };
 
