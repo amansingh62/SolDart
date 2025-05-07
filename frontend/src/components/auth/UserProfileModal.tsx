@@ -45,10 +45,15 @@ export function UserProfileModal({
                     <span className="text-2xl">{userInfo?.emoji}</span>
                     <div>
                       <p className="text-white font-medium">{userInfo?.username || userInfo?.email?.split('@')[0]}</p>
-                      <p className="text-gray-400 text-sm">{userInfo?.email}</p>
                     </div>
                   </div>
                 </div>
+
+                {userInfo?.email && (
+                  <div className="w-full bg-gray-700 text-white rounded-md px-4 py-2 text-center font-medium text-sm truncate">
+                    {userInfo.email}
+                  </div>
+                )}
 
                 <Button
                   className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]

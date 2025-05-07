@@ -23,53 +23,66 @@ export default function WalletPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [portfolio, setPortfolio] = useState<Token[]>([]);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [walletAddress, setWalletAddress] = useState<string>("FiLqkh9zTQB8xqPZaBA8mwFasFK4Q25RXpEtzyTsVeg3");
+  const [hasFetchedPortfolio, setHasFetchedPortfolio] = useState(false);
 
   // Listen for wallet connection changes
   useEffect(() => {
-    function getConnectedWallet() {
-      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
-      if (storedWalletInfo) {
-        try {
-          const walletInfo = JSON.parse(storedWalletInfo);
-          if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
-            return walletInfo.data.address;
-          }
-        } catch {}
-      }
-      return "";
+    // Only fetch if we haven't fetched before
+    if (!hasFetchedPortfolio && walletAddress) {
+      fetchWalletPortfolio(walletAddress);
+      setHasFetchedPortfolio(true);
     }
-
-    function updateWallet() {
-      const address = getConnectedWallet();
-      setWalletAddress(address);
-      if (address) fetchWalletPortfolio(address);
-      else setPortfolio([]);
-    }
-
-    updateWallet();
-    window.addEventListener('storage', updateWallet);
-    window.addEventListener('walletConnected', updateWallet);
-    window.addEventListener('walletDisconnected', updateWallet);
-    return () => {
-      window.removeEventListener('storage', updateWallet);
-      window.removeEventListener('walletConnected', updateWallet);
-      window.removeEventListener('walletDisconnected', updateWallet);
-    };
-  }, []);
+  }, [walletAddress, hasFetchedPortfolio]);
 
   const fetchWalletPortfolio = async (address: string) => {
     if (!address) return;
     try {
       setIsLoadingPortfolio(true);
+      console.log('Fetching portfolio for address:', address);
       const response = await api.get(`/wallet/portfolio/${address}`);
+      console.log('Raw API Response:', response);
+      
       if (response.data.success) {
-        setPortfolio(response.data.portfolio);
+        // Log the exact structure of the response
+        console.log('Response data structure:', {
+          success: response.data.success,
+          hasPortfolio: !!response.data.portfolio,
+          hasData: !!response.data.data,
+          portfolioType: typeof response.data.portfolio,
+          dataType: typeof response.data.data
+        });
+
+        // Get the portfolio data from either location
+        const portfolioData = response.data.portfolio || response.data.data || [];
+        console.log('Raw portfolio data:', portfolioData);
+
+        // Validate each token has required fields
+        const validPortfolio = portfolioData.map((token: any) => {
+          const processedToken = {
+            name: token.name || 'Unknown Token',
+            symbol: token.symbol || '',
+            mintAddress: token.mintAddress || token.address || '',
+            amount: Number(token.amount) || 0,
+            decimals: Number(token.decimals) || 0,
+            price: Number(token.price) || 0,
+            value: Number(token.value) || 0,
+            logo: token.logo || null,
+            address: token.address || token.mintAddress || ''
+          };
+          console.log('Processed token:', processedToken);
+          return processedToken;
+        });
+        
+        console.log('Final processed portfolio:', validPortfolio);
+        setPortfolio(validPortfolio);
       } else {
+        console.log('API call failed:', response.data);
         setPortfolio([]);
-        toast.error('Failed to fetch wallet portfolio');
+        toast.error(response.data.message || 'Failed to fetch wallet portfolio');
       }
     } catch (error) {
+      console.error('Error fetching portfolio:', error);
       setPortfolio([]);
       toast.error('Failed to fetch wallet portfolio');
     } finally {
@@ -82,8 +95,17 @@ export default function WalletPage() {
     return address.slice(0, 4) + "..." + address.slice(-4);
   }
 
-  // Only show tokens with a real name
-  const filteredPortfolio = portfolio.filter(token => token.name && token.name !== 'Unknown Token');
+  // Only show tokens with non-zero balance
+  const filteredPortfolio = portfolio.filter(token => {
+    const isValid = token.amount > 0;
+    console.log('Token filter check:', {
+      token,
+      isValid,
+      hasAmount: token.amount > 0
+    });
+    return isValid;
+  });
+  console.log('Final filtered portfolio:', filteredPortfolio);
 
   return (
     <div className="max-w-full md:max-w-[900px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -93,7 +115,7 @@ export default function WalletPage() {
         </div>
         <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6">
           <Icon icon="lucide:wallet" className="text-[#B671FF]" />
-          <span className="text-white font-medium">{walletAddress ? shortenAddress(walletAddress) : "No wallet connected"}</span>
+          <span className="text-white font-medium">{walletAddress ? walletAddress : "No wallet connected"}</span>
           {walletAddress && (
             <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
               <button 
@@ -117,7 +139,7 @@ export default function WalletPage() {
             <p className="mt-4 text-gray-400">Loading portfolio...</p>
           </div>
         ) : filteredPortfolio.length === 0 ? (
-          <div className="text-center py-8 text-white">No known tokens found in this wallet.</div>
+          <div className="text-center py-8 text-white">No tokens found in this wallet.</div>
         ) : (
           <>
             <div className="overflow-x-auto w-full">
@@ -140,17 +162,17 @@ export default function WalletPage() {
                             <img src={token.logo} alt={token.symbol} className="w-7 h-7 rounded-full border border-gray-700" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-white font-bold">
-                              {(token.symbol && token.symbol !== token.address) ? token.symbol[0] : token.address[0]}
+                              {token.symbol ? token.symbol[0] : token.address[0]}
                             </div>
                           )}
-                          <span className="font-semibold text-white truncate max-w-[120px]">{token.name || "Unknown Token"}</span>
+                          <span className="font-semibold text-white truncate max-w-[120px]">{token.symbol || token.address}</span>
                           {token.symbol && token.symbol !== token.address && (
-                            <span className="text-xs text-gray-400">({token.symbol})</span>
+                            <span className="text-xs text-gray-400">({token.address})</span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap align-middle text-xs text-gray-400 font-mono">
-                        <span title={token.address} className="truncate block max-w-[100px] align-middle">{shortenAddress(token.address)}</span>
+                        <span title={token.address} className="truncate block max-w-[100px] align-middle">{token.address}</span>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(token.address);

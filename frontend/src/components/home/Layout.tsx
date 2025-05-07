@@ -48,20 +48,25 @@ export default function Layout({ children }: LayoutProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
-  const [connectedWallet, setConnectedWallet] = useState<{
-    type: "wallet" | "email";
-    data: any;
-    emoji: string;
-    address?: string;
-  } | null>(null);
-  const [userInfo, setUserInfo] = useState<{
-    username?: string;
-    email?: string;
-    emoji?: string;
-  } | null>(null);
   const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
+  const [authState, setAuthState] = useState<{
+    wallet: {
+      type: "wallet" | "email";
+      data: any;
+      emoji: string;
+      address?: string;
+    } | null;
+    user: {
+      username?: string;
+      email?: string;
+      emoji?: string;
+    } | null;
+  }>({
+    wallet: null,
+    user: null
+  });
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -300,84 +305,18 @@ export default function Layout({ children }: LayoutProps) {
 
   // Check if user is authenticated on component mount and restore wallet connection from localStorage
   useEffect(() => {
-    // First try to restore wallet connection from localStorage
     const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
     if (storedWalletInfo) {
       try {
-        const parsedWalletInfo = JSON.parse(storedWalletInfo);
-        if (parsedWalletInfo && parsedWalletInfo.address) {
-          console.log("Restored wallet connection from localStorage:", parsedWalletInfo);
-          setConnectedWallet(parsedWalletInfo);
-
-          // Verify wallet connection with provider if it's a blockchain wallet
-          if (parsedWalletInfo.type === "wallet" && parsedWalletInfo.data?.blockchain) {
-            const walletType = parsedWalletInfo.data.blockchain;
-            console.log(`Verifying ${walletType} wallet connection...`);
-
-            // Import dynamically to avoid circular dependencies
-            import("@/lib/walletUtils").then(({ checkWalletInstalled, connectWallet }) => {
-              const isInstalled = checkWalletInstalled(walletType);
-              if (isInstalled) {
-                console.log(`${walletType} wallet is installed, attempting to reconnect silently...`);
-                // We don't need to await this, it's just a verification
-                connectWallet(walletType).catch(err => {
-                  console.log(`Silent reconnection failed, but keeping UI state: ${err.message}`);
-                  // We still keep the UI state even if reconnection fails
-                });
-              } else {
-                console.log(`${walletType} wallet is not installed, but keeping UI state`);
-              }
-            });
-          }
+        const walletInfo = JSON.parse(storedWalletInfo);
+        if (walletInfo?.address) {
+          setAuthState(prev => ({ ...prev, wallet: walletInfo }));
         }
       } catch (error) {
-        console.error("Error parsing stored wallet info:", error);
-        // Clear invalid data
+        console.error('Error parsing stored wallet info:', error);
         localStorage.removeItem('connectedWalletInfo');
       }
     }
-
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get(`/auth/user`, { withCredentials: true });
-        if (response.data) {
-          // User is authenticated
-          const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-          setUserInfo({
-            username: response.data.username || response.data.name,
-            email: response.data.email,
-            emoji: randomEmoji
-          });
-
-          // Check if user has a connected wallet
-          if (response.data.wallet) {
-            const walletInfo = {
-              type: "wallet" as const,
-              data: { blockchain: response.data.wallet.type },
-              emoji: randomEmoji,
-              address: response.data.wallet.address
-            };
-            setConnectedWallet(walletInfo);
-
-            // Store wallet info in localStorage for persistence
-            localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-          } else {
-            // If user is authenticated but doesn't have a wallet, still show their profile
-            setConnectedWallet({
-              type: "email" as const,
-              data: { email: response.data.email },
-              emoji: randomEmoji
-            });
-          }
-        }
-      } catch (error) {
-        console.log("Not authenticated");
-        setUserInfo(null);
-        setConnectedWallet(null);
-      }
-    };
-
-    checkAuth();
   }, []);
 
   const handleConnect = (walletAddress: string) => {
@@ -388,16 +327,13 @@ export default function Layout({ children }: LayoutProps) {
       emoji: randomEmoji,
       address: walletAddress
     };
-
-    setConnectedWallet(walletInfo);
+    setAuthState(prev => ({ ...prev, wallet: walletInfo }));
     localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-    
-    // Close the wallet modal
     setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
-    setConnectedWallet(null);
+    setAuthState(prev => ({ ...prev, wallet: null }));
     localStorage.removeItem('connectedWalletInfo');
     localStorage.removeItem('walletModalSource');
   };
@@ -426,57 +362,46 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const renderAuthButton = () => {
-    // If user is logged in, show profile button
-    if (userInfo) {
+    const { wallet, user } = authState;
+    if (user && user.username) {
       return (
         <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => {
-            // Set flag to indicate modal is opened from profile button
-            localStorage.setItem("walletModalSource", "userProfile");
-            setIsProfileModalOpen(true);
-          }}
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+          onPress={() => setIsProfileModalOpen(true)}
           data-auth-allowed="true"
         >
-          {connectedWallet?.address ? (
-            <div className="flex items-center justify-center gap-2">
-              <span>{connectedWallet.emoji}</span>
-              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-              </span>
-            </div>
-          ) : (
-            "Connect"
-          )}
+          <div className="flex items-center justify-center gap-2">
+            <span>{user.emoji || "👤"}</span>
+            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">{user.username}</span>
+          </div>
         </Button>
       );
     }
-
-    // If user is not logged in, show Connect button
+    if (wallet && wallet.address) {
+      return (
+        <Button
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+          onPress={() => setIsProfileModalOpen(true)}
+          data-auth-allowed="true"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span>{wallet.emoji}</span>
+            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">{wallet.address.substring(0, 4)}...{wallet.address.substring(wallet.address.length - 4)}</span>
+          </div>
+        </Button>
+      );
+    }
+    // Only show connect if neither user nor wallet is set
     return (
       <Button
-        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-           text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-           hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
-          // Set flag to indicate modal is opened from connect button
           localStorage.setItem("walletModalSource", "connect");
           setIsWalletModalOpen(true);
         }}
         data-auth-allowed="true"
       >
-        {connectedWallet?.address ? (
-          <div className="flex items-center justify-center gap-2">
-            <span>{connectedWallet.emoji}</span>
-            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-              {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-            </span>
-          </div>
-        ) : (
-          "Connect"
-        )}
+        Connect
       </Button>
     );
   };
@@ -826,20 +751,20 @@ export default function Layout({ children }: LayoutProps) {
         onClose={() => setIsWalletModalOpen(false)}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
-        connectedWalletInfo={connectedWallet}
+        connectedWalletInfo={authState.wallet}
       />
 
       {/* User Profile Modal */}
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        userInfo={userInfo}
+        userInfo={authState.user}
         onConnectWallet={() => {
           setIsProfileModalOpen(false);
           setIsWalletModalOpen(true);
         }}
         onLogout={handleLogout}
-        connectedWalletInfo={connectedWallet}
+        connectedWalletInfo={authState.wallet}
       />
 
       {/* Direct Message Popup */}
