@@ -1,0 +1,10 @@
+ <div className="flex justify-center mt-8">
+            <button
+              onClick={handleResetQuests}
+              className="bg-black text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors"
+            >
+              <Icon icon="lucide:refresh-cw" className="w-5 h-5" />
+              {t('Reset Quests')}
+            </button>
+          </div>
+          

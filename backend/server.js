@@ -12,6 +12,7 @@ const { router: cryptoRoutes, setupCryptoWebSocket } = require('./routes/cryptoR
 const { router: solanaRoutes, setupSolanaWebSocket } = require('./routes/solanaRoutes');
 const { router: graduatedTokensRoutes, setupGraduatedTokensWebSocket } = require('./routes/graduatedTokensRoutes');
 const { router: fearGreedRoutes, setupFearGreedWebSocket } = require('./routes/fearGreedRoutes');
+const { router: questsRoutes, setupQuestsWebSocket } = require('./routes/questsRoutes');
 const authRoutes = require("./routes/authRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const postRoutes = require("./routes/postRoutes");
@@ -59,6 +60,7 @@ app.use("/api/crypto", cryptoRoutes);
 app.use("/api/solana", solanaRoutes);
 app.use("/api/graduated-tokens", graduatedTokensRoutes);
 app.use("/api/fear-greed", fearGreedRoutes);
+app.use("/api/quests", questsRoutes);
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -209,6 +211,9 @@ setupGraduatedTokensWebSocket(io);
 
 // Setup WebSocket handlers for Fear & Greed Index updates
 setupFearGreedWebSocket(io);
+
+// Setup WebSocket handlers for quest updates
+setupQuestsWebSocket(io);
 
 // Migration for savedPosts structure (run once on server start)
 const migrateSavedPosts = async () => {

@@ -57,6 +57,7 @@ export default function Layout({ children }: LayoutProps) {
     email?: string;
     emoji?: string;
   } | null>(null);
+  const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -323,15 +324,12 @@ export default function Layout({ children }: LayoutProps) {
           // Check if user has a connected wallet
           if (response.data.wallet) {
             const walletInfo = {
-              type: "wallet",
+              type: "wallet" as const,
               data: { blockchain: response.data.wallet.type },
               emoji: randomEmoji,
               address: response.data.wallet.address
             };
-            setConnectedWallet({
-              ...walletInfo,
-              type: walletInfo.type === "wallet" || walletInfo.type === "email" ? walletInfo.type : "wallet",
-            });
+            setConnectedWallet(walletInfo);
 
             // Store wallet info in localStorage for persistence
             localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
@@ -346,141 +344,35 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const handleConnect = (type: "wallet" | "email", data: any) => {
-    console.log("Handling wallet connection:", { type, data });
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-
-    const walletInfo: {
-      type: "wallet" | "email";
-      data: any;
-      emoji: string;
-      address?: string;
-    } = {
-      type: type,
+    const walletInfo = {
+      type,
       data,
-      emoji: randomEmoji
+      emoji: randomEmoji,
+      address: type === "wallet" ? data.address : undefined
     };
 
-    // Add wallet address if available from blockchain wallet connection
-    if (type === "wallet" && data.address) {
-      walletInfo.address = data.address;
-      console.log("Wallet address from blockchain:", data.address);
+    setConnectedWallet(walletInfo);
+    localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
 
-      // If it's a Phantom wallet, store the address with the email if available
-      if (data.blockchain === "phantom" && data.email) {
-        // Store the wallet address with the user's email
-        // Note: We're not checking for authentication here, just storing the wallet info
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-            // Don't show error toast, just log it
-            // This prevents the "user not found" toast
-          });
-      }
-    }
-    // Add wallet address if available from email login with associated wallet
-    else if (type === "email" && data.user?.wallet?.address) {
-      walletInfo.address = data.user.wallet.address;
-      console.log("Wallet address from user wallet:", data.user.wallet.address);
-    }
-    // Check if wallet info is in the data object directly (for email login)
-    else if (type === "email" && data.wallet?.address) {
-      walletInfo.address = data.wallet.address;
-      console.log("Wallet address from data wallet:", data.wallet.address);
-    }
-    // Check if wallet is in the defaultWallet property (from Google auth)
-    else if (type === "email" && data.defaultWallet?.address) {
-      walletInfo.address = data.defaultWallet.address;
-      console.log("Wallet address from defaultWallet:", data.defaultWallet.address);
-    }
-    // For Google auth, check if wallet is in the user property
-    else if (type === "email" && data.user?.defaultWallet?.address) {
-      walletInfo.address = data.user.defaultWallet.address;
-      console.log("Wallet address from user defaultWallet:", data.user.defaultWallet.address);
-    }
-    // Check for wallets array and use the default or first wallet
-    else if (type === "email" && data.wallets && data.wallets.length > 0) {
-      const defaultWallet = data.wallets.find((w: any) => w.isDefault) || data.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from wallets array:", defaultWallet.address);
-      }
-    }
-    // Check for wallets array in user object
-    else if (type === "email" && data.user?.wallets && data.user.wallets.length > 0) {
-      const defaultWallet = data.user.wallets.find((w: any) => w.isDefault) || data.user.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from user wallets array:", defaultWallet.address);
-      }
-    }
-    // Check specifically for Phantom wallet connection
-    else if (type === "email" && data.blockchain === "phantom") {
-      walletInfo.address = data.address;
-      console.log("Wallet address from Phantom connection:", data.address);
-
-      // If we have an email, store the Phantom wallet address with it
-      if (data.email) {
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-          });
-      }
-    }
-    // If user logs in with email, check if they have a Phantom wallet associated
-    else if (type === "email" && data.email) {
-      // Check if this email has any associated Phantom wallets
-      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/check-wallets-by-email`, {
+    if (type === "wallet" && data.blockchain === "phantom" && data.email) {
+      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
+        walletType: "phantom",
+        walletAddress: data.address,
         email: data.email
       }, { withCredentials: true })
         .then(response => {
-          if (response.data.defaultWallet && response.data.defaultWallet.type === "phantom") {
-            walletInfo.address = response.data.defaultWallet.address;
-            walletInfo.type = "wallet";
-            console.log("Found Phantom wallet for email:", response.data.defaultWallet.address);
-            setConnectedWallet(walletInfo);
-          }
+          console.log("Phantom wallet linked to account:", response.data);
         })
         .catch(error => {
-          console.error("Error checking for Phantom wallets:", error);
+          console.error("Error linking Phantom wallet to account:", error);
         });
     }
-
-    // If we have a wallet address, update the type to wallet to ensure proper display
-    if (walletInfo.address && type === "email") {
-      walletInfo.type = "wallet";
-    }
-
-    console.log("Final wallet info:", walletInfo);
-
-    // Save wallet info to localStorage for persistence
-    if (walletInfo.address) {
-      localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-    }
-
-    setConnectedWallet(walletInfo);
-    // Close modal after successful connection
-    setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
     setConnectedWallet(null);
-    // Remove wallet info from localStorage
     localStorage.removeItem('connectedWalletInfo');
-    // Don't close the modal immediately to allow the user to connect another wallet
   };
 
   const toggleWalletModal = () => {
@@ -493,25 +385,43 @@ export default function Layout({ children }: LayoutProps) {
 
   const { t } = useLanguage();
 
+  // Add click outside handler for the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.wallet-dropdown-container')) {
+        setIsWalletDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const renderConnectButton = () => {
     return (
-      <Button
-        className="w-full bg-[#9dfc3f] hover:text-white hover:bg-black text-black px-4 py-2 rounded-md border border-white shadow-md"
-        onPress={() => toggleWalletModal()}
-      >
-        {connectedWallet ? (
-          <div className="flex items-center justify-center gap-2">
-            <span>{connectedWallet.emoji}</span>
-            {connectedWallet.address && (
-              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-              </span>
-            )}
-          </div>
-        ) : (
-          t('connectWallet')
-        )}
-      </Button>
+      <div className="relative wallet-dropdown-container">
+        <Button
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
+             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+          onPress={() => setIsWalletDropdownOpen(!isWalletDropdownOpen)}
+        >
+          {connectedWallet ? (
+            <div className="flex items-center justify-center gap-2">
+              <span>{connectedWallet.emoji}</span>
+              {connectedWallet.address && (
+                <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                  {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
+                </span>
+              )}
+            </div>
+          ) : (
+            "Connect"
+          )}
+        </Button>
+       
+      </div>
     );
   };
 
@@ -540,22 +450,25 @@ export default function Layout({ children }: LayoutProps) {
       );
     }
 
-    // Default: Show Sign In button
+    // Default: Show Sign In button and Connect Wallet button
     return (
-      <Button
-        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+      <div className="flex gap-2">
+        <Button
+          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
              hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-        onPress={() => {
-          // Set flag to indicate modal is opened from sign-in button
-          localStorage.setItem("walletModalSource", "signIn");
-          // Force the ConnectWalletModal to open with email tab
-          setIsWalletModalOpen(true);
-        }}
-        data-auth-allowed="true"
-      >
-        {t('sign in')}
-      </Button>
+          onPress={() => {
+            // Set flag to indicate modal is opened from sign-in button
+            localStorage.setItem("walletModalSource", "signIn");
+            // Force the ConnectWalletModal to open with email tab
+            setIsWalletModalOpen(true);
+          }}
+          data-auth-allowed="true"
+        >
+          {t('Sign In')}
+        </Button>
+        {renderConnectButton()}
+      </div>
     );
   };
 
@@ -598,74 +511,74 @@ export default function Layout({ children }: LayoutProps) {
 
           </div>
 
-           <div className="fixed left-1/2 transform -translate-x-1/2 w-[40vw] search-container mt-2">
-        <Input
-          placeholder={t('Search Users and Addresses')}
-          className="pl-4 pr-10 w-full bg-white text-black rounded-2xl"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onFocus={() => {
-            if (searchQuery.trim()) {
-              // If there's a search query, show search results
-              setShowSearchResults(true);
-              setShowRecentSearches(false);
-            } else if (recentSearches.length > 0) {
-              // If there's no search query but there are recent searches, show recent searches
-              setShowRecentSearches(true);
-              setShowSearchResults(false);
-            }
-          }}
-        />
-        <div
-          className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
-          onClick={(e) => {
-            e.preventDefault();
-            // When search button is clicked, immediately execute the search
-            // This allows users to manually trigger hashtag search when they're done typing
-            searchUsers(undefined, true);
-          }}
-        >
-          <Icon icon="lucide:search" className="text-black" />
-        </div>
+          <div className="fixed left-1/2 transform -translate-x-1/2 w-[40vw] search-container mt-2">
+            <Input
+              placeholder={t('Search Users and Addresses')}
+              className="pl-4 pr-10 w-full bg-white text-black rounded-2xl"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => {
+                if (searchQuery.trim()) {
+                  // If there's a search query, show search results
+                  setShowSearchResults(true);
+                  setShowRecentSearches(false);
+                } else if (recentSearches.length > 0) {
+                  // If there's no search query but there are recent searches, show recent searches
+                  setShowRecentSearches(true);
+                  setShowSearchResults(false);
+                }
+              }}
+            />
+            <div
+              className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                // When search button is clicked, immediately execute the search
+                // This allows users to manually trigger hashtag search when they're done typing
+                searchUsers(undefined, true);
+              }}
+            >
+              <Icon icon="lucide:search" className="text-black" />
+            </div>
 
-        {/* Recent Searches Dropdown - Only show if there are recent searches and no search results */}
-        {showRecentSearches && !showSearchResults && recentSearches.length > 0 && (
-          <RecentSearches
-            searches={recentSearches}
-            onSelectSearch={selectRecentSearch}
-            onClearSearch={clearRecentSearch}
-            onClearAll={clearAllRecentSearches}
-          />
-        )}
+            {/* Recent Searches Dropdown - Only show if there are recent searches and no search results */}
+            {showRecentSearches && !showSearchResults && recentSearches.length > 0 && (
+              <RecentSearches
+                searches={recentSearches}
+                onSelectSearch={selectRecentSearch}
+                onClearSearch={clearRecentSearch}
+                onClearAll={clearAllRecentSearches}
+              />
+            )}
 
-        {/* Search Results Dropdown - Only show if there are search results */}
-        {showSearchResults && searchResults.length > 0 && (
-          <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto scrollbar-hide">
-            {isSearching ? (
-              <div className="flex justify-center items-center p-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FEB4B0]"></div>
-              </div>
-            ) : (
-              <div className="p-2">
-                {searchResults.map(user => (
-                  <div
-                    key={user._id}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
-                    onClick={() => navigateToProfile(user.username)}
-                  >
-                    <img
-                      src={user.profileImage || '/svg.png'}
-                      alt={user.username}
-                      className="w-8 h-8 rounded-full mr-2"
-                    />
-                    <span className="text-sm">{user.username}</span>
+            {/* Search Results Dropdown - Only show if there are search results */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto scrollbar-hide">
+                {isSearching ? (
+                  <div className="flex justify-center items-center p-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FEB4B0]"></div>
                   </div>
-                ))}
+                ) : (
+                  <div className="p-2">
+                    {searchResults.map(user => (
+                      <div
+                        key={user._id}
+                        className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
+                        onClick={() => navigateToProfile(user.username)}
+                      >
+                        <img
+                          src={user.profileImage || '/svg.png'}
+                          alt={user.username}
+                          className="w-8 h-8 rounded-full mr-2"
+                        />
+                        <span className="text-sm">{user.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
 
           {/* Mobile Search Button */}
           <button className="md:hidden text-white text-2xl" onClick={() => setSearchOpen(!searchOpen)}>
@@ -821,10 +734,14 @@ export default function Layout({ children }: LayoutProps) {
             className="md:w-1/4 hidden md:block fixed left-6 right-auto overflow-y-auto"
             style={{
               width: 'calc(25% - 1.5rem)',
-              height: columnHeight,
+              height: 'calc(100vh - 96px)',
               top: '96px',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
+              msOverflowStyle: 'none',
+              position: 'fixed',
+              zIndex: 2,
+              transform: 'translateZ(0)',
+              willChange: 'transform'
             }}
           >
             <style jsx>{`
@@ -842,9 +759,13 @@ export default function Layout({ children }: LayoutProps) {
           <main
             className="w-full px-4 pt-4 md:w-[calc(50%-1.5rem)] md:px-0 md:fixed md:left-1/2 md:transform md:-translate-x-1/2 md:top-[140px] overflow-y-auto"
             style={{
-              height: columnHeight,
+              height: 'calc(100vh - 140px)',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
+              position: 'fixed',
+              zIndex: 1,
+              transform: 'translateZ(0)',
+              willChange: 'transform'
             }}
           >
             <style jsx>{`
@@ -862,10 +783,14 @@ export default function Layout({ children }: LayoutProps) {
             className="md:w-1/4 hidden md:block fixed right-6 left-auto overflow-y-auto"
             style={{
               width: 'calc(25% - 1.5rem)',
-              height: columnHeight,
+              height: 'calc(100vh - 96px)',
               top: '96px',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none'
+              msOverflowStyle: 'none',
+              position: 'fixed',
+              zIndex: 2,
+              transform: 'translateZ(0)',
+              willChange: 'transform'
             }}
           >
             <style jsx>{`

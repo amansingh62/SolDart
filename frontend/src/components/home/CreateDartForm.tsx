@@ -225,6 +225,26 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       if (response.data.success) {
         toast.success('Dart posted successfully!');
 
+        // Track quest progress for post creation using non-authenticated endpoint
+        try {
+          const userId = localStorage.getItem('userId');
+          if (userId) {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                userId,
+                activityType: 'post'
+              })
+            });
+          }
+        } catch (questError) {
+          console.error('Error tracking quest progress for post:', questError);
+          // Continue execution even if quest tracking fails
+        }
+
         // Reset form
         setContent('');
         setMediaFiles([]);

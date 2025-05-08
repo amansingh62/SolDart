@@ -7,6 +7,8 @@ const auth = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
+const { trackUserActivity } = require('../utils/questTracker');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -130,6 +132,15 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
     
     // Increment user's dart count
     await User.findByIdAndUpdate(req.user.id, { $inc: { darts: 1 } });
+
+    // Track quest progress for post creation
+    try {
+      // Use the questTracker utility to update post quest progress
+      await trackUserActivity(req.user.id, 'post', req.app.get('io'));
+    } catch (questError) {
+      console.error('Error tracking quest progress for post:', questError);
+      // Continue execution even if quest tracking fails
+    }
 
     // Populate user data for the response
     const populatedPost = await Post.findById(post._id).populate('user', 'username profileImage walletAddress');
@@ -321,6 +332,15 @@ router.post('/like/:id', auth, async (req, res) => {
       // Like
       post.likes.push(req.user.id);
       
+      // Track quest progress for like action
+      try {
+        // Use the questTracker utility to update like quest progress
+        await trackUserActivity(req.user.id, 'like', req.app.get('io'));
+      } catch (questError) {
+        console.error('Error tracking quest progress for like:', questError);
+        // Continue execution even if quest tracking fails
+      }
+      
       // Create notification for post owner if someone else liked the post
       if (post.user._id.toString() !== req.user.id) {
         const Notification = require('../models/Notification');
@@ -378,6 +398,15 @@ router.post('/comment/:id', auth, async (req, res) => {
     });
 
     await post.save();
+    
+    // Track quest progress for comment action
+    try {
+      // Use the questTracker utility to update comment quest progress
+      await trackUserActivity(req.user.id, 'comment', req.app.get('io'));
+    } catch (questError) {
+      console.error('Error tracking quest progress for comment:', questError);
+      // Continue execution even if quest tracking fails
+    }
     
     // Create notification for post owner if someone else commented on the post
     if (post.user.toString() !== req.user.id) {

@@ -196,6 +196,25 @@ export function DynamicPostCard({
         // Pass minimal information to prevent parent from over-updating
         onLike(_id);
       }
+
+      // Track quest progress for like action using non-authenticated endpoint
+      if (!isCurrentlyLiked && currentUserId) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId: currentUserId,
+              activityType: 'like'
+            })
+          });
+        } catch (questError) {
+          console.error('Error tracking quest progress for like:', questError);
+          // Continue execution even if quest tracking fails
+        }
+      }
     } catch (error) {
       // Revert local state if API call fails
       setLocalLikes(likes);
@@ -328,6 +347,25 @@ export function DynamicPostCard({
 
       setCommentText('');
       toast.success('Comment added');
+
+      // Track quest progress for comment action using non-authenticated endpoint
+      if (currentUserId) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId: currentUserId,
+              activityType: 'comment'
+            })
+          });
+        } catch (questError) {
+          console.error('Error tracking quest progress for comment:', questError);
+          // Continue execution even if quest tracking fails
+        }
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
@@ -960,18 +998,18 @@ export function DynamicPostCard({
               <span className="truncate max-w-full md:max-w-[120px]">{shortenAddress(user?.walletAddress || '')}</span>
               {/* View count display */}
               <span className="text-xs text-gray-500 flex items-center">
-              <svg 
-        className="w-3 h-3 mr-1"
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg> {localViews > 999 ? `${(localViews / 1000).toFixed(1)}k` : localViews} {localViews === 1 ? 'view' : 'views'}
+                <svg
+                  className="w-3 h-3 mr-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg> {localViews > 999 ? `${(localViews / 1000).toFixed(1)}k` : localViews} {localViews === 1 ? 'view' : 'views'}
               </span>
               {/* Removed the timestamp from here */}
             </div>
@@ -987,58 +1025,58 @@ export function DynamicPostCard({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-40 p-0 bg-white">
-  <div className="py-1">
-    {/* Show Pin/Delete only if user is the owner */}
-    {currentUserId === user?._id ? (
-      <>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={handlePin}
-        >
-          <Icon icon="lucide:pin" className="mr-2 h-4 w-4" />
-          {isPinned ? 'Unpin' : 'Pin'}
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={() => handleShare()}
-        >
-          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
-          Share
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
-          onClick={handleDelete}
-          disabled={isDeleting}
-        >
-          <Icon icon="lucide:trash-2" className="mr-2 h-4 w-4" />
-          Delete
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={() => handleShare()}
-        >
-          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
-          Share
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
-          onClick={() => handleBlock()}
-        >
-          <Icon icon="lucide:shield-ban" className="mr-2 h-4 w-4" />
-          Block
-        </Button>
-      </>
-    )}
-  </div>
-</PopoverContent>
+                  <div className="py-1">
+                    {/* Show Pin/Delete only if user is the owner */}
+                    {currentUserId === user?._id ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={handlePin}
+                        >
+                          <Icon icon="lucide:pin" className="mr-2 h-4 w-4" />
+                          {isPinned ? 'Unpin' : 'Pin'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={() => handleShare()}
+                        >
+                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                        >
+                          <Icon icon="lucide:trash-2" className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={() => handleShare()}
+                        >
+                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
+                          onClick={() => handleBlock()}
+                        >
+                          <Icon icon="lucide:shield-ban" className="mr-2 h-4 w-4" />
+                          Block
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </PopoverContent>
               </Popover>
             </div>
           )}
@@ -1046,29 +1084,29 @@ export function DynamicPostCard({
 
         {/* Post Content */}
         {content && (
-  <p className="text-sm md:text-base break-words overflow-wrap-anywhere">
-    {content.split(/\s+/).map((word, index) => {
-      if (word.startsWith('#')) {
-        return (
-          <span
-            key={index}
-            className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
-            onClick={() => {
-              try {
-                router.push(`/hashtag/${word.substring(1)}`);
-              } catch (error) {
-                console.error('Navigation error:', error);
+          <p className="text-sm md:text-base break-words overflow-wrap-anywhere">
+            {content.split(/\s+/).map((word, index) => {
+              if (word.startsWith('#')) {
+                return (
+                  <span
+                    key={index}
+                    className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
+                    onClick={() => {
+                      try {
+                        router.push(`/hashtag/${word.substring(1)}`);
+                      } catch (error) {
+                        console.error('Navigation error:', error);
+                      }
+                    }}
+                  >
+                    {word}{' '}
+                  </span>
+                );
               }
-            }}
-          >
-            {word}{' '}
-          </span>
-        );
-      }
-      return <span key={index}>{word}{' '}</span>;
-    })}
-  </p>
-)}
+              return <span key={index}>{word}{' '}</span>;
+            })}
+          </p>
+        )}
 
         {/* Media Content */}
         {media && media.length > 0 && (
