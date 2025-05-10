@@ -864,7 +864,7 @@ const handleLikePost = async (postId: string) => {
              hover:text-white font-semibold rounded-md px-6 py-2 transition-all shadow-lg"
                     onClick={() => setIsAuthModalOpen(true)}
                   >
-                    Log In
+                    Sign In
                   </Button>
                 </div>
               )}

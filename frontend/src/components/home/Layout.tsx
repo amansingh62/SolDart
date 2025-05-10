@@ -13,6 +13,7 @@ import SupportChat from "@/components/home/SupportChat";
 import { AdsSection } from "@/components/home/AdsSection";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { UserProfileModal } from "@/components/auth/UserProfileModal";
+import { AuthModal } from "@/components/auth/AuthModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import MessagePopup from "./MessagePopup";
@@ -305,6 +306,27 @@ export default function Layout({ children }: LayoutProps) {
 
   // Check if user is authenticated on component mount and restore wallet connection from localStorage
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/user`, { withCredentials: true });
+        if (response.data) {
+          setAuthState(prev => ({
+            ...prev,
+            user: {
+              username: response.data.username,
+              email: response.data.email,
+              emoji: response.data.emoji
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+      }
+    };
+
+    checkAuth();
+
+    // Restore wallet connection
     const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
     if (storedWalletInfo) {
       try {
@@ -363,45 +385,69 @@ export default function Layout({ children }: LayoutProps) {
 
   const renderAuthButton = () => {
     const { wallet, user } = authState;
+    
+    // If user is signed in and has wallet connected
+    if (user && user.username && wallet && wallet.address) {
+      return (
+        <div className="flex gap-2">
+          <Button
+            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            onPress={() => setIsProfileModalOpen(true)}
+            data-auth-allowed="true"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <span>{wallet.emoji}</span>
+              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                {wallet.address.substring(0, 4)}...{wallet.address.substring(wallet.address.length - 4)}
+              </span>
+            </div>
+          </Button>
+          <Button
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+            onPress={handleLogout}
+            data-auth-allowed="true"
+          >
+            Logout
+          </Button>
+        </div>
+      );
+    }
+
+    // If user is signed in but no wallet connected
     if (user && user.username) {
       return (
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => setIsProfileModalOpen(true)}
-          data-auth-allowed="true"
-        >
-          <div className="flex items-center justify-center gap-2">
-            <span>{user.emoji || "👤"}</span>
-            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">{user.username}</span>
-          </div>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            onPress={() => {
+              localStorage.setItem("walletModalSource", "userProfile");
+              setIsWalletModalOpen(true);
+            }}
+            data-auth-allowed="true"
+          >
+            Connect Wallet
+          </Button>
+          <Button
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+            onPress={handleLogout}
+            data-auth-allowed="true"
+          >
+            Logout
+          </Button>
+        </div>
       );
     }
-    if (wallet && wallet.address) {
-      return (
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-          onPress={() => setIsProfileModalOpen(true)}
-          data-auth-allowed="true"
-        >
-          <div className="flex items-center justify-center gap-2">
-            <span>{wallet.emoji}</span>
-            <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">{wallet.address.substring(0, 4)}...{wallet.address.substring(wallet.address.length - 4)}</span>
-          </div>
-        </Button>
-      );
-    }
-    // Only show connect if neither user nor wallet is set
+
+    // If not signed in, show Sign In button
     return (
       <Button
         className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
-          localStorage.setItem("walletModalSource", "connect");
-          setIsWalletModalOpen(true);
+          setIsAuthModalOpen(true);
         }}
         data-auth-allowed="true"
       >
-        Connect
+        Sign In
       </Button>
     );
   };
@@ -752,6 +798,18 @@ export default function Layout({ children }: LayoutProps) {
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
         connectedWalletInfo={authState.wallet}
+        isFromUserProfile={true}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(userData) => {
+          console.log('Auth success with user data:', userData);
+          setAuthState(prev => ({ ...prev, user: userData }));
+          setIsAuthModalOpen(false);
+        }}
       />
 
       {/* User Profile Modal */}

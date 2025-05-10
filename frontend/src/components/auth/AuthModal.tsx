@@ -9,7 +9,7 @@ import { toast } from "react-hot-toast";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (userData: { username?: string; email?: string; emoji?: string }) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
@@ -33,8 +33,13 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
       if (response.data.success) {
         toast.success(isSignUp ? "Account created successfully!" : "Logged in successfully!");
-        onSuccess();
+        onSuccess({
+          username: response.data.user?.username || response.data.username,
+          email: response.data.user?.email || response.data.email,
+          emoji: response.data.user?.emoji || response.data.emoji
+        });
         onClose();
+        window.location.reload();
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Something went wrong");

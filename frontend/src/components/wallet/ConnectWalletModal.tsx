@@ -17,12 +17,13 @@ interface ConnectWalletModalProps {
   isFromSignIn?: boolean;
   onConnect?: (walletAddress: string) => void;
   onDisconnect?: () => void;
-  connectedWalletInfo?: {
+  connectedWalletInfo: {
     type: string;
     address?: string;
     data?: {
       blockchain?: string;
     };
+    emoji?: string;
   } | null;
 }
 
@@ -442,164 +443,47 @@ export function ConnectWalletModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md" placement="center" className="z-[100] modal">
-      <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 modal-content min-h-[400px] flex flex-col">
+      <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 modal-content">
         {() => (
           <>
             <ModalHeader className="flex flex-col gap-1 text-center">
               <h3 className="text-xl font-bold text-white">
-                {isFromUserProfile ? "Connect Wallet to Access Profile" : 
-                 isFromSignIn ? "Sign In to Continue" : 
-                 "Connect Your Wallet"}
+                {connectedWallet ? "Connected Wallet" : "Connect Wallet"}
               </h3>
             </ModalHeader>
-            <ModalBody className="px-2 sm:px-4 py-4 flex-1 flex flex-col">
-              {/* Always show tab selection */}
-              <div className="flex gap-2 mb-6">
-                <Button
-                  className={`flex-1 rounded-lg px-3 py-2 font-medium transition-all duration-200 ${
-                    activeTab === "wallet" 
-                      ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                  onPress={() => setActiveTab("wallet")}
-                >
-                  Wallet Connect
-                </Button>
-                <Button
-                  className={`flex-1 rounded-lg px-3 py-2 font-medium transition-all duration-200 ${
-                    activeTab === "email" 
-                      ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                  onPress={() => setActiveTab("email")}
-                >
-                  Email
-                </Button>
-              </div>
-
-              {error && <p className="text-red-400 text-sm mb-4 font-medium">{error}</p>}
-
-              <div className="flex-1 flex flex-col">
-                {activeTab === "wallet" ? (
-                  <div className="space-y-3 flex-1 flex flex-col justify-center">
-                    {connectedWallet ? (
-                      <Button
-                        className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold flex items-center justify-between px-4 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
-                        onPress={handleDisconnect}
-                        isDisabled={loading}
-                      >
-                        {shortenWalletAddress(connectedWallet)}
-                        <Icon icon="mdi:logout" className="text-lg" />
-                      </Button>
-                    ) : (
-                      <>
-                        {blockchains.map((chain) => (
-                          <Button
-                            key={chain.id}
-                            variant="flat"
-                            className={`w-full justify-start gap-2 h-12 rounded-lg transition-all duration-200 font-medium ${
-                              selectedChain === chain.id 
-                                ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white shadow-lg" 
-                                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                            }`}
-                            onPress={() => setSelectedChain(chain.id)}
-                          >
-                            <Icon icon={chain.icon} className="text-xl" />
-                            {chain.name}
-                            {selectedChain === chain.id && <Icon icon="mdi:check" className="ml-auto text-white text-lg" />}
-                          </Button>
-                        ))}
-                        <Button
-                          className="w-full rounded-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 mt-4"
-                          onPress={handleConnect}
-                          isDisabled={loading || !selectedChain}
-                        >
-                          {loading ? "Connecting..." : "Connect Wallet"}
-                        </Button>
-                      </>
-                    )}
+            <ModalBody className="px-2 sm:px-4 py-4">
+              {connectedWallet ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{connectedWalletInfo?.emoji}</span>
+                      <span className="text-white">
+                        {connectedWallet.substring(0, 4)}...{connectedWallet.substring(connectedWallet.length - 4)}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4 sm:space-y-6 mt-4 flex-1 flex flex-col justify-center">
-                    {isSignUp && (
-                      <>
-                        <Input
-                          placeholder="Full Name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          isRequired
-                          className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
-                        />
-                        <Input
-                          placeholder="Username"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          isRequired
-                          className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
-                        />
-                      </>
-                    )}
-                    <Input
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      type="email"
-                      isRequired
-                      className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
-                    />
-                    <Input
-                      placeholder="Password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      isRequired
-                      className="w-full bg-gray-800 text-white placeholder-gray-400 border-gray-700 focus:border-[#B671FF]"
-                    />
+                  <Button
+                    className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg"
+                    onPress={handleDisconnect}
+                  >
+                    Disconnect Wallet
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {blockchains.map((chain) => (
                     <Button
-                      className="w-full rounded-lg mt-4 sm:mt-6 shadow-lg bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white font-semibold hover:shadow-xl transition-all duration-200"
-                      onPress={handleEmailAuth}
-                      isDisabled={loading || (isSignUp && (!name || !username))}
+                      key={chain.id}
+                      className="w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-3 rounded-lg flex items-center justify-between"
+                      onPress={() => handleWalletConnect(chain.id as Wallet)}
                     >
-                      {loading ? "Processing..." : isSignUp ? "Sign Up" : "Sign In"}
+                      <div className="flex items-center gap-3">
+                        <Icon icon={chain.icon} className="text-2xl" />
+                        <span>{chain.name}</span>
+                      </div>
+                      <Icon icon="mdi:chevron-right" className="text-xl" />
                     </Button>
-
-                    {/* Toggle Between Sign In & Sign Up */}
-                    <p className="text-center text-sm text-gray-400 mt-2">
-                      {isSignUp ? "Already have an account? " : "Don't have an account? "}
-                      <button
-                        onClick={() => {
-                          setIsSignUp(!isSignUp);
-                          // Clear form fields when switching modes
-                          setName("");
-                          setUsername("");
-                          setEmail("");
-                          setPassword("");
-                        }}
-                        className="text-[#B671FF] hover:text-[#E282CA] font-medium transition-colors duration-200"
-                      >
-                        {isSignUp ? "Sign In" : "Sign Up"}
-                      </button>
-                    </p>
-
-                    {/* "Continue with Google" Button */}
-                    <Button
-                      className="w-full rounded-lg bg-white text-gray-800 font-medium mt-4 flex items-center justify-center gap-2 hover:bg-gray-100 transition-all duration-200 shadow-lg"
-                      onPress={() => {
-                        localStorage.setItem("redirectAfterAuth", window.location.href);
-                        window.location.href = `${API_URL}/auth/google`;
-                      }}
-                    >
-                      <Icon icon="logos:google-icon" className="text-lg" />
-                      Continue with Google
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {isFromUserProfile && (
-                <div className="text-center text-sm text-gray-400 mt-4">
-                  <p>Connect your wallet to access your profile and start sharing content.</p>
-                  <p className="mt-2">You can also sign in with email after connecting your wallet.</p>
+                  ))}
                 </div>
               )}
             </ModalBody>
