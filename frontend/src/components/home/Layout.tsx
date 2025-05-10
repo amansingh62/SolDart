@@ -24,6 +24,7 @@ import { LanguageSelector } from "@/components/home/LanguageSelector";
 import { useLanguage } from "@/context/LanguageContext";
 import { RecentSearches } from "@/components/home/RecentSearches";
 import { WalletDropdown } from "@/components/wallet/WalletDropdown";
+import api from '@/lib/apiUtils';
 
 const EMOJIS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐙", "🦄", "🐳", "🦋", "🐝", "🦖", "🐢"];
 
@@ -126,6 +127,16 @@ export default function Layout({ children }: LayoutProps) {
     searchUsers(query);
   };
 
+  // Function to check if an address is a token address
+  const isTokenAddress = async (address: string) => {
+    try {
+      const response = await api.get(`/api/solana/token/${address}`);
+      return response.data.success;
+    } catch (error) {
+      return false;
+    }
+  };
+
   // Function to search for users or hashtags
   const searchUsers = async (query?: string, isButtonClick: boolean = false) => {
     let searchTerm = query || searchQuery;
@@ -144,40 +155,56 @@ export default function Layout({ children }: LayoutProps) {
       setIsSearching(true);
       setShowRecentSearches(false);
 
-      // Check if the search term looks like a Solana wallet address
+      // Check if the search term looks like a Solana address
       const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
       
       if (isSolanaAddress) {
+        // First check if it's a token address
+        const isToken = await isTokenAddress(searchTerm);
+        
+        if (isToken) {
+          // If it's a token address, navigate to token details
+          router.push(`/token/${searchTerm}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          setIsSearching(false);
+          return;
+        }
+
+        // If not a token, check if it's a user's wallet
         try {
-          // Search for user by wallet address using the same endpoint as username search
-          const response = await axios.get(`/auth/user/wallet/${searchTerm}`, { withCredentials: true });
+          const response = await api.get(`/auth/user/wallet/${searchTerm}`);
           if (response.data.success && response.data.user) {
-            setSearchResults([{
-              _id: response.data.user._id,
-              username: response.data.user.username,
-              profileImage: response.data.user.profileImage
-            }]);
-            setShowSearchResults(true);
-            saveToRecentSearches(searchTerm);
-            // Navigate to profile page directly
+            // Navigate to user profile
             router.push(`/profile/${response.data.user.username}`);
-          } else if (response.data.success && response.data.users && response.data.users.length > 0) {
-            // If we got users array instead of single user
-            setSearchResults(response.data.users);
-            setShowSearchResults(true);
-            saveToRecentSearches(searchTerm);
-            // Navigate to the first user's profile if there's a match
-            router.push(`/profile/${response.data.users[0].username}`);
-          } else {
-            toast.error('No user found with this wallet address');
+            setSearchQuery('');
             setSearchResults([]);
             setShowSearchResults(false);
+            setSearchOpen(false);
+            saveToRecentSearches(searchTerm);
+          } else {
+            // If no user found, navigate to wallet portfolio
+            router.push(`/wallet/${searchTerm}`);
+            setSearchQuery('');
+            setSearchResults([]);
+            setShowSearchResults(false);
+            setSearchOpen(false);
+            saveToRecentSearches(searchTerm);
           }
           setIsSearching(false);
           return;
         } catch (error) {
           console.error('Error searching by wallet:', error);
-          toast.error('No user found with this wallet address');
+          // If error occurs, assume it's a wallet and navigate to portfolio
+          router.push(`/wallet/${searchTerm}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
           setIsSearching(false);
           return;
         }
@@ -203,7 +230,7 @@ export default function Layout({ children }: LayoutProps) {
 
       // Regular user search
       const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
-      const response = await axios.get(`/messages/search/${termForSearch}`, { withCredentials: true });
+      const response = await api.get(`/messages/search/${termForSearch}`);
       
       if (response.data.success) {
         setSearchResults(response.data.users);
@@ -454,7 +481,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleLogout = async () => {
     try {
-      await axios.post(`/auth/logout`, {}, { withCredentials: true });
+      await api.post('/auth/logout');
       localStorage.removeItem('token');
       setToken(null);
       toast.success("Logged out successfully");
@@ -464,9 +491,9 @@ export default function Layout({ children }: LayoutProps) {
       
       // Reload the page to clear all state
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Logout error:", error);
-      toast.error("Failed to logout");
+      toast.error(error.response?.data?.message || "Failed to logout");
     }
   };
 
@@ -477,21 +504,52 @@ export default function Layout({ children }: LayoutProps) {
   const handleSearchButtonClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     const searchTerm = searchQuery.trim();
-    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+    
+    if (!searchTerm) {
+      return;
+    }
 
+    // Check if it's a Solana address
+    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32-44}$/.test(searchTerm);
     if (isSolanaAddress) {
       try {
-        const response = await axios.get(
-          `/auth/user/wallet/${searchTerm}`,
-          { withCredentials: true }
-        );
+        // First check if it's a token address
+        const isToken = await isTokenAddress(searchTerm);
+        
+        if (isToken) {
+          // If it's a token address, navigate to token details
+          router.push(`/token/${searchTerm}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          return;
+        }
+
+        // If not a token, check if it's a user's wallet
+        const response = await api.get(`/auth/user/wallet/${searchTerm}`);
         if (response.data.success && response.data.user) {
+          // Navigate to user profile
           router.push(`/profile/${response.data.user.username}`);
         } else {
-          toast.error('No user found with this wallet address');
+          // If no user found, navigate to wallet portfolio
+          router.push(`/wallet/${searchTerm}`);
         }
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowSearchResults(false);
+        setSearchOpen(false);
+        saveToRecentSearches(searchTerm);
       } catch (error) {
-        toast.error('No user found with this wallet address');
+        console.error('Error searching by wallet:', error);
+        // If error occurs, assume it's a wallet and navigate to portfolio
+        router.push(`/wallet/${searchTerm}`);
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowSearchResults(false);
+        setSearchOpen(false);
+        saveToRecentSearches(searchTerm);
       }
     } else {
       searchUsers(undefined, true);

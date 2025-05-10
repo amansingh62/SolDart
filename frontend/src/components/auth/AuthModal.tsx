@@ -26,7 +26,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     try {
       const endpoint = isSignUp ? "/auth/signup" : "/auth/login";
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${endpoint}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${endpoint}`,
         { email, password, username },
         { withCredentials: true }
       );

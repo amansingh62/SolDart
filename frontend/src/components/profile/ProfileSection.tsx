@@ -140,7 +140,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   // Initialize socket connections
   useEffect(() => {
     // Setup real-time socket connection
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000");
+    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
     setSocket(socketInstance);
     
     // Listen for new posts
