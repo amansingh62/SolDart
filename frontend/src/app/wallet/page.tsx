@@ -29,7 +29,8 @@ export default function WalletPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [portfolio, setPortfolio] = useState<Token[]>([]);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("FiLqkh9zTQB8xqPZaBA8mwFasFK4Q25RXpEtzyTsVeg3");
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [searchAddress, setSearchAddress] = useState<string>("");
   const [hasFetchedPortfolio, setHasFetchedPortfolio] = useState(false);
 
   // Load portfolio from localStorage on component mount
@@ -48,12 +49,72 @@ export default function WalletPage() {
 
   // Listen for wallet connection changes
   useEffect(() => {
-    // Only fetch if we haven't fetched before
+    const handleWalletChange = () => {
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (storedWalletInfo) {
+        try {
+          const walletInfo = JSON.parse(storedWalletInfo);
+          if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
+            setWalletAddress(walletInfo.data.address);
+            // Reset search address when wallet is connected
+            setSearchAddress("");
+            // Reset hasFetchedPortfolio to trigger a new fetch
+            setHasFetchedPortfolio(false);
+          }
+        } catch (error) {
+          console.error("Error parsing wallet info:", error);
+        }
+      } else {
+        setWalletAddress("");
+        setHasFetchedPortfolio(false);
+      }
+    };
+
+    // Initial check
+    handleWalletChange();
+
+    // Add event listeners
+    window.addEventListener('storage', handleWalletChange);
+    window.addEventListener('walletConnected', handleWalletChange);
+    window.addEventListener('walletDisconnected', () => {
+      setWalletAddress("");
+      setHasFetchedPortfolio(false);
+    });
+
+    return () => {
+      window.removeEventListener('storage', handleWalletChange);
+      window.removeEventListener('walletConnected', handleWalletChange);
+      window.removeEventListener('walletDisconnected', () => {});
+    };
+  }, []);
+
+  // Fetch portfolio when wallet address changes
+  useEffect(() => {
     if (!hasFetchedPortfolio && walletAddress) {
       fetchWalletPortfolio(walletAddress);
       setHasFetchedPortfolio(true);
     }
   }, [walletAddress, hasFetchedPortfolio]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchAddress) return;
+
+    // Validate Solana address format
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchAddress)) {
+      toast.error('Invalid Solana address format', TOAST_CONFIG);
+      return;
+    }
+
+    try {
+      await fetchWalletPortfolio(searchAddress);
+      // Update wallet address to show the searched address
+      setWalletAddress(searchAddress);
+    } catch (error) {
+      console.error('Error searching wallet:', error);
+      toast.error('Failed to fetch wallet portfolio', TOAST_CONFIG);
+    }
+  };
 
   const fetchWalletPortfolio = async (address: string) => {
     if (!address) return;
@@ -138,6 +199,26 @@ export default function WalletPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-white">Wallet</h1>
         </div>
+
+        {/* Search Bar */}
+        <form onSubmit={handleSearch} className="mb-6">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchAddress}
+              onChange={(e) => setSearchAddress(e.target.value)}
+              placeholder="Enter Solana wallet address to search"
+              className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border border-[#2a2a2a] focus:outline-none focus:border-[#B671FF]"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg font-medium hover:opacity-90 transition-opacity"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
         <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6">
           <Icon icon="lucide:wallet" className="text-[#B671FF]" />
           <span className="text-white font-medium">{walletAddress ? walletAddress : "No wallet connected"}</span>
