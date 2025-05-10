@@ -5,7 +5,13 @@ import { Card, Button, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import api from '@/lib/apiUtils';
-import { toast } from 'react-hot-toast';
+import { toast, ToastPosition } from 'react-hot-toast';
+
+// Add toast configuration
+const TOAST_CONFIG = {
+  duration: 1000, // 1 second
+  position: 'top-right' as ToastPosition,
+};
 
 interface Token {
   name: string;
@@ -25,6 +31,20 @@ export default function WalletPage() {
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string>("FiLqkh9zTQB8xqPZaBA8mwFasFK4Q25RXpEtzyTsVeg3");
   const [hasFetchedPortfolio, setHasFetchedPortfolio] = useState(false);
+
+  // Load portfolio from localStorage on component mount
+  useEffect(() => {
+    const savedPortfolio = localStorage.getItem('walletPortfolio');
+    if (savedPortfolio) {
+      try {
+        const parsedPortfolio = JSON.parse(savedPortfolio);
+        setPortfolio(parsedPortfolio);
+      } catch (error) {
+        console.error('Error parsing saved portfolio:', error);
+        localStorage.removeItem('walletPortfolio');
+      }
+    }
+  }, []);
 
   // Listen for wallet connection changes
   useEffect(() => {
@@ -76,15 +96,20 @@ export default function WalletPage() {
         
         console.log('Final processed portfolio:', validPortfolio);
         setPortfolio(validPortfolio);
+        
+        // Save to localStorage
+        localStorage.setItem('walletPortfolio', JSON.stringify(validPortfolio));
       } else {
         console.log('API call failed:', response.data);
         setPortfolio([]);
-        toast.error(response.data.message || 'Failed to fetch wallet portfolio');
+        localStorage.removeItem('walletPortfolio');
+        toast.error(response.data.message || 'Failed to fetch wallet portfolio', TOAST_CONFIG);
       }
     } catch (error) {
       console.error('Error fetching portfolio:', error);
       setPortfolio([]);
-      toast.error('Failed to fetch wallet portfolio');
+      localStorage.removeItem('walletPortfolio');
+      toast.error('Failed to fetch wallet portfolio', TOAST_CONFIG);
     } finally {
       setIsLoadingPortfolio(false);
     }
@@ -121,7 +146,7 @@ export default function WalletPage() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(walletAddress);
-                  toast.success('Wallet address copied to clipboard!');
+                  toast.success('Wallet address copied to clipboard!', TOAST_CONFIG);
                 }}
                 className="text-gray-400 hover:text-[#B671FF] transition-colors"
               >
@@ -176,7 +201,7 @@ export default function WalletPage() {
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(token.address);
-                            toast.success("Address copied!");
+                            toast.success("Address copied!", TOAST_CONFIG);
                           }}
                           className="ml-2 text-gray-400 hover:text-[#B671FF] transition-colors align-middle"
                           title="Copy address"
@@ -205,6 +230,7 @@ export default function WalletPage() {
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
         isFromUserProfile={false}
+        connectedWalletInfo={null}
       />
     </div>
   );

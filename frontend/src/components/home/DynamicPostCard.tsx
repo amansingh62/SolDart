@@ -179,6 +179,25 @@ export function DynamicPostCard({
     if (e) e.stopPropagation();
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to like');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to like post: ${_id}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Like transaction signed:', signature);
+
       // Make a copy of the current likes array
       const isCurrentlyLiked = localLikes.includes(currentUserId || '');
       const updatedLikes = isCurrentlyLiked
@@ -189,7 +208,9 @@ export function DynamicPostCard({
       setLocalLikes(updatedLikes);
 
       // Make the API call directly
-      const response = await api.post(`/posts/like/${_id}`, {});
+      const response = await api.post(`/posts/like/${_id}`, {
+        signature
+      });
 
       // Only call onLike after successful API call
       if (response.data && onLike) {
@@ -215,6 +236,25 @@ export function DynamicPostCard({
     }
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to comment');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to comment on post: ${_id}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Comment transaction signed:', signature);
+
       // Get current user data from props first if available
       let currentUserData = {
         _id: currentUserId || '',
@@ -283,7 +323,7 @@ export function DynamicPostCard({
 
       // Update local state first for immediate UI feedback
       setLocalComments([...localComments, newComment]);
-      setShowComments(true); // Ensure comments are visible after posting
+      setShowComments(true);
 
       if (onComment) {
         // Call the parent callback if available
@@ -291,7 +331,8 @@ export function DynamicPostCard({
       } else {
         // Otherwise, call the API directly
         const response = await api.post(`/posts/comment/${_id}`, {
-          text: commentText
+          text: commentText,
+          signature
         });
 
         // Update the comment with the real ID from the API response
@@ -337,6 +378,25 @@ export function DynamicPostCard({
   // Handle comment like
   const handleCommentLike = async (commentId: string) => {
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to like comments');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to like comment: ${commentId}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Comment like transaction signed:', signature);
+
       // Find the comment
       const commentToLike = localComments.find(c => c._id === commentId);
       if (!commentToLike) return;
@@ -358,10 +418,10 @@ export function DynamicPostCard({
       );
 
       // Call API to update like status
-      // This is a placeholder - you would need to implement the actual API endpoint
-      // await api.post(`/posts/comment/like/${_id}/${commentId}`, {});
+      await api.post(`/posts/comment/like/${_id}/${commentId}`, {
+        signature
+      });
 
-      // For now, just show a toast message
       toast.success(isLiked ? 'Comment unliked' : 'Comment liked');
     } catch (error) {
       console.error('Error liking comment:', error);
