@@ -951,7 +951,7 @@ export function DynamicPostCard({
                 }
               }}
             >
-              <AvatarImage src={user?.profileImage} alt={user?.username || 'User'} />
+              <AvatarImage src={user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}` : undefined} alt={user?.username || 'User'} />
               <AvatarFallback>{user?.username ? user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
             </Avatar>
             {/* Follow button that appears on hover */}
@@ -1281,7 +1281,7 @@ export function DynamicPostCard({
                   }}
                 >
                   <AvatarImage
-                    src={comment.user?.profileImage}
+                    src={comment.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${comment.user.profileImage}` : undefined}
                     alt={comment.user?.username || 'User'}
                   />
                   <AvatarFallback>{comment.user?.username ? comment.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
@@ -1457,7 +1457,7 @@ export function DynamicPostCard({
                             }}
                           >
                             <AvatarImage
-                              src={reply.user?.profileImage}
+                              src={reply.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${reply.user.profileImage}` : undefined}
                               alt={reply.user?.username || 'User'}
                             />
                             <AvatarFallback>{reply.user?.username ? reply.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>

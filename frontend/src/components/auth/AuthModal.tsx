@@ -17,6 +17,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,10 +25,10 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setIsLoading(true);
 
     try {
-      const endpoint = isSignUp ? "/auth/signup" : "/auth/login";
+      const endpoint = isSignUp ? "/auth/register" : "/auth/login";
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${endpoint}`,
-        { email, password, username },
+        { email, password, username, name },
         { withCredentials: true }
       );
 
@@ -67,15 +68,26 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             <ModalBody className="px-2 sm:px-4 py-4">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {isSignUp && (
-                  <Input
-                    type="text"
-                    label=""
-                    placeholder="Choose a username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    className="bg-gray-800 text-white"
-                  />
+                  <>
+                    <Input
+                      type="text"
+                      label=""
+                      placeholder="Enter your full name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="bg-gray-800 text-white"
+                    />
+                    <Input
+                      type="text"
+                      label=""
+                      placeholder="Choose a username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="bg-gray-800 text-white"
+                    />
+                  </>
                 )}
                 <Input
                   type="email"

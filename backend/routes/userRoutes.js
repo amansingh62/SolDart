@@ -71,12 +71,12 @@ router.put('/profile', auth, upload.fields([
 
     // Handle profile image upload
     if (req.files?.profileImage) {
-      user.profileImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${req.files.profileImage[0].filename}`;
+      user.profileImage = `/uploads/profiles/${req.files.profileImage[0].filename}`;
     }
 
     // Handle cover image upload
     if (req.files?.coverImage) {
-      user.coverImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${req.files.coverImage[0].filename}`;
+      user.coverImage = `/uploads/profiles/${req.files.coverImage[0].filename}`;
     }
 
     // Don't reset followers and following counts during profile update

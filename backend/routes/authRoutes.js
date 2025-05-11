@@ -424,13 +424,13 @@ router.put('/profile', auth, upload.fields([
     // Handle profile image upload
     if (req.files && req.files.profileImage) {
       const profileImage = req.files.profileImage[0];
-      user.profileImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${profileImage.filename}`;
+      user.profileImage = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/uploads/profiles/${profileImage.filename}`;
     }
     
     // Handle cover image upload
     if (req.files && req.files.coverImage) {
       const coverImage = req.files.coverImage[0];
-      user.coverImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${coverImage.filename}`;
+      user.coverImage = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/uploads/profiles/${coverImage.filename}`;
     }
     
     await user.save();

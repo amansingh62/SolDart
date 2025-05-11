@@ -8,11 +8,11 @@ const nextConfig = {
     return [
       {
         source: '/api/auth/:path*',
-        destination: 'http://localhost:5000/auth/:path*',
+        destination: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/auth/:path*',
       },
       {
         source: '/auth/:path*',
-        destination: 'http://localhost:5000/auth/:path*',
+        destination: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/auth/:path*',
       }
     ];
   },
