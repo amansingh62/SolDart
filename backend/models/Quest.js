@@ -108,9 +108,9 @@ QuestSchema.pre('save', function(next) {
 
 // After saving, create notification if medal status changed
 QuestSchema.post('save', async function() {
-  // Only proceed if medal changed to a higher level
-  if (this._medalChanged) {
-    try {
+  try {
+    // Only proceed if medal changed to a higher level
+    if (this._medalChanged) {
       // Create a notification for the medal achievement
       const Notification = require('./Notification');
       const medalNotification = new Notification({
@@ -131,9 +131,18 @@ QuestSchema.post('save', async function() {
         mongoose.connection.models.Quest._io.to(`user-${this.user}`).emit('notification', medalNotification);
         console.log(`Medal notification emitted to user ${this.user}`);
       }
-    } catch (error) {
-      console.error('Error creating medal achievement notification:', error);
     }
+    
+    // Ensure quest progress updates are only sent to the specific user
+    // This is critical to prevent quest updates from being broadcast to all users
+    const mongoose = require('mongoose');
+    if (mongoose.connection.models.Quest._io) {
+      // Only emit quest progress to the specific user who owns this quest
+      mongoose.connection.models.Quest._io.to(`user-${this.user}`).emit('questProgress', this);
+      console.log(`Quest progress update emitted only to user ${this.user}`);
+    }
+  } catch (error) {
+    console.error('Error in Quest post-save hook:', error);
   }
 });
 

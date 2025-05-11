@@ -3,10 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../../context/LanguageContext';
-// Remove auth context dependency
-// import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/apiUtils';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
+import { initializeSocket, disconnectSocket } from '@/lib/socketUtils';
 import { toast } from 'react-hot-toast';
 
 // Define interfaces for quest data
@@ -55,36 +54,88 @@ const QuestsPage = () => {
   useEffect(() => {
     console.log('User state changed:', { userId });
 
+    // Import socket utilities
+    const { initializeSocket, disconnectSocket } = require('@/lib/socketUtils');
+
     // If userId exists, fetch quest data and set up socket
     if (userId) {
-      console.log('User ID available, fetching quest data');
+      console.log('User ID available, fetching quest data for user:', userId);
       fetchQuestData();
 
-      // Connect to socket server for real-time updates
-      const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+      // Clean up any existing socket connection before creating a new one
+      if (socket) {
+        console.log('Cleaning up existing socket connection before creating a new one');
+        if (socket.connected) {
+          socket.emit('unsubscribeFromQuestUpdates', userId);
+          socket.off('questProgress');
+        }
+        socket.disconnect();
+        setSocket(null);
+      }
+
+      // Initialize socket connection using the utility function
+      const socketInstance = initializeSocket();
       setSocket(socketInstance);
 
-      // Subscribe to quest updates
-      socketInstance.emit('subscribeToQuestUpdates', userId);
+      // Subscribe to quest updates after successful connection
+      if (socketInstance.connected) {
+        socketInstance.emit('subscribeToQuestUpdates', userId);
+        console.log('Subscribed to quest updates for user:', userId);
+      } else {
+        // If not connected yet, subscribe when connection is established
+        socketInstance.on('connect', () => {
+          console.log('Socket connected successfully for quests');
+          socketInstance.emit('subscribeToQuestUpdates', userId);
+          console.log('Subscribed to quest updates for user:', userId);
+        });
+      }
+
+      // Listen for connection errors
+      socketInstance.on('connect_error', (error: Error) => {
+        console.error('Socket connection error:', error);
+        toast.error('Connection error. Trying to reconnect...');
+      });
 
       // Listen for quest progress updates
-      socketInstance.on('questProgress', (updatedQuest) => {
+      socketInstance.on('questProgress', (updatedQuest: QuestData) => {
         console.log('Quest progress updated:', updatedQuest);
-        setQuestData(updatedQuest);
-        toast.success('Quest progress updated!');
+        
+        // Only update quest data if it belongs to the current user
+        if (updatedQuest.user === userId) {
+          // Log specific point values for debugging
+          console.log(`Updated points - Total: ${updatedQuest.totalPoints}, Posts: ${updatedQuest.quests.posts.totalPoints}, Comments: ${updatedQuest.quests.comments.totalPoints}, Likes: ${updatedQuest.quests.likes.totalPoints}`);
+          setQuestData(updatedQuest);
+          toast.success('Quest progress updated!');
+        } else {
+          console.log(`Ignoring quest update for different user: ${updatedQuest.user}`);
+        }
       });
 
       // Cleanup on unmount
       return () => {
-        console.log('Cleaning up socket connection');
-        socketInstance.disconnect();
+        console.log('Cleaning up socket connection for quests');
+        // Unsubscribe before disconnecting
+        if (socketInstance.connected) {
+          socketInstance.emit('unsubscribeFromQuestUpdates', userId);
+          socketInstance.off('questProgress');
+          socketInstance.off('connect');
+          socketInstance.off('connect_error');
+        }
+        setSocket(null);
       };
     } else {
       console.log('No user ID available, cannot fetch quest data');
+      // Clean up any existing socket if userId is not available
+      if (socket) {
+        console.log('Cleaning up socket connection as userId is not available');
+        if (socket.connected) {
+          socket.off('questProgress');
+        }
+        socket.disconnect();
+        setSocket(null);
+      }
     }
   }, [userId]);
-
-
 
   // Fetch quest data from API using non-authenticated endpoint
   const fetchQuestData = async () => {
@@ -98,13 +149,26 @@ const QuestsPage = () => {
 
       // Always use non-authenticated endpoint with userId
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth?userId=${userId}`, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       }).then(res => res.json());
 
       if (response.success) {
         const questData = response.quest;
         console.log('Quest data fetched successfully:', questData);
-        setQuestData(questData);
+        
+        // Verify that the quest data belongs to the current user
+        if (questData.user === userId) {
+          // Log specific point values for debugging
+          console.log(`Points breakdown - Total: ${questData.totalPoints}, Posts: ${questData.quests.posts.totalPoints}, Comments: ${questData.quests.comments.totalPoints}, Likes: ${questData.quests.likes.totalPoints}`);
+          setQuestData(questData);
+        } else {
+          console.error(`Received quest data for wrong user. Expected: ${userId}, Got: ${questData.user}`);
+          toast.error('Received incorrect quest data');
+        }
       } else {
         console.warn('API returned success:false when fetching quests');
         toast.error('Failed to load quest data');
@@ -130,7 +194,9 @@ const QuestsPage = () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           userId: userId,
@@ -139,9 +205,13 @@ const QuestsPage = () => {
       }).then(res => res.json());
 
       if (response.success) {
+        console.log('Quest progress reset successfully:', response.quest);
+        // Log specific point values after reset for debugging
+        console.log(`Points after reset - Total: ${response.quest.totalPoints}, Posts: ${response.quest.quests.posts.totalPoints}, Comments: ${response.quest.quests.comments.totalPoints}, Likes: ${response.quest.quests.likes.totalPoints}`);
         setQuestData(response.quest);
         toast.success('Quest progress reset!');
       } else {
+        console.error('Failed to reset quest progress:', response);
         toast.error('Failed to reset quest progress');
       }
     } catch (error) {

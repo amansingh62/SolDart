@@ -200,7 +200,7 @@ export function DynamicPostCard({
       // Track quest progress for like action using non-authenticated endpoint
       if (!isCurrentlyLiked && currentUserId) {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+          const questResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -210,10 +210,17 @@ export function DynamicPostCard({
               activityType: 'like'
             })
           });
+          
+          const questData = await questResponse.json();
+          if (questData.success) {
+            console.log('Quest progress updated successfully for like:', questData.quest);
+          }
         } catch (questError) {
           console.error('Error tracking quest progress for like:', questError);
           // Continue execution even if quest tracking fails
         }
+      } else if (!isCurrentlyLiked) {
+        console.warn('No userId available for quest tracking');
       }
     } catch (error) {
       // Revert local state if API call fails
@@ -351,7 +358,7 @@ export function DynamicPostCard({
       // Track quest progress for comment action using non-authenticated endpoint
       if (currentUserId) {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+          const questResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -361,10 +368,17 @@ export function DynamicPostCard({
               activityType: 'comment'
             })
           });
+          
+          const questData = await questResponse.json();
+          if (questData.success) {
+            console.log('Quest progress updated successfully for comment:', questData.quest);
+          }
         } catch (questError) {
           console.error('Error tracking quest progress for comment:', questError);
           // Continue execution even if quest tracking fails
         }
+      } else {
+        console.warn('No userId available for quest tracking');
       }
     } catch (error) {
       console.error('Error adding comment:', error);

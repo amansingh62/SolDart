@@ -391,19 +391,59 @@ function setupQuestsWebSocket(io) {
     socket.on('subscribeToQuestUpdates', async (userId) => {
       console.log(`Client ${socket.id} subscribed to quest updates for user ${userId}`);
       questClients.add(socket.id);
+      
+      // Store the userId in the socket object for reference
+      socket.userId = userId;
+      
+      // Leave any previous user rooms this socket might be in
+      if (socket.rooms) {
+        for (const room of Object.keys(socket.rooms)) {
+          if (room.startsWith('user-') && room !== `user-${userId}`) {
+            socket.leave(room);
+            console.log(`Client ${socket.id} left previous room ${room}`);
+          }
+        }
+      }
 
       // Add to user-specific room for easier broadcasting
       socket.join(`user-${userId}`);
+      console.log(`Client ${socket.id} joined room for user ${userId}`);
 
       // Send immediate update to the newly subscribed client
       try {
         const quest = await Quest.findOne({ user: userId });
         if (quest) {
+          // Only emit quest progress to the specific user who owns the quest data
           socket.emit('questProgress', quest);
+          console.log(`Sent initial quest data to user ${userId}`);
         }
       } catch (error) {
         console.error(`Error sending immediate quest update to client ${socket.id}:`, error);
       }
+    });
+    
+    // Listen for unsubscribe requests
+    socket.on('unsubscribeFromQuestUpdates', (userId) => {
+      console.log(`Client ${socket.id} unsubscribed from quest updates for user ${userId}`);
+      
+      // Leave the user-specific room
+      socket.leave(`user-${userId}`);
+      console.log(`Client ${socket.id} left room for user ${userId}`);
+      
+      // Remove from tracking set
+      questClients.delete(socket.id);
+    });
+
+    // Listen for unsubscribe requests
+    socket.on('unsubscribeFromQuestUpdates', (userId) => {
+      console.log(`Client ${socket.id} unsubscribed from quest updates for user ${userId}`);
+      
+      // Leave the user-specific room
+      socket.leave(`user-${userId}`);
+      console.log(`Client ${socket.id} left room for user ${userId}`);
+      
+      // Remove from tracking set
+      questClients.delete(socket.id);
     });
 
     // Handle disconnections

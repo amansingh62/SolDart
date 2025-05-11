@@ -229,7 +229,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
         try {
           const userId = localStorage.getItem('userId');
           if (userId) {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
+            const questResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -239,6 +239,13 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
                 activityType: 'post'
               })
             });
+            
+            const questData = await questResponse.json();
+            if (questData.success) {
+              console.log('Quest progress updated successfully:', questData.quest);
+            }
+          } else {
+            console.warn('No userId found in localStorage for quest tracking');
           }
         } catch (questError) {
           console.error('Error tracking quest progress for post:', questError);

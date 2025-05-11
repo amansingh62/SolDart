@@ -177,6 +177,9 @@ async function trackUserActivity(userId, activityType, io) {
 
       // Emit socket event for real-time updates
       if (io) {
+        // Ensure we're only emitting to the specific user who performed the action
+        // This is critical to prevent quest updates from being broadcast to all users
+        console.log(`Emitting quest progress update ONLY to user ${userId}`);
         io.to(`user-${userId}`).emit('questProgress', quest);
       }
     }
