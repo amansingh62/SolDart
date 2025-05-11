@@ -55,18 +55,22 @@ export default function WalletPage() {
         try {
           const walletInfo = JSON.parse(storedWalletInfo);
           if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
-            setWalletAddress(walletInfo.data.address);
-            // Reset search address when wallet is connected
-            setSearchAddress("");
-            // Reset hasFetchedPortfolio to trigger a new fetch
-            setHasFetchedPortfolio(false);
+            // Only set wallet address if no search address is present
+            if (!searchAddress) {
+              setWalletAddress(walletInfo.data.address);
+              // Reset hasFetchedPortfolio to trigger a new fetch
+              setHasFetchedPortfolio(false);
+            }
           }
         } catch (error) {
           console.error("Error parsing wallet info:", error);
         }
       } else {
-        setWalletAddress("");
-        setHasFetchedPortfolio(false);
+        // Only reset wallet address if no search address is present
+        if (!searchAddress) {
+          setWalletAddress("");
+          setHasFetchedPortfolio(false);
+        }
       }
     };
 
@@ -77,8 +81,11 @@ export default function WalletPage() {
     window.addEventListener('storage', handleWalletChange);
     window.addEventListener('walletConnected', handleWalletChange);
     window.addEventListener('walletDisconnected', () => {
-      setWalletAddress("");
-      setHasFetchedPortfolio(false);
+      // Only reset wallet address if no search address is present
+      if (!searchAddress) {
+        setWalletAddress("");
+        setHasFetchedPortfolio(false);
+      }
     });
 
     return () => {
@@ -86,7 +93,7 @@ export default function WalletPage() {
       window.removeEventListener('walletConnected', handleWalletChange);
       window.removeEventListener('walletDisconnected', () => {});
     };
-  }, []);
+  }, [searchAddress]); // Add searchAddress to dependency array
 
   // Fetch portfolio when wallet address changes
   useEffect(() => {

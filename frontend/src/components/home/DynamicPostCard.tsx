@@ -462,6 +462,25 @@ export function DynamicPostCard({
     if (!replyText.trim() || !replyingTo) return;
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to reply');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to reply to comment: ${replyingTo}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Reply transaction signed:', signature);
+
       // Get current user data similar to comment submission
       let currentUserData = {
         _id: currentUserId || '',
@@ -539,9 +558,12 @@ export function DynamicPostCard({
       setReplyingTo(null);
       setReplyText('');
 
-      // Call API to save reply
+      // Call API to save reply with signature
       try {
-        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, { text: replyText });
+        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, { 
+          text: replyText,
+          signature 
+        });
 
         // If the API call was successful, update the local state with the response data
         if (response.data && response.data.success) {
@@ -567,6 +589,7 @@ export function DynamicPostCard({
       } catch (apiError) {
         console.error('Error saving reply to database:', apiError);
         // Keep the local state as is, since we've already updated it for immediate feedback
+        toast.error('Failed to save reply');
       }
 
       toast.success('Reply added');
