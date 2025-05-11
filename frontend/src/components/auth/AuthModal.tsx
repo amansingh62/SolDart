@@ -32,15 +32,24 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         { withCredentials: true }
       );
 
-      if (response.data.success) {
-        toast.success(isSignUp ? "Account created successfully!" : "Logged in successfully!");
+      if (response.data.success || response.data.statusCode === 201) {
+        toast.success(isSignUp ? "Account created successfully! Welcome to SolEcho!" : "Logged in successfully!");
+        
+        setEmail("");
+        setPassword("");
+        setUsername("");
+        setName("");
+        
         onSuccess({
-          username: response.data.user?.username || response.data.username,
-          email: response.data.user?.email || response.data.email,
-          emoji: response.data.user?.emoji || response.data.emoji
+          username: response.data.user?.username || response.data.data?.user?.username,
+          email: response.data.user?.email || response.data.data?.user?.email,
+          emoji: response.data.user?.emoji || response.data.data?.user?.emoji
         });
         onClose();
-        window.location.reload();
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Something went wrong");
