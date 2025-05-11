@@ -162,29 +162,14 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
   // Submit the post
   const handleSubmit = async () => {
-    // Validate form
     if (!content.trim() && mediaFiles.length === 0 && !showPollForm) {
-      toast.error('Please add some content, media, or a poll');
+      toast.error('Please add some content to your post');
       return;
     }
 
-    // Check character count
-    if (charCount > MAX_CHARS) {
-      toast.error(`Dart content is limited to ${MAX_CHARS} characters`);
+    if (showPollForm && (!pollQuestion.trim() || pollOptions.some(opt => !opt.trim()))) {
+      toast.error('Please fill in all poll fields');
       return;
-    }
-
-    if (showPollForm) {
-      if (!pollQuestion.trim()) {
-        toast.error('Please add a poll question');
-        return;
-      }
-
-      const validOptions = pollOptions.filter(opt => opt.trim() !== '');
-      if (validOptions.length < 2) {
-        toast.error('Please add at least 2 poll options');
-        return;
-      }
     }
 
     setIsSubmitting(true);
@@ -198,9 +183,38 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
         return;
       }
 
+      // Get the connected wallet address
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const connectedWalletAddress = walletInfo.data?.address;
+
+      // Get the user's registered wallet address
+      try {
+        const userResponse = await api.get('/auth/user');
+        if (!userResponse.data || !userResponse.data.wallets || userResponse.data.wallets.length === 0) {
+          toast.error('Please connect your registered wallet to post');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Check if the connected wallet matches any of the user's registered wallets
+        const isRegisteredWallet = userResponse.data.wallets.some(
+          (wallet: any) => wallet.address === connectedWalletAddress
+        );
+
+        if (!isRegisteredWallet) {
+          toast.error('Please connect with your registered wallet to post');
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        toast.error('Failed to verify wallet ownership');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Sign a non-gas transaction message
       const message = `Sign this message to create a post: ${content}`;
-      const walletInfo = JSON.parse(storedWalletInfo);
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
