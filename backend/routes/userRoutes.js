@@ -352,4 +352,39 @@ router.get('/top-followers', async (req, res) => {
   }
 });
 
+// Search user by wallet address
+router.get('/wallet/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+
+    // Find user with the given wallet address
+    const user = await User.findOne({ walletAddress: address })
+      .select('_id username profileImage name bio');
+
+    if (user) {
+      res.json({
+        success: true,
+        user: {
+          _id: user._id,
+          username: user.username,
+          profileImage: user.profileImage,
+          name: user.name,
+          bio: user.bio
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No user found with this wallet address'
+      });
+    }
+  } catch (error) {
+    console.error('Error searching user by wallet:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router;

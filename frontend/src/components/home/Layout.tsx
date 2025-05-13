@@ -176,7 +176,7 @@ export default function Layout({ children }: LayoutProps) {
 
         // If not a token, check if it's a user's wallet
         try {
-          const response = await api.get(`/auth/user/wallet/${searchTerm}`);
+          const response = await api.get(`/users/wallet/${searchTerm}`);
           if (response.data.success && response.data.user) {
             // Navigate to user profile
             router.push(`/profile/${response.data.user.username}`);
@@ -185,28 +185,11 @@ export default function Layout({ children }: LayoutProps) {
             setShowSearchResults(false);
             setSearchOpen(false);
             saveToRecentSearches(searchTerm);
-          } else {
-            // If no user found, navigate to wallet portfolio
-            router.push(`/wallet/${searchTerm}`);
-            setSearchQuery('');
-            setSearchResults([]);
-            setShowSearchResults(false);
-            setSearchOpen(false);
-            saveToRecentSearches(searchTerm);
+            setIsSearching(false);
+            return;
           }
-          setIsSearching(false);
-          return;
         } catch (error) {
           console.error('Error searching by wallet:', error);
-          // If error occurs, assume it's a wallet and navigate to portfolio
-          router.push(`/wallet/${searchTerm}`);
-          setSearchQuery('');
-          setSearchResults([]);
-          setShowSearchResults(false);
-          setSearchOpen(false);
-          saveToRecentSearches(searchTerm);
-          setIsSearching(false);
-          return;
         }
       }
 
@@ -230,7 +213,7 @@ export default function Layout({ children }: LayoutProps) {
 
       // Regular user search
       const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
-      const response = await api.get(`/messages/search/${termForSearch}`);
+      const response = await api.get(`/users/search/${termForSearch}`);
       
       if (response.data.success) {
         setSearchResults(response.data.users);
@@ -510,7 +493,7 @@ export default function Layout({ children }: LayoutProps) {
     }
 
     // Check if it's a Solana address
-    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32-44}$/.test(searchTerm);
+    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
     if (isSolanaAddress) {
       try {
         // First check if it's a token address
@@ -528,31 +511,53 @@ export default function Layout({ children }: LayoutProps) {
         }
 
         // If not a token, check if it's a user's wallet
-        const response = await api.get(`/auth/user/wallet/${searchTerm}`);
+        const response = await api.get(`/users/wallet/${searchTerm}`);
         if (response.data.success && response.data.user) {
           // Navigate to user profile
           router.push(`/profile/${response.data.user.username}`);
-        } else {
-          // If no user found, navigate to wallet portfolio
-          router.push(`/wallet/${searchTerm}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          return;
         }
-        setSearchQuery('');
-        setSearchResults([]);
-        setShowSearchResults(false);
-        setSearchOpen(false);
-        saveToRecentSearches(searchTerm);
       } catch (error) {
         console.error('Error searching by wallet:', error);
-        // If error occurs, assume it's a wallet and navigate to portfolio
-        router.push(`/wallet/${searchTerm}`);
-        setSearchQuery('');
+      }
+    }
+
+    // If it's a hashtag
+    if (searchTerm.startsWith('#')) {
+      if (searchTerm.length > 1) {
+        saveToRecentSearches(searchTerm);
         setSearchResults([]);
         setShowSearchResults(false);
         setSearchOpen(false);
-        saveToRecentSearches(searchTerm);
+        setSearchQuery('');
+        const hashtag = encodeURIComponent(searchTerm);
+        router.push(`/?hashtag=${hashtag}`);
+        return;
       }
-    } else {
-      searchUsers(undefined, true);
+    }
+
+    // Regular user search
+    const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+    try {
+      const response = await api.get(`/users/search/${termForSearch}`);
+      if (response.data.success) {
+        setSearchResults(response.data.users);
+        setShowSearchResults(true);
+        saveToRecentSearches(searchTerm);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+      toast.error(t('errors.failedSearchUsers'));
+      setSearchResults([]);
+      setShowSearchResults(false);
     }
   };
 
