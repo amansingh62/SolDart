@@ -470,19 +470,24 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       });
   
       if (response.data.success) {
-        // Update local state immediately
+        // Update local state with the response data
+        const updatedUser = response.data.user;
         setProfileData((prev) => ({
           ...prev,
-          ...newData,
+          ...updatedUser,
           socialLinks: {
             ...prev.socialLinks,
-            ...(newData.socialLinks || {}),
+            ...(updatedUser.socialLinks || {}),
           },
         }));
+
+        // Close the modal
+        setIsEditModalOpen(false);
+        
         toast.success("Profile updated successfully");
-  
-        // Fetch the latest data from the server to ensure it's properly saved
-        await fetchProfileData();
+        
+        // Reload the page to ensure all changes are reflected
+        window.location.reload();
       }
     } catch (error) {
       console.error("Error updating profile:", error);

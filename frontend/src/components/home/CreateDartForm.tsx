@@ -8,6 +8,7 @@ import { Icon } from "@iconify/react";
 import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { verifyRegisteredWallet } from '@/lib/walletUtils';
 
 interface CreateDartFormProps {
   onPostCreated?: () => void;
@@ -162,13 +163,8 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
   // Submit the post
   const handleSubmit = async () => {
-    if (!content.trim() && mediaFiles.length === 0 && !showPollForm) {
-      toast.error('Please add some content to your post');
-      return;
-    }
-
-    if (showPollForm && (!pollQuestion.trim() || pollOptions.some(opt => !opt.trim()))) {
-      toast.error('Please fill in all poll fields');
+    if (!content.trim()) {
+      toast.error('Please enter some content');
       return;
     }
 
@@ -183,32 +179,10 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
         return;
       }
 
-      // Get the connected wallet address
-      const walletInfo = JSON.parse(storedWalletInfo);
-      const connectedWalletAddress = walletInfo.data?.address;
-
-      // Get the user's registered wallet address
-      try {
-        const userResponse = await api.get('/auth/user');
-        if (!userResponse.data || !userResponse.data.wallets || userResponse.data.wallets.length === 0) {
-          toast.error('Please connect your registered wallet to post');
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Check if the connected wallet matches any of the user's registered wallets
-        const isRegisteredWallet = userResponse.data.wallets.some(
-          (wallet: any) => wallet.address === connectedWalletAddress
-        );
-
-        if (!isRegisteredWallet) {
-          toast.error('Please connect with your registered wallet to post');
-          setIsSubmitting(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        toast.error('Failed to verify wallet ownership');
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to post');
         setIsSubmitting(false);
         return;
       }
@@ -227,6 +201,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
       const formData = new FormData();
       formData.append('content', content);
+      formData.append('signature', signature);
 
       // Add media files
       mediaFiles.forEach(file => {

@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { verifyRegisteredWallet } from '@/lib/walletUtils';
 
 interface PollOption {
   text: string;
@@ -186,6 +187,13 @@ export function DynamicPostCard({
         return;
       }
 
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to like');
+        return;
+      }
+
       // Sign a non-gas transaction message
       const message = `Sign this message to like post: ${_id}`;
       const walletInfo = JSON.parse(storedWalletInfo);
@@ -240,6 +248,13 @@ export function DynamicPostCard({
       const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
       if (!storedWalletInfo) {
         toast.error('Please connect your wallet to comment');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to comment');
         return;
       }
 
@@ -385,6 +400,13 @@ export function DynamicPostCard({
         return;
       }
 
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to like comments');
+        return;
+      }
+
       // Sign a non-gas transaction message
       const message = `Sign this message to like comment: ${commentId}`;
       const walletInfo = JSON.parse(storedWalletInfo);
@@ -466,6 +488,13 @@ export function DynamicPostCard({
       const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
       if (!storedWalletInfo) {
         toast.error('Please connect your wallet to reply');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to reply');
         return;
       }
 

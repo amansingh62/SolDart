@@ -170,6 +170,41 @@ export function shortenWalletAddress(address: string): string {
   return `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;
 }
 
+/**
+ * Verify if the connected wallet is registered for the user
+ * @returns {Promise<boolean>} True if the wallet is registered, false otherwise
+ */
+export const verifyRegisteredWallet = async (): Promise<boolean> => {
+  try {
+    // Get the connected wallet info
+    const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+    if (!storedWalletInfo) {
+      return false;
+    }
+
+    const walletInfo = JSON.parse(storedWalletInfo);
+    const connectedWalletAddress = walletInfo.data?.address;
+
+    // Get the user's registered wallets
+    const userResponse = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`,
+      { withCredentials: true }
+    );
+
+    if (!userResponse.data || !userResponse.data.wallets || userResponse.data.wallets.length === 0) {
+      return false;
+    }
+
+    // Check if the connected wallet matches any of the user's registered wallets
+    return userResponse.data.wallets.some(
+      (wallet: any) => wallet.address === connectedWalletAddress
+    );
+  } catch (error) {
+    console.error('Error verifying registered wallet:', error);
+    return false;
+  }
+};
+
 // Add TypeScript declarations for wallet providers
 declare global {
   interface Window {
