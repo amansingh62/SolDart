@@ -48,6 +48,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (response.data) {
           console.log("AuthContext: User is authenticated:", response.data);
           setUser(response.data);
+          
+          // Store userId in localStorage for components that need it
+          if (response.data._id) {
+            localStorage.setItem('userId', response.data._id);
+          }
         } else {
           console.log("AuthContext: No user data returned from /auth/me");
         }
@@ -55,6 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('Authentication check failed:', error);
         // Clear any potentially invalid auth state
         localStorage.removeItem('token');
+        localStorage.removeItem('userId');
         setUser(null);
       } finally {
         setLoading(false);
@@ -70,8 +76,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
 
-      // Store token in localStorage
+      // Store token and userId in localStorage
       localStorage.setItem('token', token);
+      localStorage.setItem('userId', user._id);
 
       // Update auth state
       console.log("AuthContext: Login successful, updating user state:", user);
@@ -95,8 +102,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await api.post('/auth/register', userData);
       const { token, user } = response.data;
 
-      // Store token in localStorage
+      // Store token and userId in localStorage
       localStorage.setItem('token', token);
+      localStorage.setItem('userId', user._id);
 
       // Update auth state
       console.log("AuthContext: Registration successful, updating user state:", user);
@@ -116,8 +124,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     console.log("AuthContext: Logging out");
-    // Remove token from localStorage
+    // Remove token and userId from localStorage
     localStorage.removeItem('token');
+    localStorage.removeItem('userId');
 
     // Update auth state
     setUser(null);

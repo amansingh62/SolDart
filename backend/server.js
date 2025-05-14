@@ -12,10 +12,10 @@ const { router: cryptoRoutes, setupCryptoWebSocket } = require('./routes/cryptoR
 const { router: solanaRoutes, setupSolanaWebSocket } = require('./routes/solanaRoutes');
 const { router: graduatedTokensRoutes, setupGraduatedTokensWebSocket } = require('./routes/graduatedTokensRoutes');
 const { router: fearGreedRoutes, setupFearGreedWebSocket } = require('./routes/fearGreedRoutes');
-const { router: questsRoutes, setupQuestsWebSocket } = require('./routes/questsRoutes');
 const authRoutes = require("./routes/authRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const postRoutes = require("./routes/postRoutes");
+const questRoutes = require('./routes/questRoutes');
 const path = require('path');
 const connectDB = require("./config/db"); // Adjust path if needed
 const User = require('./models/User'); // For tracking online users
@@ -60,7 +60,7 @@ app.use("/api/crypto", cryptoRoutes);
 app.use("/api/solana", solanaRoutes);
 app.use("/api/graduated-tokens", graduatedTokensRoutes);
 app.use("/api/fear-greed", fearGreedRoutes);
-app.use("/api/quests", questsRoutes);
+app.use("/api/quests", questRoutes);
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -87,12 +87,12 @@ app.get(
   async (req, res) => {
     try {
       const user = req.user;
-      
+
       // Get default wallet if exists
-      const defaultWallet = user.wallets && user.wallets.length > 0 
+      const defaultWallet = user.wallets && user.wallets.length > 0
         ? user.wallets.find(w => w.isDefault) || user.wallets[0]
         : null;
-      
+
       // Generate JWT Token
       const token = jwt.sign(
         { id: user._id, username: user.username },
@@ -108,10 +108,10 @@ app.get(
       });
 
       // Redirect with wallet info if available
-      const redirectUrl = defaultWallet 
-        ? `${process.env.FRONTEND_URL || "http://localhost:3000"}/?walletConnected=true&walletType=${defaultWallet.type}&walletAddress=${defaultWallet.address}` 
+      const redirectUrl = defaultWallet
+        ? `${process.env.FRONTEND_URL || "http://localhost:3000"}/?walletConnected=true&walletType=${defaultWallet.type}&walletAddress=${defaultWallet.address}`
         : `${process.env.FRONTEND_URL || "http://localhost:3000"}/`;
-      
+
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("Google Auth Error:", error);
@@ -127,14 +127,14 @@ server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 io.on('connection', (socket) => {
   console.log('New client connected');
   let currentUserId = null;
-  
+
   // Handle user authentication for personalized notifications
   socket.on('authenticate', async (userId) => {
-    console.log(`User ${userId} authenticated with socket`); 
+    console.log(`User ${userId} authenticated with socket`);
     currentUserId = userId;
     socket.join(`user-${userId}`); // Join a room specific to this user
     socket.join('global-chat'); // Join global chat room
-    
+
     // Update user's online status
     try {
       await User.findByIdAndUpdate(userId, { isOnline: true, lastActive: new Date() });
@@ -144,7 +144,7 @@ io.on('connection', (socket) => {
       console.error('Error updating user online status:', error);
     }
   });
-  
+
   // Listen for new notification events
   socket.on('newNotification', (notification) => {
     // Emit to specific user's room
@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
       io.to(`user-${notification.recipient}`).emit('notification', notification);
     }
   });
-  
+
   // Listen for new message events
   socket.on('newMessage', (message) => {
     // Emit to specific user's room
@@ -160,7 +160,7 @@ io.on('connection', (socket) => {
       io.to(`user-${message.recipient}`).emit('message', message);
     }
   });
-  
+
   // Listen for typing indicator events
   socket.on('typing', (data) => {
     if (data.recipientId) {
@@ -170,7 +170,7 @@ io.on('connection', (socket) => {
       });
     }
   });
-  
+
   // Live chat typing indicator
   socket.on('liveChatTyping', (data) => {
     // Broadcast to everyone except sender
@@ -180,16 +180,16 @@ io.on('connection', (socket) => {
       isTyping: data.isTyping
     });
   });
-  
+
   socket.on('disconnect', async () => {
     console.log('Client disconnected');
-    
+
     // Update user's online status if they were authenticated
     if (currentUserId) {
       try {
-        await User.findByIdAndUpdate(currentUserId, { 
-          isOnline: false, 
-          lastActive: new Date() 
+        await User.findByIdAndUpdate(currentUserId, {
+          isOnline: false,
+          lastActive: new Date()
         });
         // Broadcast to all clients that this user is offline
         io.emit('userStatusChange', { userId: currentUserId, isOnline: false });
@@ -212,27 +212,24 @@ setupGraduatedTokensWebSocket(io);
 // Setup WebSocket handlers for Fear & Greed Index updates
 setupFearGreedWebSocket(io);
 
-// Setup WebSocket handlers for quest updates
-setupQuestsWebSocket(io);
-
 // Migration for savedPosts structure (run once on server start)
 const migrateSavedPosts = async () => {
   try {
     console.log('Starting savedPosts migration...');
     const User = require('./models/User');
-    
+
     // Find all users with the old savedPosts structure (array of ObjectIds)
     const users = await User.find({ 'savedPosts.0': { $exists: true, $type: 'objectId' } });
-    
+
     console.log(`Found ${users.length} users with old savedPosts structure`);
-    
+
     for (const user of users) {
       // Convert old format to new format with timestamps
       const oldSavedPosts = [...user.savedPosts]; // Create a copy of the old array
-      
+
       // Clear the array and add new format objects
       user.savedPosts = [];
-      
+
       // Add each post with current timestamp (newest posts will have same timestamp)
       // In a production environment, you might want to add some time variation
       oldSavedPosts.forEach(postId => {
@@ -241,10 +238,10 @@ const migrateSavedPosts = async () => {
           savedAt: new Date()
         });
       });
-      
+
       await user.save();
     }
-    
+
     console.log('SavedPosts migration completed successfully');
   } catch (error) {
     console.error('Error during savedPosts migration:', error);

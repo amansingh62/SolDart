@@ -8,11 +8,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-const { trackUserActivity } = require('../utils/questTracker');
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, '../uploads');
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
@@ -20,16 +19,16 @@ const storage = multer.diskStorage({
     }
     cb(null, uploadDir);
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
 
 const fileFilter = (req, file, cb) => {
   // Accept images, videos, and gifs
-  if (file.mimetype.startsWith('image/') || 
-      file.mimetype.startsWith('video/') || 
-      file.mimetype === 'image/gif') {
+  if (file.mimetype.startsWith('image/') ||
+    file.mimetype.startsWith('video/') ||
+    file.mimetype === 'image/gif') {
     cb(null, true);
   } else {
     cb(new Error('Unsupported file type'), false);
@@ -54,10 +53,10 @@ const getFileType = (mimetype) => {
 const extractHashtags = (content) => {
   if (!content) return [];
   const hashtags = [];
-  
+
   // Log the content for debugging
   console.log('Extracting hashtags from content:', content);
-  
+
   // Handle case where content is just a single hashtag without spaces
   if (content.startsWith('#') && content.trim().indexOf(' ') === -1) {
     const singleHashtag = content.trim().replace(/[^\w#]/g, '');
@@ -66,10 +65,10 @@ const extractHashtags = (content) => {
       return [singleHashtag];
     }
   }
-  
+
   // Handle normal case with multiple words
   const words = content.split(/\s+/);
-  
+
   words.forEach(word => {
     if (word.startsWith('#') && word.length > 1) {
       // Remove any punctuation at the end of the hashtag
@@ -79,7 +78,7 @@ const extractHashtags = (content) => {
       }
     }
   });
-  
+
   console.log('Extracted hashtags:', hashtags);
   return [...new Set(hashtags)]; // Remove duplicates
 };
@@ -88,16 +87,24 @@ const extractHashtags = (content) => {
 router.post('/', auth, upload.array('media', 4), async (req, res) => {
   try {
     const { content, pollQuestion, pollOptions } = req.body;
-    
+
     // Extract hashtags from content
     const hashtags = extractHashtags(content);
-    
+
     // Create post object
     const postData = {
       user: req.user.id,
       content: content || '',
       hashtags: hashtags
     };
+
+    // Track quest activity for post creation
+    try {
+      await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/quests/track-post/${req.user.id}`);
+    } catch (questError) {
+      console.error('Failed to track quest activity for post:', questError);
+      // Continue with post creation even if quest tracking fails
+    }
 
     // Add media if uploaded
     if (req.files && req.files.length > 0) {
@@ -108,7 +115,7 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
         } else if (file.mimetype === 'image/gif') {
           type = 'gif';
         }
-        
+
         return {
           type,
           url: `/uploads/${file.filename}`
@@ -127,27 +134,17 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
       }
     }
 
-    const post = new Post(postData);
-    await post.save();
-    
+    const post = await Post.create(postData);
+
     // Increment user's dart count
     await User.findByIdAndUpdate(req.user.id, { $inc: { darts: 1 } });
-
-    // Track quest progress for post creation
-    try {
-      // Use the questTracker utility to update post quest progress
-      await trackUserActivity(req.user.id, 'post', req.app.get('io'));
-    } catch (questError) {
-      console.error('Error tracking quest progress for post:', questError);
-      // Continue execution even if quest tracking fails
-    }
 
     // Populate user data for the response
     const populatedPost = await Post.findById(post._id).populate('user', 'username profileImage walletAddress');
 
     // Emit socket event for real-time updates
     req.app.get('io').emit('newPost', populatedPost);
-    
+
     // If post has hashtags, update trending hashtags and emit event
     if (hashtags && hashtags.length > 0) {
       // Get updated trending hashtags
@@ -170,8 +167,7 @@ router.get('/feed', async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('user', 'username profileImage walletAddress darts')
       .populate('comments.user', 'username profileImage name walletAddress')
-      .populate('comments.replies.user', 'username profileImage name walletAddress')
-      .limit(20);
+      .populate('comments.replies.user', 'username profileImage name walletAddress');
 
     res.json({ success: true, posts });
   } catch (error) {
@@ -194,7 +190,7 @@ async function getTrendingHashtags() {
     // Count hashtag occurrences across all posts
     const hashtagCounts = {};
     const hashtagPosts = {};
-    
+
     posts.forEach(post => {
       // If post has hashtags array, use those
       if (post.hashtags && post.hashtags.length > 0) {
@@ -205,7 +201,7 @@ async function getTrendingHashtags() {
             hashtagPosts[hashtag] = [];
           }
           hashtagCounts[hashtag]++;
-          
+
           // Only add if we don't already have too many posts for this hashtag
           if (hashtagPosts[hashtag].length < 5) {
             hashtagPosts[hashtag].push(post);
@@ -216,7 +212,7 @@ async function getTrendingHashtags() {
       else if (post.content && post.content.includes('#')) {
         // Extract hashtags from content
         const extractedTags = extractHashtags(post.content);
-        
+
         extractedTags.forEach(hashtag => {
           // Count occurrences of each hashtag
           if (!hashtagCounts[hashtag]) {
@@ -224,7 +220,7 @@ async function getTrendingHashtags() {
             hashtagPosts[hashtag] = [];
           }
           hashtagCounts[hashtag]++;
-          
+
           // Only add if we don't already have too many posts for this hashtag
           if (hashtagPosts[hashtag].length < 5) {
             hashtagPosts[hashtag].push(post);
@@ -282,7 +278,7 @@ router.get('/hashtag/:tag', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
- 
+
 // Get posts by a specific user
 router.get('/user/:userId', auth, async (req, res) => {
   try {
@@ -317,13 +313,13 @@ router.get('/my-posts', auth, async (req, res) => {
 router.post('/like/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id).populate('user', 'username');
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     const wasLiked = post.likes.includes(req.user.id);
-    
+
     // Check if already liked
     if (wasLiked) {
       // Unlike
@@ -331,32 +327,13 @@ router.post('/like/:id', auth, async (req, res) => {
     } else {
       // Like
       post.likes.push(req.user.id);
-      
-      // Track quest progress for like action
+
+      // Track quest activity for like
       try {
-        // Use the questTracker utility to update like quest progress
-        await trackUserActivity(req.user.id, 'like', req.app.get('io'));
+        await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/quests/track-like/${req.user.id}`);
       } catch (questError) {
-        console.error('Error tracking quest progress for like:', questError);
-        // Continue execution even if quest tracking fails
-      }
-      
-      // Create notification for post owner if someone else liked the post
-      if (post.user._id.toString() !== req.user.id) {
-        const Notification = require('../models/Notification');
-        const newNotification = new Notification({
-          recipient: post.user._id,
-          sender: req.user.id,
-          type: 'like',
-          post: post._id,
-          message: `liked your post`
-        });
-        
-        await newNotification.save();
-        
-        // Emit socket event for real-time notification
-        const io = req.app.get('io');
-        io.to(`user-${post.user._id}`).emit('notification', newNotification);
+        console.error('Failed to track quest activity for like:', questError);
+        // Continue with like creation even if quest tracking fails
       }
     }
 
@@ -364,7 +341,7 @@ router.post('/like/:id', auth, async (req, res) => {
 
     // Emit socket event for real-time updates
     req.app.get('io').emit('postUpdated', post);
-    
+
     // Update trending hashtags if post has hashtags
     if (post.hashtags && post.hashtags.length > 0) {
       const trendingHashtagsData = await getTrendingHashtags();
@@ -381,15 +358,23 @@ router.post('/like/:id', auth, async (req, res) => {
 router.post('/comment/:id', auth, async (req, res) => {
   try {
     const { text } = req.body;
-    
+
     if (!text) {
       return res.status(400).json({ success: false, message: 'Comment text is required' });
     }
 
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    // Track quest activity for comment
+    try {
+      await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/quests/track-comment/${req.user.id}`);
+    } catch (questError) {
+      console.error('Failed to track quest activity for comment:', questError);
+      // Continue with comment creation even if quest tracking fails
     }
 
     post.comments.push({
@@ -398,33 +383,6 @@ router.post('/comment/:id', auth, async (req, res) => {
     });
 
     await post.save();
-    
-    // Track quest progress for comment action
-    try {
-      // Use the questTracker utility to update comment quest progress
-      await trackUserActivity(req.user.id, 'comment', req.app.get('io'));
-    } catch (questError) {
-      console.error('Error tracking quest progress for comment:', questError);
-      // Continue execution even if quest tracking fails
-    }
-    
-    // Create notification for post owner if someone else commented on the post
-    if (post.user.toString() !== req.user.id) {
-      const Notification = require('../models/Notification');
-      const newNotification = new Notification({
-        recipient: post.user,
-        sender: req.user.id,
-        type: 'comment',
-        post: post._id,
-        message: `commented on your post: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
-      });
-      
-      await newNotification.save();
-      
-      // Emit socket event for real-time notification
-      const io = req.app.get('io');
-      io.to(`user-${post.user}`).emit('notification', newNotification);
-    }
 
     // Populate the new comment with user data - ensure all necessary fields are included
     const populatedPost = await Post.findById(post._id)
@@ -443,8 +401,8 @@ router.post('/comment/:id', auth, async (req, res) => {
     // Find the updated comment to return it specifically
     const updatedComment = populatedPost.comments.id(req.params.commentId);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       comments: populatedPost.comments,
       updatedComment: updatedComment
     });
@@ -458,13 +416,13 @@ router.post('/poll-vote/:id', auth, async (req, res) => {
   try {
     const { optionIndex } = req.body;
     const userId = req.user.id;
-    
+
     if (optionIndex === undefined) {
       return res.status(400).json({ success: false, message: 'Option index is required' });
     }
 
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
@@ -510,14 +468,14 @@ router.post('/poll-vote/:id', auth, async (req, res) => {
     // Add vote to the new option
     post.poll.options[optionIndex].voters.push(userId);
     post.poll.options[optionIndex].votes += 1;
-    
+
     await post.save();
 
     // Emit socket event for real-time updates
     req.app.get('io').emit('postUpdated', post);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       poll: post.poll,
       message: previousVoteIndex !== -1 ? 'Vote changed successfully' : 'Vote recorded successfully'
     });
@@ -530,7 +488,7 @@ router.post('/poll-vote/:id', auth, async (req, res) => {
 router.post('/repost/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
@@ -559,7 +517,7 @@ router.post('/repost/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
@@ -608,7 +566,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.post('/pin/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
@@ -635,21 +593,21 @@ router.post('/pin/:id', auth, async (req, res) => {
 router.post('/save/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the user
     const user = await User.findById(req.user.id);
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Check if post is already saved
     const postIndex = user.savedPosts.findIndex(item => item.post.toString() === req.params.id);
-    
+
     if (postIndex > -1) {
       // Unsave the post
       user.savedPosts.splice(postIndex, 1);
@@ -663,8 +621,8 @@ router.post('/save/:id', auth, async (req, res) => {
 
     await user.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       saved: postIndex === -1,
       message: postIndex > -1 ? 'Post removed from saved' : 'Post saved successfully'
     });
@@ -683,7 +641,7 @@ router.get('/saved', auth, async (req, res) => {
         select: 'username profileImage walletAddress'
       }
     });
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -703,14 +661,14 @@ router.get('/saved', auth, async (req, res) => {
 router.post('/comment/pin/:postId/:commentId', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the comment
     const comment = post.comments.id(req.params.commentId);
-    
+
     if (!comment) {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
@@ -744,14 +702,14 @@ router.post('/comment/pin/:postId/:commentId', auth, async (req, res) => {
 router.delete('/comment/:postId/:commentId', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the comment
     const comment = post.comments.id(req.params.commentId);
-    
+
     if (!comment) {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
@@ -778,20 +736,20 @@ router.delete('/comment/:postId/:commentId', auth, async (req, res) => {
 router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
   try {
     const { text } = req.body;
-    
+
     if (!text) {
       return res.status(400).json({ success: false, message: 'Reply text is required' });
     }
 
     const post = await Post.findById(req.params.postId);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the comment
     const comment = post.comments.id(req.params.commentId);
-    
+
     if (!comment) {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
@@ -803,24 +761,6 @@ router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
     });
 
     await post.save();
-    
-    // Create notification for comment owner if someone else replied to the comment
-    if (comment.user.toString() !== req.user.id) {
-      const Notification = require('../models/Notification');
-      const newNotification = new Notification({
-        recipient: comment.user,
-        sender: req.user.id,
-        type: 'reply',
-        post: post._id,
-        message: `replied to your comment: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
-      });
-      
-      await newNotification.save();
-      
-      // Emit socket event for real-time notification
-      const io = req.app.get('io');
-      io.to(`user-${comment.user}`).emit('notification', newNotification);
-    }
 
     // Populate the updated post with user data
     const populatedPost = await Post.findById(post._id)
@@ -843,8 +783,8 @@ router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
     // Find the updated comment to return it specifically
     const updatedComment = populatedPost.comments.id(req.params.commentId);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       comments: populatedPost.comments,
       updatedComment: updatedComment
     });
@@ -857,23 +797,23 @@ router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
 router.delete('/comment/reply/:postId/:commentId/:replyId', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the comment
     const comment = post.comments.id(req.params.commentId);
-    
+
     if (!comment) {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
     // Find the reply index
-    const replyIndex = comment.replies.findIndex(reply => 
+    const replyIndex = comment.replies.findIndex(reply =>
       reply._id.toString() === req.params.replyId
     );
-    
+
     if (replyIndex === -1) {
       return res.status(404).json({ success: false, message: 'Reply not found' });
     }
@@ -901,7 +841,7 @@ router.delete('/comment/reply/:postId/:commentId/:replyId', auth, async (req, re
 router.post('/view/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
@@ -909,7 +849,7 @@ router.post('/view/:id', auth, async (req, res) => {
     // Check if user has already viewed this post
     const userId = req.user.id;
     const alreadyViewed = post.viewers.some(viewerId => viewerId.toString() === userId);
-    
+
     // Only increment view count if this is a new viewer
     if (!alreadyViewed) {
       post.viewers.push(userId);
@@ -918,7 +858,7 @@ router.post('/view/:id', auth, async (req, res) => {
 
       // Emit socket event for real-time updates
       req.app.get('io').emit('postViewed', { postId: post._id, views: post.views });
-      
+
       // Update trending hashtags if post has hashtags
       if (post.hashtags && post.hashtags.length > 0) {
         const trendingHashtagsData = await getTrendingHashtags();

@@ -208,26 +208,20 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       }
 
       // Send the request
-      const response = await api.post('/posts', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      // Connect to socket for real-time updates
-      const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
-
-      // Only emit if the post was created successfully
-      if (response.data.success && response.data.post) {
-        socket.emit('newPost', response.data.post);
-      }
+     const response = await api.post('/posts', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
 
       if (response.data.success) {
-        toast.success('Dart posted successfully!');
-
+        toast.success('Post created successfully!');
+        
         // Track quest progress for post creation using non-authenticated endpoint
         try {
+          // Get userId from localStorage
           const userId = localStorage.getItem('userId');
+          
           if (userId) {
             const questResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/quests/track-noauth`, {
               method: 'POST',
@@ -235,35 +229,35 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                userId,
+                userId: userId,
                 activityType: 'post'
               })
             });
             
             const questData = await questResponse.json();
             if (questData.success) {
-              console.log('Quest progress updated successfully:', questData.quest);
+              console.log('Quest progress updated successfully for post:', questData.quest);
             }
           } else {
-            console.warn('No userId found in localStorage for quest tracking');
+            console.warn('No userId available for quest tracking');
           }
         } catch (questError) {
           console.error('Error tracking quest progress for post:', questError);
           // Continue execution even if quest tracking fails
         }
-
-        // Reset form
+        
+        // Call the callback function if provided
+        if (onPostCreated) {
+          onPostCreated();
+        }
+        
+        // Reset form state
         setContent('');
         setMediaFiles([]);
         setMediaPreview([]);
         setShowPollForm(false);
         setPollQuestion('');
         setPollOptions(['', '']);
-
-        // Call the callback if provided
-        if (onPostCreated) {
-          onPostCreated();
-        }
       }
     } catch (error) {
       console.error('Error creating post:', error);

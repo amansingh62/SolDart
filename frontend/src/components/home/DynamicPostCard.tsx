@@ -210,7 +210,7 @@ export function DynamicPostCard({
               activityType: 'like'
             })
           });
-          
+
           const questData = await questResponse.json();
           if (questData.success) {
             console.log('Quest progress updated successfully for like:', questData.quest);
@@ -368,7 +368,7 @@ export function DynamicPostCard({
               activityType: 'comment'
             })
           });
-          
+
           const questData = await questResponse.json();
           if (questData.success) {
             console.log('Quest progress updated successfully for comment:', questData.quest);
