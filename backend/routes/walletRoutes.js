@@ -29,95 +29,58 @@ router.post("/connect", async (req, res) => {
 });
 
 // Route to link wallet to user account
-router.post("/connect-account", async (req, res) => {
-  const { walletType, walletAddress, email } = req.body;
+router.post("/connect-account", auth, async (req, res) => {
+  const { walletType, walletAddress } = req.body;
   
   try {
-    let user;
-    
-    // If we have auth token, get user from auth middleware
-    if (req.user && req.user.id) {
-      user = await User.findById(req.user.id);
-    } 
-    // If we have email but no auth, find user by email
-    else if (email) {
-      user = await User.findOne({ email });
-    }
+    const user = await User.findById(req.user.id);
     
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    
-    // Check if this wallet already exists for this user
-    const existingWallet = user.wallets.find(
-      wallet => wallet.address === walletAddress && wallet.type === walletType
-    );
-    
-    if (existingWallet) {
-      // If wallet exists but is not default, make it default
-      if (!existingWallet.isDefault) {
-        // First set all wallets to non-default
-        user.wallets.forEach(wallet => wallet.isDefault = false);
-        existingWallet.isDefault = true;
-        await user.save();
+
+    // Check if user already has a wallet address
+    if (user.walletAddress) {
+      // If the wallet address matches, return success
+      if (user.walletAddress === walletAddress) {
+        return res.json({ 
+          success: true, 
+          message: "Wallet already linked",
+          walletAddress: user.walletAddress
+        });
       }
-      return res.json({ 
-        success: true, 
-        message: "Wallet already linked and set as default",
-        wallet: existingWallet
+      // If it's a different wallet, return error
+      return res.status(400).json({ 
+        success: false, 
+        message: "User already has a registered wallet" 
+      });
+    }
+
+    // Check if this wallet is already linked to another account
+    const existingUser = await User.findOne({ walletAddress });
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "This wallet is already linked to another account" 
       });
     }
     
-    // If this is the first wallet, make it default
-    const isDefault = user.wallets.length === 0;
-    
-    // Add the new wallet
-    user.wallets.push({
-      type: walletType,
-      address: walletAddress,
-      isDefault
-    });
-    
+    // Set the wallet address
+    user.walletAddress = walletAddress;
     await user.save();
     
     res.json({ 
       success: true, 
       message: "Wallet linked successfully",
-      wallet: user.wallets[user.wallets.length - 1]
+      walletAddress: user.walletAddress
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Route to set a wallet as default
-router.post("/set-default", auth, async (req, res) => {
-  const { walletAddress } = req.body;
-  
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    
-    // First set all wallets to non-default
-    user.wallets.forEach(wallet => {
-      wallet.isDefault = wallet.address === walletAddress;
-    });
-    
-    await user.save();
-    
-    res.json({ success: true, message: "Default wallet updated" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Route to disconnect a wallet
+// Route to disconnect wallet
 router.post("/disconnect", auth, async (req, res) => {
-  const { walletAddress } = req.body;
-  
   try {
     const user = await User.findById(req.user.id);
     
@@ -125,40 +88,21 @@ router.post("/disconnect", auth, async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     
-    // Find the wallet index
-    const walletIndex = user.wallets.findIndex(
-      wallet => wallet.address === walletAddress
-    );
-    
-    if (walletIndex === -1) {
-      return res.status(404).json({ success: false, message: "Wallet not found" });
-    }
-    
-    // Check if it was default
-    const wasDefault = user.wallets[walletIndex].isDefault;
-    
-    // Remove the wallet
-    user.wallets.splice(walletIndex, 1);
-    
-    // If it was default and we have other wallets, set the first one as default
-    if (wasDefault && user.wallets.length > 0) {
-      user.wallets[0].isDefault = true;
-    }
-    
+    // Clear the wallet address
+    user.walletAddress = null;
     await user.save();
     
     res.json({ 
       success: true, 
-      message: "Wallet disconnected successfully",
-      defaultWallet: user.wallets.find(w => w.isDefault) || null
+      message: "Wallet disconnected successfully"
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Get all wallets for the authenticated user
-router.get("/user-wallets", auth, async (req, res) => {
+// Get user's wallet information
+router.get("/user-wallet", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     
@@ -168,8 +112,7 @@ router.get("/user-wallets", auth, async (req, res) => {
     
     res.json({
       success: true,
-      wallets: user.wallets,
-      defaultWallet: user.wallets.find(w => w.isDefault) || null
+      walletAddress: user.walletAddress || null
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

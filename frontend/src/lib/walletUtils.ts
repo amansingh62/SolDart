@@ -116,6 +116,16 @@ function getWalletProvider(walletType: string): any {
  */
 export const connectWalletToAccount = async (walletType: string, walletAddress: string) => {
   try {
+    // Get the user's current wallet address from localStorage
+    const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+    if (storedWalletInfo) {
+      const userData = JSON.parse(storedWalletInfo);
+      if (userData.walletAddress && userData.walletAddress !== walletAddress) {
+        throw new Error('Please connect with your registered wallet');
+      }
+    }
+
+    // If wallet address matches or no wallet is registered, proceed with connection
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`,
       { walletType, walletAddress },
@@ -124,12 +134,13 @@ export const connectWalletToAccount = async (walletType: string, walletAddress: 
 
     if (response.data.success) {
       console.log("Wallet connected to account:", response.data);
-      return response.data.wallet;
+      return response.data.walletAddress;
     } else {
       throw new Error(response.data.message || "Failed to connect wallet to account");
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error connecting wallet to account:", error);
+    toast.error(error.message || "Failed to connect wallet to account");
     throw error;
   }
 };
@@ -185,20 +196,18 @@ export const verifyRegisteredWallet = async (): Promise<boolean> => {
     const walletInfo = JSON.parse(storedWalletInfo);
     const connectedWalletAddress = walletInfo.data?.address;
 
-    // Get the user's registered wallets
+    // Get the user's registered wallet
     const userResponse = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`,
       { withCredentials: true }
     );
 
-    if (!userResponse.data || !userResponse.data.wallets || userResponse.data.wallets.length === 0) {
+    if (!userResponse.data || !userResponse.data.walletAddress) {
       return false;
     }
 
-    // Check if the connected wallet matches any of the user's registered wallets
-    return userResponse.data.wallets.some(
-      (wallet: any) => wallet.address === connectedWalletAddress
-    );
+    // Check if the connected wallet matches the user's registered wallet
+    return userResponse.data.walletAddress === connectedWalletAddress;
   } catch (error) {
     console.error('Error verifying registered wallet:', error);
     return false;

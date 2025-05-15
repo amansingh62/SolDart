@@ -903,4 +903,69 @@ router.post('/view/:id', auth, async (req, res) => {
   }
 });
 
+// Like a comment
+router.post('/comment/like/:postId/:commentId', auth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    // Find the comment
+    const comment = post.comments.id(req.params.commentId);
+    
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    // Initialize likes array if it doesn't exist
+    if (!comment.likes) {
+      comment.likes = [];
+    }
+
+    const wasLiked = comment.likes.includes(req.user.id);
+    
+    // Check if already liked
+    if (wasLiked) {
+      // Unlike
+      comment.likes = comment.likes.filter(like => like.toString() !== req.user.id);
+    } else {
+      // Like
+      comment.likes.push(req.user.id);
+      
+      // Create notification for comment owner if someone else liked the comment
+      if (comment.user.toString() !== req.user.id) {
+        const Notification = require('../models/Notification');
+        const newNotification = new Notification({
+          recipient: comment.user,
+          sender: req.user.id,
+          type: 'like',
+          post: post._id,
+          message: `liked your comment`
+        });
+        
+        await newNotification.save();
+        
+        // Emit socket event for real-time notification
+        const io = req.app.get('io');
+        io.to(`user-${comment.user}`).emit('notification', newNotification);
+      }
+    }
+
+    await post.save();
+
+    // Emit socket event for real-time updates
+    req.app.get('io').emit('postUpdated', post);
+
+    res.json({ 
+      success: true, 
+      likes: comment.likes,
+      isLiked: !wasLiked
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

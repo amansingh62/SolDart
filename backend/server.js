@@ -86,11 +86,6 @@ app.get(
     try {
       const user = req.user;
       
-      // Get default wallet if exists
-      const defaultWallet = user.wallets && user.wallets.length > 0 
-        ? user.wallets.find(w => w.isDefault) || user.wallets[0]
-        : null;
-      
       // Generate JWT Token
       const token = jwt.sign(
         { id: user._id, username: user.username },
@@ -106,8 +101,8 @@ app.get(
       });
 
       // Redirect with wallet info if available
-      const redirectUrl = defaultWallet 
-        ? `${process.env.FRONTEND_URL || "http://localhost:3000"}/?walletConnected=true&walletType=${defaultWallet.type}&walletAddress=${defaultWallet.address}` 
+      const redirectUrl = user.walletAddress 
+        ? `${process.env.FRONTEND_URL || "http://localhost:3000"}/?walletConnected=true&walletAddress=${user.walletAddress}` 
         : `${process.env.FRONTEND_URL || "http://localhost:3000"}/`;
       
       res.redirect(redirectUrl);

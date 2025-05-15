@@ -133,8 +133,7 @@ router.post('/register', async (req, res) => {
           username: user.username,
           email: user.email,
           profileImage: user.profileImage,
-          wallets: user.wallets || [],
-          defaultWallet: null,
+          walletAddress: user.walletAddress || null,
           socialLinks: user.socialLinks || {},
           isVerified: user.isVerified,
           followers: user.followers,
@@ -187,11 +186,6 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day in milliseconds
     });
     
-    // Find default wallet if exists
-    const defaultWallet = user.wallets && user.wallets.length > 0
-      ? user.wallets.find(w => w.isDefault) || user.wallets[0]
-      : null;
-    
     // Return user data without sending the token in the response body
     res.json({ 
       success: true,
@@ -199,8 +193,7 @@ router.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        wallets: user.wallets || [],
-        defaultWallet,
+        walletAddress: user.walletAddress || null,
         name: user.name,
         bio: user.bio,
         profileImage: user.profileImage,
@@ -297,31 +290,33 @@ router.post('/refresh-token', async (req, res) => {
 
 // Get authenticated user
 router.get('/user', auth, async (req, res) => {
+  console.log('GET /auth/user - Request received');
+  console.log('User from auth middleware:', req.user);
+  
   try {
     const user = await User.findById(req.user.id).select('-password');
+    console.log('Found user:', user ? 'Yes' : 'No');
     
     if (!user) {
+      console.log('User not found in database');
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Find default wallet if exists
-    const defaultWallet = user.wallets && user.wallets.length > 0 
-      ? user.wallets.find(w => w.isDefault) || user.wallets[0]
-      : null;
-    
     // Return clean user object with only necessary properties
-    res.json({
+    const userData = {
       id: user._id,
       username: user.username,
       email: user.email,
-      wallets: user.wallets || [],
-      defaultWallet,
+      walletAddress: user.walletAddress || null,
       name: user.name || '',
       bio: user.bio || '',
       profileImage: user.profileImage || '',
       coverImage: user.coverImage || '',
-      socialLinks: user.socialLinks || []
-    });
+      socialLinks: user.socialLinks || {}
+    };
+    console.log('Sending user data:', userData);
+    
+    res.json(userData);
   } catch (error) {
     console.error('Error in /user route:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -332,8 +327,8 @@ router.get('/user', auth, async (req, res) => {
 router.get('/user/wallet/:address', async (req, res) => {
   const { address } = req.params;
   try {
-    // Find a user where any wallet in the array matches the address
-    const user = await User.findOne({ 'wallets.address': address }).select('-password');
+    // Find a user with matching wallet address
+    const user = await User.findOne({ walletAddress: address }).select('-password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -346,8 +341,7 @@ router.get('/user/wallet/:address', async (req, res) => {
         name: user.name,
         profileImage: user.profileImage,
         bio: user.bio,
-        wallets: user.wallets,
-        // add more fields as needed
+        walletAddress: user.walletAddress
       }
     });
   } catch (err) {
@@ -452,8 +446,8 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-// Check wallets by email
-router.post('/check-wallets-by-email', async (req, res) => {
+// Check wallet by email
+router.post('/check-wallet-by-email', async (req, res) => {
   const { email } = req.body;
   
   try {
@@ -464,14 +458,8 @@ router.post('/check-wallets-by-email', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Find default wallet if exists
-    const defaultWallet = user.wallets && user.wallets.length > 0
-      ? user.wallets.find(w => w.isDefault) || user.wallets[0]
-      : null;
-    
     res.json({
-      wallets: user.wallets || [],
-      defaultWallet
+      walletAddress: user.walletAddress || null
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -580,7 +568,7 @@ router.post('/wallet-signup', async (req, res) => {
 
   try {
     // Check if wallet is already registered
-    const existingUser = await User.findOne({ 'wallets.address': walletAddress });
+    const existingUser = await User.findOne({ walletAddress });
     if (existingUser) {
       return res.status(400).json({ message: 'Wallet already registered' });
     }
@@ -594,11 +582,7 @@ router.post('/wallet-signup', async (req, res) => {
       username: tempUsername,
       email: `${tempUsername}@temp.com`, // Temporary email
       password: '', // Empty password for now
-      wallets: [{
-        type: walletType,
-        address: walletAddress,
-        isDefault: true
-      }]
+      walletAddress: walletAddress
     });
 
     await user.save();
@@ -622,8 +606,7 @@ router.post('/wallet-signup', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        wallets: user.wallets,
-        defaultWallet: user.wallets[0]
+        walletAddress: user.walletAddress
       }
     });
   } catch (error) {
@@ -663,8 +646,7 @@ router.post('/link-email', auth, async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        wallets: user.wallets,
-        defaultWallet: user.wallets.find(w => w.isDefault) || user.wallets[0]
+        walletAddress: user.walletAddress
       }
     });
   } catch (error) {
@@ -717,10 +699,10 @@ router.put('/update-wallet-user', async (req, res) => {
     }
 
     // Update wallet information if provided
-    if (walletType && walletAddress) {
+    if (walletAddress) {
       // Check if wallet is already linked to another account
       const walletExists = await User.findOne({
-        'wallets.address': walletAddress,
+        walletAddress,
         _id: { $ne: user._id }
       });
 
@@ -731,29 +713,7 @@ router.put('/update-wallet-user', async (req, res) => {
         });
       }
 
-      // Add or update wallet information
-      if (!user.wallets) {
-        user.wallets = [];
-      }
-
-      // Check if wallet already exists in user's wallets
-      const existingWalletIndex = user.wallets.findIndex(w => w.address === walletAddress);
-      
-      if (existingWalletIndex >= 0) {
-        // Update existing wallet
-        user.wallets[existingWalletIndex] = {
-          type: walletType,
-          address: walletAddress,
-          isDefault: user.wallets[existingWalletIndex].isDefault
-        };
-      } else {
-        // Add new wallet
-        user.wallets.push({
-          type: walletType,
-          address: walletAddress,
-          isDefault: user.wallets.length === 0 // Set as default if first wallet
-        });
-      }
+      user.walletAddress = walletAddress;
     }
 
     await user.save();
@@ -782,8 +742,7 @@ router.put('/update-wallet-user', async (req, res) => {
         username: user.username,
         email: user.email,
         profileImage: user.profileImage,
-        wallets: user.wallets || [],
-        defaultWallet: user.wallets?.find(w => w.isDefault) || null,
+        walletAddress: user.walletAddress,
         socialLinks: user.socialLinks || {},
         isVerified: user.isVerified
       }
@@ -831,7 +790,7 @@ router.post('/register-wallet', auth, async (req, res) => {
 
     // Check if wallet is already linked to another account
     const walletExists = await User.findOne({
-      'wallets.address': walletAddress,
+      walletAddress,
       _id: { $ne: user._id }
     });
 
@@ -842,30 +801,33 @@ router.post('/register-wallet', auth, async (req, res) => {
       });
     }
 
-    // Initialize wallets array if it doesn't exist
-    if (!user.wallets) {
-      user.wallets = [];
-    }
-
-    // Check if wallet already exists in user's wallets
-    const existingWalletIndex = user.wallets.findIndex(w => w.address === walletAddress);
-    
-    if (existingWalletIndex >= 0) {
-      // Update existing wallet
-      user.wallets[existingWalletIndex] = {
-        type: walletType,
-        address: walletAddress,
-        isDefault: user.wallets[existingWalletIndex].isDefault
-      };
-    } else {
-      // Add new wallet
-      user.wallets.push({
-        type: walletType,
-        address: walletAddress,
-        isDefault: user.wallets.length === 0 // Set as default if first wallet
+    // If user already has a wallet, don't allow changing it
+    if (user.walletAddress) {
+      if (user.walletAddress !== walletAddress) {
+        return res.status(400).json({
+          success: false,
+          message: 'You can only connect with your registered wallet address'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Wallet already registered',
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          profileImage: user.profileImage,
+          walletAddress: user.walletAddress,
+          socialLinks: user.socialLinks || {},
+          isVerified: user.isVerified
+        }
       });
     }
-
+    
+    // Set the wallet address
+    user.walletAddress = walletAddress;
     await user.save();
 
     res.json({
@@ -876,18 +838,14 @@ router.post('/register-wallet', auth, async (req, res) => {
         username: user.username,
         email: user.email,
         profileImage: user.profileImage,
-        wallets: user.wallets || [],
-        defaultWallet: user.wallets?.find(w => w.isDefault) || null,
+        walletAddress: user.walletAddress,
         socialLinks: user.socialLinks || {},
         isVerified: user.isVerified
       }
     });
   } catch (error) {
     console.error('Register wallet error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error registering wallet'
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 

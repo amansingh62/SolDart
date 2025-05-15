@@ -417,34 +417,45 @@ export function DynamicPostCard({
       }
 
       const signature = await wallet.signMessage(new TextEncoder().encode(message));
-      console.log('Comment like transaction signed:', signature);
-
-      // Find the comment
-      const commentToLike = localComments.find(c => c._id === commentId);
-      if (!commentToLike) return;
-
-      // Check if user already liked this comment
-      const isLiked = commentToLike.likes?.includes(currentUserId || '') || false;
+      console.log('Like transaction signed:', signature);
 
       // Update local state first for immediate UI feedback
       setLocalComments(prevComments =>
         prevComments.map(comment => {
           if (comment._id === commentId) {
-            const updatedLikes = isLiked
+            const isLiked = (comment.likes || []).includes(currentUserId || '');
+            const newLikes = isLiked
               ? (comment.likes || []).filter(id => id !== currentUserId)
               : [...(comment.likes || []), currentUserId || ''];
-            return { ...comment, likes: updatedLikes };
+            
+            return {
+              ...comment,
+              likes: newLikes
+            };
           }
           return comment;
         })
       );
 
-      // Call API to update like status
-      await api.post(`/posts/comment/like/${_id}/${commentId}`, {
-        signature
-      });
+      // Call API to save like with signature
+      const response = await api.post(`/posts/comment/like/${_id}/${commentId}`, { signature });
 
-      toast.success(isLiked ? 'Comment unliked' : 'Comment liked');
+      if (response.data.success) {
+        // Update the comment with the real likes from the API response
+        setLocalComments(prevComments =>
+          prevComments.map(comment => {
+            if (comment._id === commentId) {
+              return {
+                ...comment,
+                likes: response.data.likes || []
+              };
+            }
+            return comment;
+          })
+        );
+
+        toast.success(response.data.isLiked ? 'Comment liked' : 'Comment unliked');
+      }
     } catch (error) {
       console.error('Error liking comment:', error);
       toast.error('Failed to like comment');

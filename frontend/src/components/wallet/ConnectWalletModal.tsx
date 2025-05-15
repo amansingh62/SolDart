@@ -177,7 +177,16 @@ export function ConnectWalletModal({
           const authResponse = await axios.get(API_URL + "/auth/user", { withCredentials: true });
           
           if (authResponse.data) {
-            // User is authenticated, link wallet to existing account
+            // User is authenticated, check if they already have a registered wallet
+            if (authResponse.data.walletAddress) {
+              // If they have a registered wallet, validate it matches
+              if (authResponse.data.walletAddress !== walletAddress) {
+                toast.error("Please connect with your registered wallet");
+                // Instead of disconnecting, just return
+                return;
+              }
+            }
+            // If wallet matches or no wallet registered, proceed with connection
             await api.put("/users/profile", { walletAddress });
             toast.success("Wallet connected successfully");
           } else {
@@ -201,19 +210,21 @@ export function ConnectWalletModal({
             }
           }
 
+          // Update local state and notify parent
+          setConnectedWallet(walletAddress);
+          setSelectedChain(walletType);
           onConnect?.(walletAddress);
           onClose();
-        } catch (error) {
-          console.error("Failed to update profile:", error);
-          toast.error("Wallet connected but failed to update profile");
-          // Disconnect wallet if profile update fails
+        } catch (error: any) {
+          console.error("Error in wallet connection flow:", error);
+          toast.error(error.message || "Failed to connect wallet");
+          // Disconnect wallet on error
           await disconnectWallet(walletType);
-          onDisconnect?.();
         }
       }
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      setError("Failed to connect wallet. Please try again.");
+    } catch (error: any) {
+      console.error("Error connecting wallet:", error);
+      toast.error(error.message || "Failed to connect wallet");
     }
   };
 
