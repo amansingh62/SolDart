@@ -155,6 +155,39 @@ export function DynamicPostCard({
     }
   }, [_id, socket, currentUserId]);
 
+  // Add this useEffect at the top of the component
+  React.useEffect(() => {
+    const handleAccountChange = async (publicKey: any) => {
+      try {
+        // If the wallet changes, disconnect from our app
+        const wallet = (window as any).solana;
+        if (wallet) {
+          await wallet.disconnect();
+          // Clear the stored wallet info
+          localStorage.removeItem('connectedWalletInfo');
+          // Show message to user
+          toast.error('Wallet disconnected. Please reconnect with your registered wallet.');
+          // Reload the page to reset the app state
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error handling wallet change:', error);
+      }
+    };
+
+    // Add the event listener
+    if (typeof window !== 'undefined' && (window as any).solana) {
+      (window as any).solana.on('accountChanged', handleAccountChange);
+    }
+
+    // Cleanup
+    return () => {
+      if (typeof window !== 'undefined' && (window as any).solana) {
+        (window as any).solana.off('accountChanged', handleAccountChange);
+      }
+    };
+  }, []);
+
   // Format the date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

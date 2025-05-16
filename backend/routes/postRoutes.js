@@ -88,7 +88,7 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
     const { content, pollQuestion, pollOptions } = req.body;
     
     // Extract hashtags from content
-    const hashtags = extractHashtags(content);
+    const hashtags = content ? extractHashtags(content) : [];
     
     // Create post object
     const postData = {
@@ -111,6 +111,14 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
           type,
           url: `/uploads/${file.filename}`
         };
+      });
+    }
+
+    // Validate that post has either content, media, or poll
+    if (!content && (!req.files || req.files.length === 0) && !pollQuestion) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Post must have either text content, media, or a poll' 
       });
     }
 

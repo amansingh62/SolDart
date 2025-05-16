@@ -163,8 +163,11 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
   // Submit the post
   const handleSubmit = async () => {
-    if (!content.trim()) {
-      toast.error('Please enter some content');
+    if (isSubmitting) return;
+
+    // Validate that there's either content, media, or a poll
+    if (!content && mediaFiles.length === 0 && (!showPollForm || !pollQuestion)) {
+      toast.error('Please add some content, media, or a poll');
       return;
     }
 
@@ -188,7 +191,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       }
 
       // Sign a non-gas transaction message
-      const message = `Sign this message to create a post: ${content}`;
+      const message = `Sign this message to create a post: ${content || 'media post'}`;
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
@@ -200,7 +203,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       console.log('Transaction signed:', signature);
 
       const formData = new FormData();
-      formData.append('content', content);
+      formData.append('content', content || '');
       formData.append('signature', signature);
 
       // Add media files
