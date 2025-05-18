@@ -13,6 +13,7 @@ import SupportChat from "@/components/home/SupportChat";
 import { AdsSection } from "@/components/home/AdsSection";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { UserProfileModal } from "@/components/auth/UserProfileModal";
+import { AuthModal } from "@/components/auth/AuthModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import MessagePopup from "./MessagePopup";
@@ -22,6 +23,8 @@ import EventsPopup from "@/components/home/EventsPopUP";
 import { LanguageSelector } from "@/components/home/LanguageSelector";
 import { useLanguage } from "@/context/LanguageContext";
 import { RecentSearches } from "@/components/home/RecentSearches";
+import { WalletDropdown } from "@/components/wallet/WalletDropdown";
+import api from '@/lib/apiUtils';
 
 const EMOJIS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐙", "🦄", "🐳", "🦋", "🐝", "🦖", "🐢"];
 
@@ -33,6 +36,7 @@ export default function Layout({ children }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
   const [isEventsOpen, setIsEventsOpen] = useState(false);
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
@@ -46,17 +50,25 @@ export default function Layout({ children }: LayoutProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
-  const [connectedWallet, setConnectedWallet] = useState<{
-    type: "wallet" | "email";
-    data: any;
-    emoji: string;
-    address?: string;
-  } | null>(null);
-  const [userInfo, setUserInfo] = useState<{
-    username?: string;
-    email?: string;
-    emoji?: string;
-  } | null>(null);
+  const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const router = useRouter();
+  const [authState, setAuthState] = useState<{
+    wallet: {
+      type: "wallet" | "email";
+      data: any;
+      emoji: string;
+      address?: string;
+    } | null;
+    user: {
+      username?: string;
+      email?: string;
+      emoji?: string;
+    } | null;
+  }>({
+    wallet: null,
+    user: null
+  });
 
   // Load recent searches from localStorage on component mount
   useEffect(() => {
@@ -115,13 +127,22 @@ export default function Layout({ children }: LayoutProps) {
     searchUsers(query);
   };
 
+  // Function to check if an address is a token address
+  const isTokenAddress = async (address: string) => {
+    try {
+      const response = await api.get(`/api/solana/token/${address}`);
+      return response.data.success;
+    } catch (error) {
+      return false;
+    }
+  };
+
   // Function to search for users or hashtags
   const searchUsers = async (query?: string, isButtonClick: boolean = false) => {
     let searchTerm = query || searchQuery;
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
-      // Show recent searches if available
       if (recentSearches.length > 0) {
         setShowRecentSearches(true);
       } else {
@@ -132,47 +153,71 @@ export default function Layout({ children }: LayoutProps) {
 
     try {
       setIsSearching(true);
-      // Hide recent searches when searching
       setShowRecentSearches(false);
 
-      // Check if the search term is a hashtag (starts with #)
-      if (searchTerm.startsWith('#')) {
-        // Only process hashtag search if it has content after the # symbol
-        if (searchTerm.length > 1) {
-          // Save the hashtag search to recent searches
-          saveToRecentSearches(searchTerm);
-
-          // Clear search results and hide them
+      // Check if the search term looks like a Solana address
+      const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+      
+      if (isSolanaAddress) {
+        // First check if it's a token address
+        const isToken = await isTokenAddress(searchTerm);
+        
+        if (isToken) {
+          // If it's a token address, navigate to token details
+          router.push(`/token/${searchTerm}`);
+          setSearchQuery('');
           setSearchResults([]);
           setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          setIsSearching(false);
+          return;
+        }
 
-          // Close search on mobile
+        // If not a token, check if it's a user's wallet
+        try {
+          const response = await api.get(`/users/wallet/${searchTerm}`);
+          if (response.data.success && response.data.user) {
+            // Navigate to user profile
+            router.push(`/profile/${response.data.user.username}`);
+            setSearchQuery('');
+            setSearchResults([]);
+            setShowSearchResults(false);
+            setSearchOpen(false);
+            saveToRecentSearches(searchTerm);
+            setIsSearching(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error searching by wallet:', error);
+        }
+      }
+
+      // Check if the search term is a hashtag
+      if (searchTerm.startsWith('#')) {
+        if (searchTerm.length > 1) {
+          saveToRecentSearches(searchTerm);
+          setSearchResults([]);
+          setShowSearchResults(false);
           setSearchOpen(false);
           setSearchQuery('');
-
-          // Use the HashtagContext from the parent component
           setIsSearching(false);
-
-          // Navigate to home page with the hashtag in the URL
           const hashtag = encodeURIComponent(searchTerm);
-          window.location.href = `/?hashtag=${hashtag}`;
+          router.push(`/?hashtag=${hashtag}`);
           return;
         } else {
-          // If only # is typed, don't do anything yet
           setIsSearching(false);
           return;
         }
       }
 
-      // For user searches, remove @ symbol if it's at the beginning of the search term
-      // This ensures the backend search works correctly while the UI still shows the @ symbol
+      // Regular user search
       const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
-
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/messages/search/${termForSearch}`, { withCredentials: true });
+      const response = await api.get(`/users/search/${termForSearch}`);
+      
       if (response.data.success) {
         setSearchResults(response.data.users);
         setShowSearchResults(true);
-        // Save the successful search to recent searches (with @ if it was included)
         saveToRecentSearches(searchTerm);
       } else {
         setSearchResults([]);
@@ -222,7 +267,7 @@ export default function Layout({ children }: LayoutProps) {
 
   // Navigate to user profile
   const navigateToProfile = (username: string) => {
-    window.location.href = `/profile/${username}`;
+    router.push(`/profile/${username}`);
     setSearchQuery('');
     setSearchResults([]);
     setShowSearchResults(false);
@@ -271,216 +316,58 @@ export default function Layout({ children }: LayoutProps) {
 
   // Check if user is authenticated on component mount and restore wallet connection from localStorage
   useEffect(() => {
-    // First try to restore wallet connection from localStorage
-    const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
-    if (storedWalletInfo) {
-      try {
-        const parsedWalletInfo = JSON.parse(storedWalletInfo);
-        if (parsedWalletInfo && parsedWalletInfo.address) {
-          console.log("Restored wallet connection from localStorage:", parsedWalletInfo);
-          setConnectedWallet(parsedWalletInfo);
-
-          // Verify wallet connection with provider if it's a blockchain wallet
-          if (parsedWalletInfo.type === "wallet" && parsedWalletInfo.data?.blockchain) {
-            const walletType = parsedWalletInfo.data.blockchain;
-            console.log(`Verifying ${walletType} wallet connection...`);
-
-            // Import dynamically to avoid circular dependencies
-            import("@/lib/walletUtils").then(({ checkWalletInstalled, connectWallet }) => {
-              const isInstalled = checkWalletInstalled(walletType);
-              if (isInstalled) {
-                console.log(`${walletType} wallet is installed, attempting to reconnect silently...`);
-                // We don't need to await this, it's just a verification
-                connectWallet(walletType).catch(err => {
-                  console.log(`Silent reconnection failed, but keeping UI state: ${err.message}`);
-                  // We still keep the UI state even if reconnection fails
-                });
-              } else {
-                console.log(`${walletType} wallet is not installed, but keeping UI state`);
-              }
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error parsing stored wallet info:", error);
-        // Clear invalid data
-        localStorage.removeItem('connectedWalletInfo');
-      }
-    }
-
     const checkAuth = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/user`, { withCredentials: true });
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/user`, { withCredentials: true });
         if (response.data) {
-          // User is authenticated
-          const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-          setUserInfo({
-            username: response.data.username || response.data.name,
-            email: response.data.email,
-            emoji: randomEmoji
-          });
-
-          // Check if user has a connected wallet
-          if (response.data.wallet) {
-            const walletInfo = {
-              type: "wallet",
-              data: { blockchain: response.data.wallet.type },
-              emoji: randomEmoji,
-              address: response.data.wallet.address
-            };
-            setConnectedWallet({
-              ...walletInfo,
-              type: walletInfo.type === "wallet" || walletInfo.type === "email" ? walletInfo.type : "wallet",
-            });
-
-            // Store wallet info in localStorage for persistence
-            localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-          }
+          setAuthState(prev => ({
+            ...prev,
+            user: {
+              username: response.data.username,
+              email: response.data.email,
+              emoji: response.data.emoji
+            }
+          }));
         }
       } catch (error) {
-        console.log("Not authenticated");
+        console.error('Error checking auth status:', error);
       }
     };
 
     checkAuth();
+
+    // Restore wallet connection
+    const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+    if (storedWalletInfo) {
+      try {
+        const walletInfo = JSON.parse(storedWalletInfo);
+        if (walletInfo?.address) {
+          setAuthState(prev => ({ ...prev, wallet: walletInfo }));
+        }
+      } catch (error) {
+        console.error('Error parsing stored wallet info:', error);
+        localStorage.removeItem('connectedWalletInfo');
+      }
+    }
   }, []);
 
-  const handleConnect = (type: "wallet" | "email", data: any) => {
-    console.log("Handling wallet connection:", { type, data });
+  const handleConnect = (walletAddress: string) => {
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-
-    const walletInfo: {
-      type: "wallet" | "email";
-      data: any;
-      emoji: string;
-      address?: string;
-    } = {
-      type: type,
-      data,
-      emoji: randomEmoji
+    const walletInfo = {
+      type: "wallet" as const,
+      data: { blockchain: "phantom", address: walletAddress },
+      emoji: randomEmoji,
+      address: walletAddress
     };
-
-    // Add wallet address if available from blockchain wallet connection
-    if (type === "wallet" && data.address) {
-      walletInfo.address = data.address;
-      console.log("Wallet address from blockchain:", data.address);
-
-      // If it's a Phantom wallet, store the address with the email if available
-      if (data.blockchain === "phantom" && data.email) {
-        // Store the wallet address with the user's email
-        // Note: We're not checking for authentication here, just storing the wallet info
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-            // Don't show error toast, just log it
-            // This prevents the "user not found" toast
-          });
-      }
-    }
-    // Add wallet address if available from email login with associated wallet
-    else if (type === "email" && data.user?.wallet?.address) {
-      walletInfo.address = data.user.wallet.address;
-      console.log("Wallet address from user wallet:", data.user.wallet.address);
-    }
-    // Check if wallet info is in the data object directly (for email login)
-    else if (type === "email" && data.wallet?.address) {
-      walletInfo.address = data.wallet.address;
-      console.log("Wallet address from data wallet:", data.wallet.address);
-    }
-    // Check if wallet is in the defaultWallet property (from Google auth)
-    else if (type === "email" && data.defaultWallet?.address) {
-      walletInfo.address = data.defaultWallet.address;
-      console.log("Wallet address from defaultWallet:", data.defaultWallet.address);
-    }
-    // For Google auth, check if wallet is in the user property
-    else if (type === "email" && data.user?.defaultWallet?.address) {
-      walletInfo.address = data.user.defaultWallet.address;
-      console.log("Wallet address from user defaultWallet:", data.user.defaultWallet.address);
-    }
-    // Check for wallets array and use the default or first wallet
-    else if (type === "email" && data.wallets && data.wallets.length > 0) {
-      const defaultWallet = data.wallets.find((w: any) => w.isDefault) || data.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from wallets array:", defaultWallet.address);
-      }
-    }
-    // Check for wallets array in user object
-    else if (type === "email" && data.user?.wallets && data.user.wallets.length > 0) {
-      const defaultWallet = data.user.wallets.find((w: any) => w.isDefault) || data.user.wallets[0];
-      if (defaultWallet && defaultWallet.address) {
-        walletInfo.address = defaultWallet.address;
-        console.log("Wallet address from user wallets array:", defaultWallet.address);
-      }
-    }
-    // Check specifically for Phantom wallet connection
-    else if (type === "email" && data.blockchain === "phantom") {
-      walletInfo.address = data.address;
-      console.log("Wallet address from Phantom connection:", data.address);
-
-      // If we have an email, store the Phantom wallet address with it
-      if (data.email) {
-        axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/connect-account`, {
-          walletType: "phantom",
-          walletAddress: data.address,
-          email: data.email
-        }, { withCredentials: true })
-          .then(response => {
-            console.log("Phantom wallet linked to account:", response.data);
-          })
-          .catch(error => {
-            console.error("Error linking Phantom wallet to account:", error);
-          });
-      }
-    }
-    // If user logs in with email, check if they have a Phantom wallet associated
-    else if (type === "email" && data.email) {
-      // Check if this email has any associated Phantom wallets
-      axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/check-wallets-by-email`, {
-        email: data.email
-      }, { withCredentials: true })
-        .then(response => {
-          if (response.data.defaultWallet && response.data.defaultWallet.type === "phantom") {
-            walletInfo.address = response.data.defaultWallet.address;
-            walletInfo.type = "wallet";
-            console.log("Found Phantom wallet for email:", response.data.defaultWallet.address);
-            setConnectedWallet(walletInfo);
-          }
-        })
-        .catch(error => {
-          console.error("Error checking for Phantom wallets:", error);
-        });
-    }
-
-    // If we have a wallet address, update the type to wallet to ensure proper display
-    if (walletInfo.address && type === "email") {
-      walletInfo.type = "wallet";
-    }
-
-    console.log("Final wallet info:", walletInfo);
-
-    // Save wallet info to localStorage for persistence
-    if (walletInfo.address) {
-      localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
-    }
-
-    setConnectedWallet(walletInfo);
-    // Close modal after successful connection
+    setAuthState(prev => ({ ...prev, wallet: walletInfo }));
+    localStorage.setItem('connectedWalletInfo', JSON.stringify(walletInfo));
     setIsWalletModalOpen(false);
   };
 
   const handleDisconnect = () => {
-    setConnectedWallet(null);
-    // Remove wallet info from localStorage
+    setAuthState(prev => ({ ...prev, wallet: null }));
     localStorage.removeItem('connectedWalletInfo');
-    // Don't close the modal immediately to allow the user to connect another wallet
+    localStorage.removeItem('walletModalSource');
   };
 
   const toggleWalletModal = () => {
@@ -493,93 +380,186 @@ export default function Layout({ children }: LayoutProps) {
 
   const { t } = useLanguage();
 
-  const renderConnectButton = () => {
-    return (
-      <Button
-        className="w-full bg-[#9dfc3f] hover:text-white hover:bg-black text-black px-4 py-2 rounded-md border border-white shadow-md"
-        onPress={() => toggleWalletModal()}
-      >
-        {connectedWallet ? (
-          <div className="flex items-center justify-center gap-2">
-            <span>{connectedWallet.emoji}</span>
-            {connectedWallet.address && (
-              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-                {connectedWallet.address.substring(0, 4)}...{connectedWallet.address.substring(connectedWallet.address.length - 4)}
-              </span>
-            )}
-          </div>
-        ) : (
-          t('connectWallet')
-        )}
-      </Button>
-    );
-  };
+  // Add click outside handler for the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.wallet-dropdown-container')) {
+        setIsWalletDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const renderAuthButton = () => {
-    // If user is logged in, show profile button
-    if (userInfo) {
+    const { wallet, user } = authState;
+    
+    // If user is signed in and has wallet connected
+    if (user && user.username && wallet && wallet.address) {
       return (
-        <Button
-          className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border-2 hover:border-[#B671FF] shadow-md"
-          onPress={() => {
-            // Set flag to indicate modal is opened from profile button
-            localStorage.setItem("walletModalSource", "userProfile");
-            setIsProfileModalOpen(true);
-          }}
-          data-auth-allowed="true"
-        >
-          <div className="flex items-center justify-center gap-2">
-            <span>{userInfo.emoji}</span>
-            <span className="text-md truncate max-w-[100px] md:max-w-[150px] md:inline-block">
-              {userInfo.username || userInfo.email?.split('@')[0]}
-            </span>
-          </div>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            onPress={() => setIsProfileModalOpen(true)}
+            data-auth-allowed="true"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <span>{wallet.emoji}</span>
+              <span className="text-xs truncate max-w-[100px] md:max-w-[150px] md:inline-block">
+                {wallet.address.substring(0, 4)}...{wallet.address.substring(wallet.address.length - 4)}
+              </span>
+            </div>
+          </Button>
+          <Button
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+            onPress={handleLogout}
+            data-auth-allowed="true"
+          >
+            Logout
+          </Button>
+        </div>
       );
     }
 
-    // Default: Show Sign In button
+    // If user is signed in but no wallet connected
+    if (user && user.username) {
+      return (
+        <div className="flex gap-2">
+          <Button
+            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            onPress={() => {
+              localStorage.setItem("walletModalSource", "userProfile");
+              setIsWalletModalOpen(true);
+            }}
+            data-auth-allowed="true"
+          >
+            Connect Wallet
+          </Button>
+          <Button
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+            onPress={handleLogout}
+            data-auth-allowed="true"
+          >
+            Logout
+          </Button>
+        </div>
+      );
+    }
+
+    // If not signed in, show Sign In button
     return (
       <Button
-        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-             hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
-          // Set flag to indicate modal is opened from sign-in button
-          localStorage.setItem("walletModalSource", "signIn");
-          // Force the ConnectWalletModal to open with email tab
-          setIsWalletModalOpen(true);
+          setIsAuthModalOpen(true);
         }}
         data-auth-allowed="true"
       >
-        {t('sign in')}
+        Sign In
       </Button>
     );
   };
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/logout`, {}, { withCredentials: true });
-      setUserInfo(null);
-      setConnectedWallet(null);
-      // Remove wallet info from localStorage
+      await api.post('/auth/logout');
+      localStorage.removeItem('token');
+      setToken(null);
+      toast.success("Logged out successfully");
+      
+      // Clear any wallet info
       localStorage.removeItem('connectedWalletInfo');
-      // Remove walletModalSource flag
-      localStorage.removeItem('walletModalSource');
-      setIsProfileModalOpen(false);
-      // Reset wallet modal state
-      setIsWalletModalOpen(false);
-      toast.success(t('success.loggedOut'));
-    } catch (error) {
+      
+      // Reload the page to clear all state
+      window.location.reload();
+    } catch (error: any) {
       console.error("Logout error:", error);
-      toast.error(t('errors.failedLogout'));
+      toast.error(error.response?.data?.message || "Failed to logout");
     }
   };
 
   // Calculate the available height for the columns (viewport height minus navbar and HotCoins section)
   const columnHeight = "calc(105vh - 140px)";
+
+  // Desktop search bar button
+  const handleSearchButtonClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const searchTerm = searchQuery.trim();
+    
+    if (!searchTerm) {
+      return;
+    }
+
+    // Check if it's a Solana address
+    const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
+    if (isSolanaAddress) {
+      try {
+        // First check if it's a token address
+        const isToken = await isTokenAddress(searchTerm);
+        
+        if (isToken) {
+          // If it's a token address, navigate to token details
+          router.push(`/token/${searchTerm}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          return;
+        }
+
+        // If not a token, check if it's a user's wallet
+        const response = await api.get(`/users/wallet/${searchTerm}`);
+        if (response.data.success && response.data.user) {
+          // Navigate to user profile
+          router.push(`/profile/${response.data.user.username}`);
+          setSearchQuery('');
+          setSearchResults([]);
+          setShowSearchResults(false);
+          setSearchOpen(false);
+          saveToRecentSearches(searchTerm);
+          return;
+        }
+      } catch (error) {
+        console.error('Error searching by wallet:', error);
+      }
+    }
+
+    // If it's a hashtag
+    if (searchTerm.startsWith('#')) {
+      if (searchTerm.length > 1) {
+        saveToRecentSearches(searchTerm);
+        setSearchResults([]);
+        setShowSearchResults(false);
+        setSearchOpen(false);
+        setSearchQuery('');
+        const hashtag = encodeURIComponent(searchTerm);
+        router.push(`/?hashtag=${hashtag}`);
+        return;
+      }
+    }
+
+    // Regular user search
+    const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
+    try {
+      const response = await api.get(`/users/search/${termForSearch}`);
+      if (response.data.success) {
+        setSearchResults(response.data.users);
+        setShowSearchResults(true);
+        saveToRecentSearches(searchTerm);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+      toast.error(t('errors.failedSearchUsers'));
+      setSearchResults([]);
+      setShowSearchResults(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -618,12 +598,7 @@ export default function Layout({ children }: LayoutProps) {
         />
         <div
           className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
-          onClick={(e) => {
-            e.preventDefault();
-            // When search button is clicked, immediately execute the search
-            // This allows users to manually trigger hashtag search when they're done typing
-            searchUsers(undefined, true);
-          }}
+          onClick={handleSearchButtonClick}
         >
           <Icon icon="lucide:search" className="text-black" />
         </div>
@@ -726,12 +701,7 @@ export default function Layout({ children }: LayoutProps) {
               />
               <div
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // When search button is clicked, immediately execute the search
-                  // This allows users to manually trigger hashtag search when they're done typing
-                  searchUsers(undefined, true);
-                }}
+                onClick={handleSearchButtonClick}
               >
                 <Icon icon="lucide:search" className="text-black" />
               </div>
@@ -878,7 +848,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="flex justify-center">
                 <FearGreedIndex />
               </div>
-              <SolanaTrendingSection />
+              <TrendingSection />
             </div>
           </aside>
         </div>
@@ -890,20 +860,32 @@ export default function Layout({ children }: LayoutProps) {
         onClose={() => setIsWalletModalOpen(false)}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
-        connectedWalletInfo={connectedWallet}
+        connectedWalletInfo={authState.wallet}
+        isFromUserProfile={true}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(userData) => {
+          console.log('Auth success with user data:', userData);
+          setAuthState(prev => ({ ...prev, user: userData }));
+          setIsAuthModalOpen(false);
+        }}
       />
 
       {/* User Profile Modal */}
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        userInfo={userInfo}
+        userInfo={authState.user}
         onConnectWallet={() => {
           setIsProfileModalOpen(false);
           setIsWalletModalOpen(true);
         }}
         onLogout={handleLogout}
-        connectedWalletInfo={connectedWallet}
+        connectedWalletInfo={authState.wallet}
       />
 
       {/* Direct Message Popup */}

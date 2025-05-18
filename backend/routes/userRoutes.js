@@ -71,12 +71,12 @@ router.put('/profile', auth, upload.fields([
 
     // Handle profile image upload
     if (req.files?.profileImage) {
-      user.profileImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${req.files.profileImage[0].filename}`;
+      user.profileImage = `/uploads/profiles/${req.files.profileImage[0].filename}`;
     }
 
     // Handle cover image upload
     if (req.files?.coverImage) {
-      user.coverImage = `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/profiles/${req.files.coverImage[0].filename}`;
+      user.coverImage = `/uploads/profiles/${req.files.coverImage[0].filename}`;
     }
 
     // Don't reset followers and following counts during profile update
@@ -348,6 +348,41 @@ router.get('/top-followers', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch top users'
+    });
+  }
+});
+
+// Search user by wallet address
+router.get('/wallet/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+
+    // Find user with the given wallet address
+    const user = await User.findOne({ walletAddress: address })
+      .select('_id username profileImage name bio');
+
+    if (user) {
+      res.json({
+        success: true,
+        user: {
+          _id: user._id,
+          username: user.username,
+          profileImage: user.profileImage,
+          name: user.name,
+          bio: user.bio
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No user found with this wallet address'
+      });
+    }
+  } catch (error) {
+    console.error('Error searching user by wallet:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 });

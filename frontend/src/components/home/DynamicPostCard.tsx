@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { verifyRegisteredWallet } from '@/lib/walletUtils';
 
 interface PollOption {
   text: string;
@@ -154,6 +155,39 @@ export function DynamicPostCard({
     }
   }, [_id, socket, currentUserId]);
 
+  // Add this useEffect at the top of the component
+  React.useEffect(() => {
+    const handleAccountChange = async (publicKey: any) => {
+      try {
+        // If the wallet changes, disconnect from our app
+        const wallet = (window as any).solana;
+        if (wallet) {
+          await wallet.disconnect();
+          // Clear the stored wallet info
+          localStorage.removeItem('connectedWalletInfo');
+          // Show message to user
+          toast.error('Wallet disconnected. Please reconnect with your registered wallet.');
+          // Reload the page to reset the app state
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error handling wallet change:', error);
+      }
+    };
+
+    // Add the event listener
+    if (typeof window !== 'undefined' && (window as any).solana) {
+      (window as any).solana.on('accountChanged', handleAccountChange);
+    }
+
+    // Cleanup
+    return () => {
+      if (typeof window !== 'undefined' && (window as any).solana) {
+        (window as any).solana.off('accountChanged', handleAccountChange);
+      }
+    };
+  }, []);
+
   // Format the date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -179,6 +213,32 @@ export function DynamicPostCard({
     if (e) e.stopPropagation();
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to like');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to like');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to like post: ${_id}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Like transaction signed:', signature);
+
       // Make a copy of the current likes array
       const isCurrentlyLiked = localLikes.includes(currentUserId || '');
       const updatedLikes = isCurrentlyLiked
@@ -189,7 +249,9 @@ export function DynamicPostCard({
       setLocalLikes(updatedLikes);
 
       // Make the API call directly
-      const response = await api.post(`/posts/like/${_id}`, {});
+      const response = await api.post(`/posts/like/${_id}`, {
+        signature
+      });
 
       // Only call onLike after successful API call
       if (response.data && onLike) {
@@ -215,6 +277,32 @@ export function DynamicPostCard({
     }
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to comment');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to comment');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to comment on post: ${_id}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Comment transaction signed:', signature);
+
       // Get current user data from props first if available
       let currentUserData = {
         _id: currentUserId || '',
@@ -283,7 +371,7 @@ export function DynamicPostCard({
 
       // Update local state first for immediate UI feedback
       setLocalComments([...localComments, newComment]);
-      setShowComments(true); // Ensure comments are visible after posting
+      setShowComments(true);
 
       if (onComment) {
         // Call the parent callback if available
@@ -291,7 +379,8 @@ export function DynamicPostCard({
       } else {
         // Otherwise, call the API directly
         const response = await api.post(`/posts/comment/${_id}`, {
-          text: commentText
+          text: commentText,
+          signature
         });
 
         // Update the comment with the real ID from the API response
@@ -337,32 +426,69 @@ export function DynamicPostCard({
   // Handle comment like
   const handleCommentLike = async (commentId: string) => {
     try {
-      // Find the comment
-      const commentToLike = localComments.find(c => c._id === commentId);
-      if (!commentToLike) return;
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to like comments');
+        return;
+      }
 
-      // Check if user already liked this comment
-      const isLiked = commentToLike.likes?.includes(currentUserId || '') || false;
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to like comments');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to like comment: ${commentId}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Like transaction signed:', signature);
 
       // Update local state first for immediate UI feedback
       setLocalComments(prevComments =>
         prevComments.map(comment => {
           if (comment._id === commentId) {
-            const updatedLikes = isLiked
+            const isLiked = (comment.likes || []).includes(currentUserId || '');
+            const newLikes = isLiked
               ? (comment.likes || []).filter(id => id !== currentUserId)
               : [...(comment.likes || []), currentUserId || ''];
-            return { ...comment, likes: updatedLikes };
+            
+            return {
+              ...comment,
+              likes: newLikes
+            };
           }
           return comment;
         })
       );
 
-      // Call API to update like status
-      // This is a placeholder - you would need to implement the actual API endpoint
-      // await api.post(`/posts/comment/like/${_id}/${commentId}`, {});
+      // Call API to save like with signature
+      const response = await api.post(`/posts/comment/like/${_id}/${commentId}`, { signature });
 
-      // For now, just show a toast message
-      toast.success(isLiked ? 'Comment unliked' : 'Comment liked');
+      if (response.data.success) {
+        // Update the comment with the real likes from the API response
+        setLocalComments(prevComments =>
+          prevComments.map(comment => {
+            if (comment._id === commentId) {
+              return {
+                ...comment,
+                likes: response.data.likes || []
+              };
+            }
+            return comment;
+          })
+        );
+
+        toast.success(response.data.isLiked ? 'Comment liked' : 'Comment unliked');
+      }
     } catch (error) {
       console.error('Error liking comment:', error);
       toast.error('Failed to like comment');
@@ -402,6 +528,32 @@ export function DynamicPostCard({
     if (!replyText.trim() || !replyingTo) return;
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to reply');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to reply');
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to reply to comment: ${replyingTo}`;
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Reply transaction signed:', signature);
+
       // Get current user data similar to comment submission
       let currentUserData = {
         _id: currentUserId || '',
@@ -479,9 +631,12 @@ export function DynamicPostCard({
       setReplyingTo(null);
       setReplyText('');
 
-      // Call API to save reply
+      // Call API to save reply with signature
       try {
-        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, { text: replyText });
+        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, { 
+          text: replyText,
+          signature 
+        });
 
         // If the API call was successful, update the local state with the response data
         if (response.data && response.data.success) {
@@ -507,6 +662,7 @@ export function DynamicPostCard({
       } catch (apiError) {
         console.error('Error saving reply to database:', apiError);
         // Keep the local state as is, since we've already updated it for immediate feedback
+        toast.error('Failed to save reply');
       }
 
       toast.success('Reply added');
@@ -891,7 +1047,7 @@ export function DynamicPostCard({
                 }
               }}
             >
-              <AvatarImage src={user?.profileImage} alt={user?.username || 'User'} />
+              <AvatarImage src={user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}` : undefined} alt={user?.username || 'User'} />
               <AvatarFallback>{user?.username ? user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
             </Avatar>
             {/* Follow button that appears on hover */}
@@ -1221,7 +1377,7 @@ export function DynamicPostCard({
                   }}
                 >
                   <AvatarImage
-                    src={comment.user?.profileImage}
+                    src={comment.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${comment.user.profileImage}` : undefined}
                     alt={comment.user?.username || 'User'}
                   />
                   <AvatarFallback>{comment.user?.username ? comment.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
@@ -1397,7 +1553,7 @@ export function DynamicPostCard({
                             }}
                           >
                             <AvatarImage
-                              src={reply.user?.profileImage}
+                              src={reply.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${reply.user.profileImage}` : undefined}
                               alt={reply.user?.username || 'User'}
                             />
                             <AvatarFallback>{reply.user?.username ? reply.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>

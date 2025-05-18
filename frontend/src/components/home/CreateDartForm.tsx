@@ -8,6 +8,7 @@ import { Icon } from "@iconify/react";
 import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { verifyRegisteredWallet } from '@/lib/walletUtils';
 
 interface CreateDartFormProps {
   onPostCreated?: () => void;
@@ -162,81 +163,77 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
   // Submit the post
   const handleSubmit = async () => {
-    // Validate form
-    if (!content.trim() && mediaFiles.length === 0 && !showPollForm) {
+    if (isSubmitting) return;
+
+    // Validate that there's either content, media, or a poll
+    if (!content && mediaFiles.length === 0 && (!showPollForm || !pollQuestion)) {
       toast.error('Please add some content, media, or a poll');
       return;
-    }
-
-    // Check character count
-    if (charCount > MAX_CHARS) {
-      toast.error(`Dart content is limited to ${MAX_CHARS} characters`);
-      return;
-    }
-
-    if (showPollForm) {
-      if (!pollQuestion.trim()) {
-        toast.error('Please add a poll question');
-        return;
-      }
-
-      const validOptions = pollOptions.filter(opt => opt.trim() !== '');
-      if (validOptions.length < 2) {
-        toast.error('Please add at least 2 poll options');
-        return;
-      }
     }
 
     setIsSubmitting(true);
 
     try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to post');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to post');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Sign a non-gas transaction message
+      const message = `Sign this message to create a post: ${content || 'media post'}`;
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Transaction signed:', signature);
+
       const formData = new FormData();
-      formData.append('content', content);
+      formData.append('content', content || '');
+      formData.append('signature', signature);
 
       // Add media files
       mediaFiles.forEach(file => {
         formData.append('media', file);
       });
 
-      // Add poll data if poll form is shown
-      if (showPollForm && pollQuestion.trim()) {
+      // Add poll data if present
+      if (showPollForm) {
         formData.append('pollQuestion', pollQuestion);
-
-        // Filter out empty options
-        const validOptions = pollOptions.filter(opt => opt.trim() !== '');
-        formData.append('pollOptions', JSON.stringify(validOptions));
+        formData.append('pollOptions', JSON.stringify(pollOptions));
       }
 
-      // Send the request
       const response = await api.post('/posts', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
 
-      // Connect to socket for real-time updates
-      const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
-
-      // Only emit if the post was created successfully
-      if (response.data.success && response.data.post) {
-        socket.emit('newPost', response.data.post);
-      }
-
       if (response.data.success) {
-        toast.success('Dart posted successfully!');
-
-        // Reset form
+        toast.success('Post created successfully!');
         setContent('');
         setMediaFiles([]);
         setMediaPreview([]);
         setShowPollForm(false);
         setPollQuestion('');
         setPollOptions(['', '']);
-
-        // Call the callback if provided
-        if (onPostCreated) {
-          onPostCreated();
-        }
+        if (onPostCreated) onPostCreated();
+      } else {
+        toast.error('Failed to create post');
       }
     } catch (error) {
       console.error('Error creating post:', error);

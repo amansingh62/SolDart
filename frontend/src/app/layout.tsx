@@ -5,6 +5,7 @@ import Layout from "@/components/home/Layout";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { HashtagProvider } from "@/context/HashtagContext";
+import { Toaster } from 'react-hot-toast';
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -41,6 +42,19 @@ export default function RootLayout({
             </HashtagProvider>
           </LanguageProvider>
         </AuthProvider>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#1F2937',
+              color: '#fff',
+              border: '1px solid #374151',
+              padding: '12px 16px',
+              borderRadius: '8px',
+            },
+            duration: 4000,
+          }}
+        />
       </body>
     </html>
   );

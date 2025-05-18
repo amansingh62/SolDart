@@ -2,22 +2,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const WalletSchema = new Schema({
-  type: {
-    type: String,
-    required: true,
-    enum: ['phantom', 'solflare', 'backpack']
-  },
-  address: {
-    type: String,
-    required: true
-  },
-  isDefault: {
-    type: Boolean,
-    default: false
-  }
-}); 
-
 const UserSchema = new mongoose.Schema({
   googleId: { type: String },
   name: { type: String, required: true },
@@ -33,7 +17,6 @@ const UserSchema = new mongoose.Schema({
   darts: { type: Number, default: 0 },
   events: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
-  wallets: [WalletSchema],
   socialLinks: {
     website: { type: String, default: "" },
     telegram: { type: String, default: "" },
