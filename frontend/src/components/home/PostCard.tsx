@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
+import { trackPostLike } from '../../lib/questUtils';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Icon } from "@iconify/react";
@@ -68,7 +71,18 @@ export function PostCard() {
         {/* ✅ Bottom Actions (Like & Comment Stay Left-Aligned) */}
         <div className="flex items-center gap-4 md:gap-6 text-gray-600 text-xs md:text-sm">
           <span>1hr</span>
-          <div className="flex items-center gap-1">
+          <div 
+            className="flex items-center gap-1 cursor-pointer hover:text-[#B671FF] transition-colors"
+            onClick={async () => {
+              try {
+                // Track like for quest system
+                await trackPostLike('sample-post-id'); // Replace with actual post ID when available
+              } catch (error) {
+                console.error('Error tracking like:', error);
+                // Don't fail the operation if tracking fails
+              }
+            }}
+          >
             <Icon icon="lucide:heart" className="text-lg" />
             <span>43</span>
           </div>

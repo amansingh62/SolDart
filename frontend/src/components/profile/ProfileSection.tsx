@@ -739,7 +739,7 @@ const handleLikePost = async (postId: string) => {
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
               </div>
             ) : profileData.coverImage ? (
-              <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`} alt="Cover" className="w-full h-full object-cover rounded-t-xl" />
+              <img src={profileData.coverImage.startsWith('http') ? profileData.coverImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`} alt="Cover" className="w-full h-full object-cover rounded-t-xl" />
             ) : (
               <div className="w-full h-full bg-gray-800 rounded-t-xl flex items-center justify-center">
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
@@ -752,7 +752,7 @@ const handleLikePost = async (postId: string) => {
                 </div>
               ) : profileData.profileImage ? (
                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden">
-                  <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={profileData.profileImage.startsWith('http') ? profileData.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`} alt="Profile" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">

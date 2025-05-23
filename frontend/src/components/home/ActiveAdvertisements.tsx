@@ -50,19 +50,19 @@ export function ActiveAdvertisements() {
       const interval = setInterval(() => {
         setCurrentAdIndex((prevIndex) => (prevIndex + 1) % advertisements.length);
       }, 10000);
-      
+
       return () => clearInterval(interval);
     }
   }, [advertisements.length]);
 
   const handlePrevAd = () => {
-    setCurrentAdIndex((prevIndex) => 
+    setCurrentAdIndex((prevIndex) =>
       prevIndex === 0 ? advertisements.length - 1 : prevIndex - 1
     );
   };
 
   const handleNextAd = () => {
-    setCurrentAdIndex((prevIndex) => 
+    setCurrentAdIndex((prevIndex) =>
       (prevIndex + 1) % advertisements.length
     );
   };
@@ -111,36 +111,36 @@ export function ActiveAdvertisements() {
       <CardContent className="p-0 relative">
         {/* Ad Banner */}
         <div className="relative">
-          <a 
-            href={currentAd.website} 
-            target="_blank" 
+          <a
+            href={currentAd.website}
+            target="_blank"
             rel="noopener noreferrer"
             className="block"
           >
-            <img 
-              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`} 
-              alt={currentAd.projectName} 
+            <img
+              src={currentAd.bannerImage.startsWith('http') ? currentAd.bannerImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`}
+              alt={currentAd.projectName}
               className="w-full h-[120px] object-cover"
             />
           </a>
-          
+
           {/* Sponsored Tag */}
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             Sponsored
           </div>
-          
+
           {/* Navigation Controls (only show if multiple ads) */}
           {advertisements.length > 1 && (
             <div className="absolute inset-y-0 left-0 right-0 flex justify-between items-center px-2">
-              <button 
-                onClick={handlePrevAd} 
+              <button
+                onClick={handlePrevAd}
                 className="bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
                 aria-label="Previous advertisement"
               >
                 <Icon icon="lucide:chevron-left" className="h-4 w-4" />
               </button>
-              <button 
-                onClick={handleNextAd} 
+              <button
+                onClick={handleNextAd}
                 className="bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
                 aria-label="Next advertisement"
               >
@@ -149,16 +149,16 @@ export function ActiveAdvertisements() {
             </div>
           )}
         </div>
-        
+
         {/* Ad Info */}
         <div className="p-3">
           <div className="flex justify-between items-center">
             <h3 className="font-medium text-sm">{currentAd.projectName}</h3>
             <div className="flex space-x-2">
               {currentAd.twitterHandle && (
-                <a 
-                  href={`https://twitter.com/${currentAd.twitterHandle.replace('@', '')}`} 
-                  target="_blank" 
+                <a
+                  href={`https://twitter.com/${currentAd.twitterHandle.replace('@', '')}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:text-blue-700"
                 >
@@ -166,9 +166,9 @@ export function ActiveAdvertisements() {
                 </a>
               )}
               {currentAd.telegramHandle && (
-                <a 
-                  href={`https://t.me/${currentAd.telegramHandle.replace('@', '')}`} 
-                  target="_blank" 
+                <a
+                  href={`https://t.me/${currentAd.telegramHandle.replace('@', '')}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:text-blue-700"
                 >
@@ -176,9 +176,9 @@ export function ActiveAdvertisements() {
                 </a>
               )}
               {currentAd.website && (
-                <a 
-                  href={currentAd.website} 
-                  target="_blank" 
+                <a
+                  href={currentAd.website}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:text-blue-700"
                 >
@@ -187,7 +187,7 @@ export function ActiveAdvertisements() {
               )}
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center mt-2">
             <Link
               href="/advertise-standalone"

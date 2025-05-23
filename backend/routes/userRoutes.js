@@ -3,41 +3,14 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/authMiddleware');
-const multer = require('multer');
+const { s3Upload, formatS3Url } = require('../middleware/s3Middleware');
 const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const Post = require('../models/Post');
 
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/profiles');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// Set up S3 upload for profile images
+const upload = s3Upload('profiles');
 
-const fileFilter = (req, file, cb) => {
-  // Accept only images
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
 
 // Update user profile
 router.put('/profile', auth, upload.fields([
@@ -71,12 +44,12 @@ router.put('/profile', auth, upload.fields([
 
     // Handle profile image upload
     if (req.files?.profileImage) {
-      user.profileImage = `/uploads/profiles/${req.files.profileImage[0].filename}`;
+      user.profileImage = formatS3Url(req.files.profileImage[0].key);
     }
 
     // Handle cover image upload
     if (req.files?.coverImage) {
-      user.coverImage = `/uploads/profiles/${req.files.coverImage[0].filename}`;
+      user.coverImage = formatS3Url(req.files.coverImage[0].key);
     }
 
     // Don't reset followers and following counts during profile update
@@ -383,6 +356,36 @@ router.get('/wallet/:address', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// Search users by username
+router.get('/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+
+    // Search for users by username (case-insensitive)
+    const users = await User.find({
+      username: { $regex: query, $options: 'i' }
+    })
+      .select('_id username profileImage name')
+      .limit(10);
+
+    res.json({
+      success: true,
+      users: users.map(user => ({
+        _id: user._id,
+        username: user.username,
+        profileImage: user.profileImage || '/default-avatar.png',
+        name: user.name || ''
+      }))
+    });
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search users'
     });
   }
 });

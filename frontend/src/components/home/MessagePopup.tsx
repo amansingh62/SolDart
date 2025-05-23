@@ -575,7 +575,7 @@ const MessagePopup = ({
                   </button>
                   <div className="relative mr-3">
                     <Avatar className="w-10 h-10 rounded-full border border-gray-200 shadow-sm">
-                      <AvatarImage src={activeContact.profileImage || '/svg.png'} alt={activeContact.username} className="object-cover" />
+                      <AvatarImage src={activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png'} alt={activeContact.username} className="object-cover" />
                       <AvatarFallback>{activeContact.username.charAt(0)}</AvatarFallback>
                     </Avatar>
                     {activeContact.isOnline && (
@@ -652,7 +652,7 @@ const MessagePopup = ({
                             onClick={() => selectContact(user)}
                           >
                             <Avatar className="w-10 h-10 rounded-full mr-3 border border-gray-200">
-                              <AvatarImage src={user.profileImage || '/svg.png'} alt={user.username} className="object-cover" />
+                              <AvatarImage src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'} alt={user.username} className="object-cover" />
                               <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <span className="font-medium">{user.username}</span>
@@ -683,7 +683,7 @@ const MessagePopup = ({
                     >
                       <div className="relative flex-shrink-0">
                         <Avatar className="w-12 h-12 rounded-full mr-3 border border-gray-200">
-                          <AvatarImage src={contact.profileImage || '/svg.png'} alt={contact.username} className="object-cover" />
+                          <AvatarImage src={contact.profileImage ? (contact.profileImage.startsWith('http') ? contact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${contact.profileImage}`) : '/svg.png'} alt={contact.username} className="object-cover" />
                           <AvatarFallback>{contact.username.charAt(0)}</AvatarFallback>
                         </Avatar>
                         {(contact?.unreadCount ?? 0) > 0 && (
@@ -770,7 +770,7 @@ const MessagePopup = ({
                         >
                           {!isMe && (
                             <Avatar className="w-10 h-10 rounded-full mr-2 self-end border border-gray-200">
-                              <AvatarImage src={message.senderInfo?.profileImage || activeContact.profileImage || '/svg.png'} alt={message.senderInfo?.username || activeContact.username} className="object-cover" />
+                              <AvatarImage src={message.senderInfo?.profileImage ? (message.senderInfo.profileImage.startsWith('http') ? message.senderInfo.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${message.senderInfo.profileImage}`) : (activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png')} alt={message.senderInfo?.username || activeContact.username} className="object-cover" />
                               <AvatarFallback>{(message.senderInfo?.username || activeContact.username || 'User').charAt(0)}</AvatarFallback>
                             </Avatar>
                           )}

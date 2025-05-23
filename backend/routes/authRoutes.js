@@ -349,35 +349,11 @@ router.get('/user/wallet/:address', async (req, res) => {
   }
 });
 
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/profiles');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function(req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// Import S3 middleware
+const { s3Upload, formatS3Url } = require('../middleware/s3Middleware');
 
-const fileFilter = (req, file, cb) => {
-  // Accept only images
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed'), false);
-  }
-};
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
+// Set up S3 upload for profile images
+const upload = s3Upload('profiles');
 
 // Update user profile
 router.put('/profile', auth, upload.fields([
@@ -418,13 +394,13 @@ router.put('/profile', auth, upload.fields([
     // Handle profile image upload
     if (req.files && req.files.profileImage) {
       const profileImage = req.files.profileImage[0];
-      user.profileImage = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/uploads/profiles/${profileImage.filename}`;
+      user.profileImage = formatS3Url(profileImage.key);
     }
     
     // Handle cover image upload
     if (req.files && req.files.coverImage) {
       const coverImage = req.files.coverImage[0];
-      user.coverImage = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/uploads/profiles/${coverImage.filename}`;
+      user.coverImage = formatS3Url(coverImage.key);
     }
     
     await user.save();

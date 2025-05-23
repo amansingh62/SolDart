@@ -6,7 +6,6 @@ import { Icon } from "@iconify/react";
 import { Sidebar } from "@/components/home/Sidebar";
 import { HotCoins } from "@/components/home/HotCoins";
 import { FearGreedIndex } from "@/components/home/FearGreedIndex";
-import { TrendingSection } from "@/components/home/TrendingSection";
 import { TrendingHashtags } from "@/components/home/TrendingHashtags";
 import SolanaTrendingSection from "@/components/home/SolanaTrendingSection";
 import SupportChat from "@/components/home/SupportChat";
@@ -157,11 +156,11 @@ export default function Layout({ children }: LayoutProps) {
 
       // Check if the search term looks like a Solana address
       const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(searchTerm);
-      
+
       if (isSolanaAddress) {
         // First check if it's a token address
         const isToken = await isTokenAddress(searchTerm);
-        
+
         if (isToken) {
           // If it's a token address, navigate to token details
           router.push(`/token/${searchTerm}`);
@@ -190,6 +189,7 @@ export default function Layout({ children }: LayoutProps) {
           }
         } catch (error) {
           console.error('Error searching by wallet:', error);
+          // Don't show error toast here as it's just one of the search methods
         }
       }
 
@@ -213,19 +213,33 @@ export default function Layout({ children }: LayoutProps) {
 
       // Regular user search
       const termForSearch = searchTerm.startsWith('@') ? searchTerm.substring(1) : searchTerm;
-      const response = await api.get(`/users/search/${termForSearch}`);
-      
-      if (response.data.success) {
-        setSearchResults(response.data.users);
-        setShowSearchResults(true);
-        saveToRecentSearches(searchTerm);
-      } else {
+      try {
+        const response = await api.get(`/users/search/${termForSearch}`);
+
+        if (response.data && response.data.success) {
+          setSearchResults(response.data.users || []);
+          setShowSearchResults(true);
+          saveToRecentSearches(searchTerm);
+        } else {
+          setSearchResults([]);
+          setShowSearchResults(false);
+          // Only show error if the response indicates a failure
+          if (response.data && !response.data.success) {
+            toast.error(response.data.message || 'No users found');
+          }
+        }
+      } catch (error: any) {
+        console.error('Error searching users:', error);
+        // Check if the error has a response with a message
+        const errorMessage = error.response?.data?.message || 'Failed to search users';
+        toast.error(errorMessage);
         setSearchResults([]);
         setShowSearchResults(false);
       }
-    } catch (error) {
-      console.error('Error searching:', error);
-      toast.error(t('errors.failedSearchUsers'));
+    } catch (error: any) {
+      console.error('Error in search process:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during search';
+      toast.error(errorMessage);
       setSearchResults([]);
       setShowSearchResults(false);
     } finally {
@@ -395,7 +409,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const renderAuthButton = () => {
     const { wallet, user } = authState;
-    
+
     // If user is signed in and has wallet connected
     if (user && user.username && wallet && wallet.address) {
       return (
@@ -468,10 +482,10 @@ export default function Layout({ children }: LayoutProps) {
       localStorage.removeItem('token');
       setToken(null);
       toast.success("Logged out successfully");
-      
+
       // Clear any wallet info
       localStorage.removeItem('connectedWalletInfo');
-      
+
       // Reload the page to clear all state
       window.location.reload();
     } catch (error: any) {
@@ -487,7 +501,7 @@ export default function Layout({ children }: LayoutProps) {
   const handleSearchButtonClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     const searchTerm = searchQuery.trim();
-    
+
     if (!searchTerm) {
       return;
     }
@@ -498,7 +512,7 @@ export default function Layout({ children }: LayoutProps) {
       try {
         // First check if it's a token address
         const isToken = await isTokenAddress(searchTerm);
-        
+
         if (isToken) {
           // If it's a token address, navigate to token details
           router.push(`/token/${searchTerm}`);
@@ -565,93 +579,123 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       <nav className="fixed top-0 w-full z-99 border-b border-[#ffffff]/30 backdrop-blur-md shadow-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Mobile Menu Button */}
-          <button className="md:hidden text-white text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
-            <Icon icon="mdi:menu" />
-          </button>
-
+          {/* Logo on the left for both mobile and desktop */}
           <div className="flex items-center">
-            <img src="/solecho_logo.png" alt="" className="w-10" />
+            <img src="/solecho_logo.png" alt="SolEcho Logo" className="w-10" />
 
             <h1 className="text-2xl font-bold">Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
               Echo</span></h1>
-
           </div>
 
-           <div className="fixed left-1/2 transform -translate-x-1/2 w-[40vw] search-container mt-2">
-        <Input
-          placeholder={t('Search Users and Addresses')}
-          className="pl-4 pr-10 w-full bg-white text-black rounded-2xl"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onFocus={() => {
-            if (searchQuery.trim()) {
-              // If there's a search query, show search results
-              setShowSearchResults(true);
-              setShowRecentSearches(false);
-            } else if (recentSearches.length > 0) {
-              // If there's no search query but there are recent searches, show recent searches
-              setShowRecentSearches(true);
-              setShowSearchResults(false);
-            }
-          }}
-        />
-        <div
-          className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
-          onClick={handleSearchButtonClick}
-        >
-          <Icon icon="lucide:search" className="text-black" />
-        </div>
+          <div className="fixed left-1/2 transform -translate-x-1/2 w-[30vw] search-container mt-2 hidden md:block">
+            <Input
+              placeholder={t('Search Users and Addresses')}
+              className="pl-4 pr-10 w-full bg-white text-black rounded-2xl"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => {
+                if (searchQuery.trim()) {
+                  // If there's a search query, show search results
+                  setShowSearchResults(true);
+                  setShowRecentSearches(false);
+                } else if (recentSearches.length > 0) {
+                  // If there's no search query but there are recent searches, show recent searches
+                  setShowRecentSearches(true);
+                  setShowSearchResults(false);
+                }
+              }}
+            />
+            <div
+              className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
+              onClick={handleSearchButtonClick}
+            >
+              <Icon icon="lucide:search" className="text-black" />
+            </div>
 
-        {/* Recent Searches Dropdown - Only show if there are recent searches and no search results */}
-        {showRecentSearches && !showSearchResults && recentSearches.length > 0 && (
-          <RecentSearches
-            searches={recentSearches}
-            onSelectSearch={selectRecentSearch}
-            onClearSearch={clearRecentSearch}
-            onClearAll={clearAllRecentSearches}
-          />
-        )}
+            {/* Recent Searches Dropdown - Only show if there are recent searches and no search results */}
+            {showRecentSearches && !showSearchResults && recentSearches.length > 0 && (
+              <RecentSearches
+                searches={recentSearches}
+                onSelectSearch={selectRecentSearch}
+                onClearSearch={clearRecentSearch}
+                onClearAll={clearAllRecentSearches}
+              />
+            )}
 
-        {/* Search Results Dropdown - Only show if there are search results */}
-        {showSearchResults && searchResults.length > 0 && (
-          <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto scrollbar-hide">
-            {isSearching ? (
-              <div className="flex justify-center items-center p-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FEB4B0]"></div>
-              </div>
-            ) : (
-              <div className="p-2">
-                {searchResults.map(user => (
-                  <div
-                    key={user._id}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
-                    onClick={() => navigateToProfile(user.username)}
-                  >
-                    <img
-                      src={user.profileImage || '/svg.png'}
-                      alt={user.username}
-                      className="w-8 h-8 rounded-full mr-2"
-                    />
-                    <span className="text-sm">{user.username}</span>
+            {/* Search Results Dropdown - Only show if there are search results */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto scrollbar-hide">
+                {isSearching ? (
+                  <div className="flex justify-center items-center p-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FEB4B0]"></div>
                   </div>
-                ))}
+                ) : (
+                  <div className="p-2">
+                    {searchResults.map(user => (
+                      <div
+                        key={user._id}
+                        className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
+                        onClick={() => navigateToProfile(user.username)}
+                      >
+                        <img
+                          src={user.profileImage || '/svg.png'}
+                          alt={user.username}
+                          className="w-8 h-8 rounded-full mr-2"
+                        />
+                        <span className="text-sm">{user.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
 
           {/* Mobile Search Button */}
-          <button className="md:hidden text-white text-2xl" onClick={() => setSearchOpen(!searchOpen)}>
-            <Icon icon="lucide:search" />
-          </button>
 
 
 
-          <div className="relative  items-center gap-6 md:flex hidden">
+
+          {/* Mobile icons and menu button */}
+          <div className="flex items-center gap-3 md:hidden">
+            {/* Mobile Social Media and Check-in Icons */}
+            <div className="flex items-center gap-3">
+              {/* Search Icon */}
+              <button
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="text-black hover:text-[#B671FF] transition-colors"
+              >
+                <Icon icon="lucide:search" className="text-xl" />
+              </button>
+              
+              {/* Check-in (Calendar) Icon */}
+              <button
+                onClick={() => setIsEventsOpen(true)}
+                className="text-black hover:text-[#B671FF] transition-colors"
+              >
+                <Icon icon="lucide:calendar" className="text-xl" />
+              </button>
+              
+              {/* Twitter Icon */}
+              <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+                <Icon icon="mdi:twitter" className="text-xl" />
+              </a>
+              
+              {/* Telegram Icon */}
+              <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+                <Icon icon="mdi:telegram" className="text-xl" />
+              </a>
+            </div>
+            
+            {/* Mobile Menu Button - now on the right */}
+            <button className="text-black text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
+              <Icon icon="mdi:menu" />
+            </button>
+          </div>
+
+          {/* Desktop icons and auth buttons */}
+          <div className="relative items-center gap-6 md:flex hidden">
             {/* Language Selector */}
-
 
             {/* Events Icon */}
             <div className="relative mt-2">
@@ -682,13 +726,14 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Mobile Search Input */}
         {searchOpen && (
-          <div className="absolute top-16 left-0 w-full bg-black p-3">
+          <div className="absolute top-16 left-0 w-full bg-black p-3 z-50">
             <div className="relative search-container">
               <Input
-                placeholder={t('search')}
-                className="w-full bg-white text-black rounded-md p-2 pr-10"
+                placeholder={t('Search Users and Addresses')}
+                className="w-full bg-white text-black rounded-2xl p-2 pr-10"
                 value={searchQuery}
                 onChange={handleSearchChange}
+                autoFocus
                 onFocus={() => {
                   if (searchQuery.trim()) {
                     setShowSearchResults(true);
@@ -700,7 +745,7 @@ export default function Layout({ children }: LayoutProps) {
                 }}
               />
               <div
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
                 onClick={handleSearchButtonClick}
               >
                 <Icon icon="lucide:search" className="text-black" />
@@ -732,7 +777,7 @@ export default function Layout({ children }: LayoutProps) {
                           onClick={() => navigateToProfile(user.username)}
                         >
                           <img
-                            src={user.profileImage || '/svg.png'}
+                            src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'}
                             alt={user.username}
                             className="w-10 h-10 rounded-full mr-3 border border-gray-200"
                           />
@@ -760,7 +805,7 @@ export default function Layout({ children }: LayoutProps) {
               <Sidebar />
               <TrendingHashtags />
 
-              <TrendingSection />
+              <SolanaTrendingSection />
 
 
 
@@ -848,7 +893,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="flex justify-center">
                 <FearGreedIndex />
               </div>
-              <TrendingSection />
+              <SolanaTrendingSection />
             </div>
           </aside>
         </div>

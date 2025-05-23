@@ -225,13 +225,35 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
       if (response.data.success) {
         toast.success('Post created successfully!');
+        
+        // Track post creation for quest system
+        try {
+          const { trackPostCreation } = await import('@/lib/questUtils');
+          await trackPostCreation(response.data.post._id);
+        } catch (trackingError) {
+          console.error('Error tracking post creation for quest:', trackingError);
+          // Don't fail if tracking fails
+        }
+        
+        // Reset form
         setContent('');
         setMediaFiles([]);
         setMediaPreview([]);
         setShowPollForm(false);
         setPollQuestion('');
         setPollOptions(['', '']);
+        
+        // Notify parent component
         if (onPostCreated) onPostCreated();
+        
+        // Emit socket event for real-time updates
+        try {
+          const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+          socket.emit('newPost', response.data.post);
+        } catch (socketError) {
+          console.error('Socket error:', socketError);
+          // Don't fail if socket fails
+        }
       } else {
         toast.error('Failed to create post');
       }

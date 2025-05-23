@@ -44,11 +44,8 @@ export const fetchTrendingCoins = async (): Promise<TrendingCoin[]> => {
 export const fetchGraduatedTokens = async (): Promise<TrendingCoin[]> => {
   try {
     // This request will be made to our backend API endpoint that fetches graduated tokens
-    // The backend is now configured to fetch from CoinMarketCap's dexscan API
-    const response = await axios.get('/api/graduated-tokens', {
-      // Add a timestamp to prevent caching
-      params: { _t: new Date().getTime() }
-    });
+    // Remove the timestamp parameter as it's causing issues
+    const response = await axios.get('/api/graduated-tokens');
     
     // Check if the response contains an error
     if (response.data && response.data.error) {
@@ -157,12 +154,8 @@ export const fetchGraduatedTokens = async (): Promise<TrendingCoin[]> => {
 // Function to fetch Fear & Greed Index from backend API
 export const fetchFearGreedIndex = async (): Promise<FearGreedData> => {
   try {
-    // Use the backend API endpoint instead of calling CoinMarketCap directly
-    // This ensures proper handling of API keys and CORS
-    const response = await axios.get('/api/fear-greed', {
-      // Add a timestamp to prevent caching
-      params: { _t: new Date().getTime() }
-    });
+    // Remove the timestamp parameter as CoinMarketCap doesn't allow it
+    const response = await axios.get('/api/fear-greed');
     
     // Store in localStorage as a backup
     localStorage.setItem('fearGreedData', JSON.stringify(response.data));

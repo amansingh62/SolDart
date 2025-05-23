@@ -53,7 +53,7 @@ export function AdsSection({ className }: AdsSectionProps) {
     // Auto-rotate ads every 10 seconds if there are multiple ads
     if (advertisements.length > 1) {
       const interval = setInterval(() => {
-        setCurrentAdIndex((prevIndex) => 
+        setCurrentAdIndex((prevIndex) =>
           prevIndex === advertisements.length - 1 ? 0 : prevIndex + 1
         );
       }, 10000);
@@ -63,13 +63,13 @@ export function AdsSection({ className }: AdsSectionProps) {
   }, [advertisements.length]);
 
   const handlePrevAd = () => {
-    setCurrentAdIndex((prevIndex) => 
+    setCurrentAdIndex((prevIndex) =>
       prevIndex === 0 ? advertisements.length - 1 : prevIndex - 1
     );
   };
 
   const handleNextAd = () => {
-    setCurrentAdIndex((prevIndex) => 
+    setCurrentAdIndex((prevIndex) =>
       prevIndex === advertisements.length - 1 ? 0 : prevIndex + 1
     );
   };
@@ -99,16 +99,16 @@ export function AdsSection({ className }: AdsSectionProps) {
   }
 
   const currentAd = advertisements[currentAdIndex];
-  
+
   return (
     <Card className={`max-w-full bg-white rounded-lg shadow-[0px_4px_15px_rgba(128,128,128,0.4)] overflow-hidden ${className}`}>
       <div className="relative">
         {/* Banner Image */}
         <div className="w-full h-48 bg-gray-200 relative overflow-hidden">
           {currentAd.bannerImage ? (
-            <img 
-              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`} 
-              alt={currentAd.projectName} 
+            <img
+              src={currentAd.bannerImage.startsWith('http') ? currentAd.bannerImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`}
+              alt={currentAd.projectName}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -116,29 +116,29 @@ export function AdsSection({ className }: AdsSectionProps) {
               <span className="text-gray-400">No banner image</span>
             </div>
           )}
-          
+
           {/* Navigation arrows if multiple ads */}
           {advertisements.length > 1 && (
             <div className="absolute inset-0 flex items-center justify-between px-2">
-              <Button 
-                onClick={handlePrevAd} 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                onClick={handlePrevAd}
+                variant="ghost"
+                size="icon"
                 className="bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8"
               >
                 <Icon icon="heroicons:chevron-left" className="h-5 w-5" />
               </Button>
-              <Button 
-                onClick={handleNextAd} 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                onClick={handleNextAd}
+                variant="ghost"
+                size="icon"
                 className="bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8"
               >
                 <Icon icon="heroicons:chevron-right" className="h-5 w-5" />
               </Button>
             </div>
           )}
-          
+
           {/* Ad counter indicator */}
           {advertisements.length > 1 && (
             <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
@@ -146,20 +146,20 @@ export function AdsSection({ className }: AdsSectionProps) {
             </div>
           )}
         </div>
-        
+
         <CardContent className="p-4">
           <div className="flex flex-col space-y-3">
             <h3 className="text-xl font-bold">{currentAd.projectName}</h3>
-            
+
             <p className="text-sm text-gray-600 line-clamp-2">
               {currentAd.projectDetails}
             </p>
-            
+
             <div className="flex flex-wrap gap-2 mt-2">
               {currentAd.website && (
-                <Link 
-                  href={currentAd.website.startsWith('http') ? currentAd.website : `https://${currentAd.website}`} 
-                  target="_blank" 
+                <Link
+                  href={currentAd.website.startsWith('http') ? currentAd.website : `https://${currentAd.website}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center text-sm text-blue-600 hover:underline"
                 >
@@ -167,11 +167,11 @@ export function AdsSection({ className }: AdsSectionProps) {
                   Website
                 </Link>
               )}
-              
+
               {currentAd.twitterHandle && (
-                <Link 
-                  href={`https://twitter.com/${currentAd.twitterHandle.replace('@', '')}`} 
-                  target="_blank" 
+                <Link
+                  href={`https://twitter.com/${currentAd.twitterHandle.replace('@', '')}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center text-sm text-blue-600 hover:underline"
                 >
@@ -179,11 +179,11 @@ export function AdsSection({ className }: AdsSectionProps) {
                   Twitter
                 </Link>
               )}
-              
+
               {currentAd.telegramHandle && (
-                <Link 
-                  href={`https://t.me/${currentAd.telegramHandle.replace('@', '')}`} 
-                  target="_blank" 
+                <Link
+                  href={`https://t.me/${currentAd.telegramHandle.replace('@', '')}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center text-sm text-blue-600 hover:underline"
                 >
@@ -192,7 +192,7 @@ export function AdsSection({ className }: AdsSectionProps) {
                 </Link>
               )}
             </div>
-            
+
             <div className="text-xs text-gray-500 mt-2">
               Posted by @{currentAd.user?.username || 'anonymous'}
             </div>

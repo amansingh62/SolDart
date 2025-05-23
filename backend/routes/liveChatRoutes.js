@@ -4,39 +4,14 @@ const router = express.Router();
 const LiveChatMessage = require('../models/LiveChatMessage');
 const User = require('../models/User');
 const auth = require('../middleware/authMiddleware');
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { s3Upload, formatS3Url } = require('../middleware/s3Middleware');
 
-// Set up multer for audio uploads
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/audio');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function(req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// Set up S3 upload for audio files
+const upload = s3Upload('audio');
 
-const fileFilter = (req, file, cb) => {
-  // Accept only audio files
-  if (file.mimetype.startsWith('audio/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only audio files are allowed'), false);
-  }
-};
+// Custom file filter for audio files
 
-const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for audio files
-});
 
 // Get recent live chat messages
 router.get('/', auth, async (req, res) => {
@@ -98,7 +73,7 @@ router.post('/audio', auth, upload.single('audioMessage'), async (req, res) => {
     const newMessage = new LiveChatMessage({
       sender: req.user.id,
       audioMessage: {
-        url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/uploads/audio/${req.file.filename}`,
+        url: formatS3Url(req.file.key),
         duration: duration || 0
       },
       seenBy: [req.user.id] // Sender has seen their own message

@@ -15,6 +15,7 @@ const { router: fearGreedRoutes, setupFearGreedWebSocket } = require('./routes/f
 const authRoutes = require("./routes/authRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const postRoutes = require("./routes/postRoutes");
+const questRoutes = require('./routes/questRoutes');
 const path = require('path');
 const connectDB = require("./config/db"); // Adjust path if needed
 const User = require('./models/User'); // For tracking online users
@@ -59,6 +60,7 @@ app.use("/api/crypto", cryptoRoutes);
 app.use("/api/solana", solanaRoutes);
 app.use("/api/graduated-tokens", graduatedTokensRoutes);
 app.use("/api/fear-greed", fearGreedRoutes);
+app.use("/api/quests", questRoutes);
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");

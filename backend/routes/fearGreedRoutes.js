@@ -5,10 +5,14 @@ const router = express.Router();
 // GET /api/fear-greed - Get current Fear & Greed Index
 router.get('/', async (req, res) => {
   try {
+    // We'll ignore any query parameters like _t as they're just for cache busting
+    console.log('Received request for Fear & Greed Index with query:', req.query);
     const fearGreedData = await fetchFearGreedIndex();
     if (!fearGreedData) {
+      console.error('Fear & Greed Index data not found');
       return res.status(404).json({ error: 'Fear & Greed Index data not found' });
     }
+    console.log('Returning Fear & Greed data:', fearGreedData.value, fearGreedData.value_classification);
     res.json(fearGreedData);
   } catch (error) {
     console.error('Error fetching Fear & Greed Index:', error);
@@ -36,8 +40,8 @@ async function fetchFearGreedIndex() {
         headers: {
           'X-CMC_PRO_API_KEY': apiKey,
         },
-        // Add a timestamp to prevent caching
-        params: { _t: new Date().getTime() }
+        // Don't allow axios to add query parameters automatically
+        params: {}
       }
     );
 
@@ -114,6 +118,7 @@ function setupFearGreedWebSocket(io) {
       } catch (error) {
         console.error(`Error sending immediate Fear & Greed update to client ${socket.id}:`, error);
       }
+    });
     
     // Handle disconnections
     socket.on('disconnect', () => {
@@ -121,7 +126,6 @@ function setupFearGreedWebSocket(io) {
         console.log(`Client ${socket.id} unsubscribed from Fear & Greed updates`);
         fearGreedClients.delete(socket.id);
       }
-      });
     });
   });
   

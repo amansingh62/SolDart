@@ -1,42 +1,13 @@
 // routes/advertisementRoutes.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const Advertisement = require('../models/Advertisement');
 const authenticateJWT = require('../middleware/authMiddleware');
+const { s3Upload, formatS3Url } = require('../middleware/s3Middleware');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/advertisements');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Only image files are allowed!'));
-  }
-});
+// Configure S3 upload for advertisement images
+const upload = s3Upload('advertisements');
 
 // POST - Create a new advertisement
 router.post('/', authenticateJWT, upload.single('bannerImage'), function(req, res, next) {
@@ -74,7 +45,7 @@ router.post('/', authenticateJWT, upload.single('bannerImage'), function(req, re
       telegramHandle: telegramHandle || '',
       website: website || '',
       contactEmail,
-      bannerImage: `/uploads/advertisements/${req.file.filename}`,
+      bannerImage: formatS3Url(req.file.key),
       adDuration,
       transactionHash,
       status: 'pending'

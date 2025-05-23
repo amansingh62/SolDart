@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { verifyRegisteredWallet } from '@/lib/walletUtils';
+import { trackPostComment } from '@/lib/questUtils';
 
 interface PollOption {
   text: string;
@@ -253,6 +254,15 @@ export function DynamicPostCard({
         signature
       });
 
+      // Track like for quest system
+      try {
+        const { trackPostLike } = await import('@/lib/questUtils');
+        await trackPostLike(_id);
+      } catch (trackingError) {
+        console.error('Error tracking like for quest:', trackingError);
+        // Don't fail if tracking fails
+      }
+
       // Only call onLike after successful API call
       if (response.data && onLike) {
         // Pass minimal information to prevent parent from over-updating
@@ -383,6 +393,20 @@ export function DynamicPostCard({
           signature
         });
 
+        // Track comment for quest system
+        try {
+          // Get the comment ID from the response
+          const newCommentId = response.data?.comments ?
+            response.data.comments[response.data.comments.length - 1]._id :
+            newComment._id;
+
+          // Call the tracking function
+          await trackPostComment(_id, newCommentId);
+        } catch (trackingError) {
+          console.error('Error tracking comment for quest:', trackingError);
+          // Don't fail if tracking fails
+        }
+
         // Update the comment with the real ID from the API response
         if (response.data?.comments) {
           const newCommentFromApi = response.data.comments[response.data.comments.length - 1];
@@ -460,7 +484,7 @@ export function DynamicPostCard({
             const newLikes = isLiked
               ? (comment.likes || []).filter(id => id !== currentUserId)
               : [...(comment.likes || []), currentUserId || ''];
-            
+
             return {
               ...comment,
               likes: newLikes
@@ -633,9 +657,9 @@ export function DynamicPostCard({
 
       // Call API to save reply with signature
       try {
-        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, { 
+        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, {
           text: replyText,
-          signature 
+          signature
         });
 
         // If the API call was successful, update the local state with the response data
@@ -1025,7 +1049,7 @@ export function DynamicPostCard({
     <Card className="shadow-md rounded-lg bg-white w-full max-w-screen-md mx-auto mb-4 text-black border border-shadow-lg">
       <CardContent className="space-y-4 p-4">
         {/* Top Section: Avatar & User Info */}
-        <div className="flex gap-2 md:gap-3">
+        <div className="flex gap-2 md:gap-3 ">
           <div className="relative group">
             <Avatar
               className="w-10 h-10 md:w-12 md:h-12 cursor-pointer"
@@ -1047,7 +1071,7 @@ export function DynamicPostCard({
                 }
               }}
             >
-              <AvatarImage src={user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}` : undefined} alt={user?.username || 'User'} />
+              <AvatarImage src={user?.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : undefined} alt={user?.username || 'User'} />
               <AvatarFallback>{user?.username ? user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
             </Avatar>
             {/* Follow button that appears on hover */}
@@ -1065,7 +1089,7 @@ export function DynamicPostCard({
             <div className="flex items-center gap-1 md:gap-2">
               <div className="relative group flex items-center gap-2">
                 <span
-                  className="font-semibold text-black text-sm md:text-md cursor-pointer hover:textgradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA"
+                  className="font-semibold hover:text-purple-400 text-black text-sm md:text-md cursor-pointer hover:textgradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA"
                   onClick={() => {
                     if (user?._id) {
                       try {
@@ -1116,18 +1140,18 @@ export function DynamicPostCard({
               <span className="truncate max-w-full md:max-w-[120px]">{shortenAddress(user?.walletAddress || '')}</span>
               {/* View count display */}
               <span className="text-xs text-gray-500 flex items-center">
-              <svg 
-        className="w-3 h-3 mr-1"
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg> {localViews > 999 ? `${(localViews / 1000).toFixed(1)}k` : localViews} {localViews === 1 ? 'view' : 'views'}
+                <svg
+                  className="w-3 h-3 mr-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg> {localViews > 999 ? `${(localViews / 1000).toFixed(1)}k` : localViews} {localViews === 1 ? 'view' : 'views'}
               </span>
               {/* Removed the timestamp from here */}
             </div>
@@ -1143,58 +1167,58 @@ export function DynamicPostCard({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-40 p-0 bg-white">
-  <div className="py-1">
-    {/* Show Pin/Delete only if user is the owner */}
-    {currentUserId === user?._id ? (
-      <>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={handlePin}
-        >
-          <Icon icon="lucide:pin" className="mr-2 h-4 w-4" />
-          {isPinned ? 'Unpin' : 'Pin'}
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={() => handleShare()}
-        >
-          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
-          Share
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
-          onClick={handleDelete}
-          disabled={isDeleting}
-        >
-          <Icon icon="lucide:trash-2" className="mr-2 h-4 w-4" />
-          Delete
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
-          onClick={() => handleShare()}
-        >
-          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
-          Share
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
-          onClick={() => handleBlock()}
-        >
-          <Icon icon="lucide:shield-ban" className="mr-2 h-4 w-4" />
-          Block
-        </Button>
-      </>
-    )}
-  </div>
-</PopoverContent>
+                  <div className="py-1">
+                    {/* Show Pin/Delete only if user is the owner */}
+                    {currentUserId === user?._id ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={handlePin}
+                        >
+                          <Icon icon="lucide:pin" className="mr-2 h-4 w-4" />
+                          {isPinned ? 'Unpin' : 'Pin'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={() => handleShare()}
+                        >
+                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                        >
+                          <Icon icon="lucide:trash-2" className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          onClick={() => handleShare()}
+                        >
+                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
+                          onClick={() => handleBlock()}
+                        >
+                          <Icon icon="lucide:shield-ban" className="mr-2 h-4 w-4" />
+                          Block
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </PopoverContent>
               </Popover>
             </div>
           )}
@@ -1202,46 +1226,46 @@ export function DynamicPostCard({
 
         {/* Post Content */}
         {content && (
-  <p className="text-sm md:text-base break-words overflow-wrap-anywhere">
-    {content.split(/\s+/).map((word, index) => {
-      if (word.startsWith('#')) {
-        return (
-          <span
-            key={index}
-            className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
-            onClick={() => {
-              try {
-                router.push(`/hashtag/${word.substring(1)}`);
-              } catch (error) {
-                console.error('Navigation error:', error);
+          <p className="text-sm md:text-base break-words overflow-wrap-anywhere">
+            {content.split(/\s+/).map((word, index) => {
+              if (word.startsWith('#')) {
+                return (
+                  <span
+                    key={index}
+                    className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
+                    onClick={() => {
+                      try {
+                        router.push(`/hashtag/${word.substring(1)}`);
+                      } catch (error) {
+                        console.error('Navigation error:', error);
+                      }
+                    }}
+                  >
+                    {word}{' '}
+                  </span>
+                );
               }
-            }}
-          >
-            {word}{' '}
-          </span>
-        );
-      }
-      return <span key={index}>{word}{' '}</span>;
-    })}
-  </p>
-)}
+              return <span key={index}>{word}{' '}</span>;
+            })}
+          </p>
+        )}
 
         {/* Media Content */}
         {media && media.length > 0 && (
           <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
             {media.map((item, index) => (
-              <div key={index} className="rounded-lg overflow-hidden shadow-md">
+              <div key={index} className="rounded-lg overflow-hidden pb-5 pt-4 shadow-md">
                 {item.type === 'image' && (
-                  <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post media" className="w-auto mx-auto max-h-96 rounded-xl" />
+                  <img src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post media" className="w-auto mx-auto max-h-96 rounded-xl" />
                 )}
                 {item.type === 'video' && (
                   <video controls className="w-full h-auto" preload="metadata">
-                    <source src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} type="video/mp4" />
+                    <source src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 )}
                 {item.type === 'gif' && (
-                  <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post GIF" className="w-auto max-h-96" />
+                  <img src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post GIF" className="w-auto max-h-96" />
                 )}
               </div>
             ))}
@@ -1377,7 +1401,7 @@ export function DynamicPostCard({
                   }}
                 >
                   <AvatarImage
-                    src={comment.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${comment.user.profileImage}` : undefined}
+                    src={comment.user?.profileImage ? (comment.user.profileImage.startsWith('http') ? comment.user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${comment.user.profileImage}`) : undefined}
                     alt={comment.user?.username || 'User'}
                   />
                   <AvatarFallback>{comment.user?.username ? comment.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>
@@ -1553,7 +1577,7 @@ export function DynamicPostCard({
                             }}
                           >
                             <AvatarImage
-                              src={reply.user?.profileImage ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${reply.user.profileImage}` : undefined}
+                              src={reply.user?.profileImage ? (reply.user.profileImage.startsWith('http') ? reply.user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${reply.user.profileImage}`) : undefined}
                               alt={reply.user?.username || 'User'}
                             />
                             <AvatarFallback>{reply.user?.username ? reply.user.username.charAt(0).toUpperCase() : '?'}</AvatarFallback>

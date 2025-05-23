@@ -20,7 +20,7 @@ export function FearGreedIndex() {
     return "text-red-600"; // Extreme Fear
   };
 
-  // Function to get background color for the gauge
+  // Function to get background style for the gauge
   const getBackgroundStyle = (value: number) => {
     // Create a gradient that represents the fear/greed spectrum
     return {

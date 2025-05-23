@@ -173,7 +173,7 @@ export function HotCoins() {
           {/* Display coins twice to create seamless infinite scroll effect */}
           {[...displayCoins, ...displayCoins].map((coin, index) => (
             <span
-              key={`${coin.symbol}-${index}`}
+              key={`${coin.symbol}-${index}-${index < displayCoins.length ? 'first' : 'second'}`}
               className={clsx("font-medium px-3 py-1.5 flex items-center bg-white/20 rounded-lg hover:bg-white/30 transition-all duration-300", coin.color)}
             >
               {coin.image && (
