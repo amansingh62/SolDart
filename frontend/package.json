@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.427.0",
+    "@heroui/react": "^2.7.8",
     "@hookform/resolvers": "^3.3.2",
     "@iconify/react": "^4.1.1",
     "@radix-ui/react-avatar": "^1.0.4",
