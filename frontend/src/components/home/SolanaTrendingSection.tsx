@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Icon } from '@iconify/react';
+import Image from 'next/image';
 
 interface Token {
   name: string;
@@ -19,6 +19,7 @@ export default function SolanaTrendingSection() {
   const previousLiquidity = useRef<Record<string, number>>({});
   const [liquidityChanges, setLiquidityChanges] = useState<Record<string, 'up' | 'down' | null>>({});
   const [isUpdating, setIsUpdating] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const fetchTokens = async (isFirstLoad = false) => {
     try {
@@ -71,6 +72,10 @@ export default function SolanaTrendingSection() {
     return num.toFixed(2);
   };
 
+  const handleImageError = (tokenAddress: string) => {
+    setImageErrors(prev => ({ ...prev, [tokenAddress]: true }));
+  };
+
   return (
     <div className="max-w-full text-xl font-medium rounded-lg space-y-2 p-3 bg-[rgba(243,144,236,0.21)] border border-white shadow-[0_4px_30px_rgba(0,0,0,0.1)] backdrop-blur-[11.1px]">
       <div className="flex items-center justify-between px-2">
@@ -107,19 +112,20 @@ export default function SolanaTrendingSection() {
             <div className="flex items-center">
               <div className="mr-3 text-center">
                 <span className="text-xs font-bold">{idx + 1}</span>
-                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden text-xs font-bold">
-                  {token.logo ? (
-                    <img
+                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden text-xs font-bold relative">
+                  {token.logo && !imageErrors[token.address] ? (
+                    <Image
                       src={token.logo}
                       alt={`${token.name} logo`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerText = token.symbol.substring(0, 2);
-                      }}
+                      fill
+                      className="object-cover"
+                      sizes="32px"
+                      onError={() => handleImageError(token.address)}
                     />
                   ) : (
-                    token.symbol.substring(0, 2)
+                    <span className="text-xs font-bold">
+                      {token.symbol.substring(0, 2)}
+                    </span>
                   )}
                 </div>
               </div>

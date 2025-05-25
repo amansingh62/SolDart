@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../../context/LanguageContext';
-import axios from 'axios';
 import api from '../../lib/apiUtils';
 import { useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
@@ -51,16 +50,25 @@ type QuestData = {
   };
 };
 
-const QuestsPage = () => {
+// Separate component that uses useSearchParams
+const QuestsContent = () => {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const [questData, setQuestData] = useState<QuestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client-side flag
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Get or create a user ID for tracking quests
   useEffect(() => {
+    if (!isClient) return; // Only run on client side
+
     // Check if user ID is in URL parameters
     const urlUserId = searchParams.get('userId');
     
@@ -80,11 +88,11 @@ const QuestsPage = () => {
         localStorage.setItem('questUserId', newUserId);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, isClient]);
 
   // Fetch quest data when userId is available
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isClient) return;
 
     const fetchQuestData = async () => {
       try {
@@ -104,7 +112,7 @@ const QuestsPage = () => {
     };
 
     fetchQuestData();
-  }, [userId]);
+  }, [userId, isClient]);
 
   // Helper function to get reward tier color
   const getTierColor = (tier: string) => {
@@ -135,7 +143,8 @@ const QuestsPage = () => {
     return Math.min(100, Math.round((current / max) * 100));
   };
 
-  if (loading) {
+  // Show loading state until client-side is ready
+  if (!isClient || loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] bg-gray-50">
         <div className="animate-spin text-[#B671FF] mb-4">
@@ -353,6 +362,27 @@ const QuestsPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Loading fallback component
+const QuestsLoadingFallback = () => {
+  return (
+    <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] bg-gray-50">
+      <div className="animate-spin text-[#B671FF] mb-4">
+        <Icon icon="lucide:loader" className="w-10 h-10" />
+      </div>
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  );
+};
+
+// Main component with Suspense wrapper
+const QuestsPage = () => {
+  return (
+    <Suspense fallback={<QuestsLoadingFallback />}>
+      <QuestsContent />
+    </Suspense>
   );
 };
 

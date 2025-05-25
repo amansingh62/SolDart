@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Button, Card, Avatar, Badge, Tooltip, Textarea } from "@heroui/react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Button, Card, Badge, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { DynamicPostCard } from "@/components/home/DynamicPostCard";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 import MessagePopup from "@/components/home/MessagePopup";
-import axios from 'axios';
 import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
-import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { AuthModal } from "../auth/AuthModal";
+import Image from 'next/image';
 
 interface ProfileData {
   _id?: string;
@@ -67,24 +66,6 @@ interface Post {
   }>;
   createdAt: string;
   isPinned: boolean;
-}
-
-interface DartData {
-  id: string;
-  content: string;
-  time: string;
-  views: string;
-}
-
-interface Token {
-  name: string;
-  symbol: string;
-  mintAddress: string;
-  amount: number;
-  decimals: number;
-  price: number;
-  value: number;
-  logo: string | null;
 }
 
 // We're now using DynamicPostCard directly, so we don't need the PostCard wrapper component
@@ -205,7 +186,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   }, [profileData._id, profileData.profileImage, profileData.username]);
 
   // Function to fetch profile data from API
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       let response;
       
@@ -284,11 +265,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         setLoading(false);
       }
     }
-  };
-  
+  }, [userId, username, isOwnProfile]);
 
   // Function to fetch user posts
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = useCallback(async () => {
     try {
       setLoading(true);
       // Use the api utility instead of axios directly to ensure authentication token is sent
@@ -336,10 +316,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [profileData._id, isOwnProfile, setProfileData, setPosts, setLoading]);
+
   // Function to fetch saved posts
-  const fetchSavedPosts = async (showLoading = false) => {
+  const fetchSavedPosts = useCallback(async (showLoading = false) => {
     try {
       // Only show loading indicator if explicitly requested
       if (showLoading) {
@@ -364,14 +344,14 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         setLoading(false);
       }
     }
-  };
+  }, [setSavedPosts, setLoading]);
 
   // Load data on component mount or when userId/username changes
   useEffect(() => {
     // Load profile data when component mounts or userId/username changes
     fetchProfileData();
     // We'll fetch posts after profile data is loaded and authentication is confirmed
-  }, [userId, username]);
+  }, [userId, username, fetchProfileData]);
   
   // Check authentication status on mount
   useEffect(() => {
@@ -397,7 +377,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     if (profileData._id) {
       fetchUserPosts();
     }
-  }, [profileData._id]);
+  }, [profileData._id, fetchUserPosts]);
   
   // Fetch saved posts when the Saved tab is clicked
   useEffect(() => {
@@ -406,7 +386,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       const showLoading = savedPosts.length === 0;
       fetchSavedPosts(showLoading);
     }
-  }, [activeTab, profileData._id]);
+  }, [activeTab, profileData._id, savedPosts.length, fetchSavedPosts]);
   
   // Pre-fetch saved posts when profile data is loaded
   useEffect(() => {
@@ -414,7 +394,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       // Silently fetch saved posts in the background without showing loading state
       fetchSavedPosts(false);
     }
-  }, [profileData._id, isOwnProfile]);
+  }, [isOwnProfile, profileData._id, fetchSavedPosts]);
 
   const handleFollow = async () => {
     try {
@@ -518,7 +498,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
             text: `Check out ${profileData.name || profileData.username}'s profile on CoinDart!`,
             url: profileUrl,
           });
-        } catch (shareError) {
+        } catch {
           // User likely canceled the share operation, no need to show error
           console.log('Share canceled or not supported');
         }
@@ -526,74 +506,6 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     } catch (error) {
       console.error('Error sharing profile:', error);
       toast.error('Failed to share profile');
-    }
-  };
-  
-
-  const handleDeletePost = async (postId: string) => {
-    try {
-      const response = await api.delete(`/posts/${postId}`);
-      if (response.data.success) {
-        // Remove the deleted post from the posts array
-        const updatedPosts = posts.filter(post => post._id !== postId);
-        setPosts(updatedPosts);
-        toast.success('Post deleted successfully');
-        
-        // Update the dart count based on the actual number of remaining posts
-        // ONLY for own profile, not for other users' profiles
-        if (isOwnProfile) {
-          setProfileData(prevData => ({
-            ...prevData,
-            darts: updatedPosts.length
-          }));
-        }
-        
-        // Emit socket event for real-time updates
-        if (socket) {
-          socket.emit('postDeleted', postId);
-        }
-      } else {
-        toast.error(response.data.message || 'Failed to delete post');
-      }
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      toast.error('Failed to delete post');
-    }
-  };
-
-  const handlePinPost = async (postId: string) => {
-    try {
-      const response = await api.post(`/posts/pin/${postId}`, {});
-      if (response.data.success) {
-        // Update the post's pinned status
-        setPosts(prevPosts => {
-          // First update the pin status of the target post
-          const updatedPosts = prevPosts.map(post => 
-            post._id === postId ? { ...post, isPinned: !post.isPinned } : post
-          );
-          
-          // Then sort the posts to ensure pinned posts are at the top
-          return updatedPosts.sort((a, b) => {
-            // First sort by pinned status (pinned posts first)
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
-            // Then sort by date (newest first)
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          });
-        });
-        
-        toast.success(response.data.isPinned ? 'Post pinned successfully' : 'Post unpinned');
-        
-        // Emit socket event for real-time updates
-        if (socket) {
-          socket.emit('postUpdated', response.data.post);
-        }
-      } else {
-        toast.error(response.data.message || 'Failed to pin/unpin post');
-      }
-    } catch (error) {
-      console.error('Error pinning/unpinning post:', error);
-      toast.error('Failed to pin/unpin post');
     }
   };
 
@@ -739,7 +651,18 @@ const handleLikePost = async (postId: string) => {
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
               </div>
             ) : profileData.coverImage ? (
-              <img src={profileData.coverImage.startsWith('http') ? profileData.coverImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`} alt="Cover" className="w-full h-full object-cover rounded-t-xl" />
+             <Image
+  src={
+    profileData.coverImage.startsWith('http')
+      ? profileData.coverImage
+      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`
+  }
+  alt="Cover"
+  fill
+  className="object-cover rounded-t-xl"
+  style={{ objectFit: 'cover' }}
+  sizes="100vw"
+/>
             ) : (
               <div className="w-full h-full bg-gray-800 rounded-t-xl flex items-center justify-center">
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
@@ -747,13 +670,23 @@ const handleLikePost = async (postId: string) => {
             )}
             <div className="absolute -bottom-12 md:-bottom-16 left-4 md:left-6">
               {isAuthenticated === false ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
-                  <Icon icon="lucide:user" className="text-4xl text-gray-500" />
-                </div>
-              ) : profileData.profileImage ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden">
-                  <img src={profileData.profileImage.startsWith('http') ? profileData.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`} alt="Profile" className="w-full h-full object-cover" />
-                </div>
+               <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
+    <Icon icon="lucide:user" className="text-4xl text-gray-500" />
+  </div>
+) : profileData.profileImage ? (
+  <div className="w-24 h-24 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden relative">
+    <Image
+      src={
+        profileData.profileImage.startsWith('http')
+          ? profileData.profileImage
+          : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`
+      }
+      alt="Profile"
+      fill
+      className="object-cover rounded-full"
+      sizes="(max-width: 768px) 96px, 128px"
+    />
+  </div>
               ) : (
                 <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
                   <Icon icon="lucide:user" className="text-4xl text-gray-500" />

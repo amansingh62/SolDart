@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Tooltip } from "@heroui/react";
+import { Card, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import Image from 'next/image';
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import api from '@/lib/apiUtils';
 import { toast, ToastPosition } from 'react-hot-toast';
@@ -25,6 +26,20 @@ interface Token {
   address: string;
 }
 
+interface WalletInfo {
+  type: string;
+  data?: {
+    address: string;
+  };
+}
+
+interface ApiResponse {
+  success: boolean;
+  portfolio?: Token[];
+  data?: Token[];
+  message?: string;
+}
+
 export default function WalletPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [portfolio, setPortfolio] = useState<Token[]>([]);
@@ -38,7 +53,7 @@ export default function WalletPage() {
     const savedPortfolio = localStorage.getItem('walletPortfolio');
     if (savedPortfolio) {
       try {
-        const parsedPortfolio = JSON.parse(savedPortfolio);
+        const parsedPortfolio = JSON.parse(savedPortfolio) as Token[];
         setPortfolio(parsedPortfolio);
       } catch (error) {
         console.error('Error parsing saved portfolio:', error);
@@ -53,7 +68,7 @@ export default function WalletPage() {
       const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
       if (storedWalletInfo) {
         try {
-          const walletInfo = JSON.parse(storedWalletInfo);
+          const walletInfo = JSON.parse(storedWalletInfo) as WalletInfo;
           if (walletInfo && walletInfo.type === "wallet" && walletInfo.data?.address) {
             // Only set wallet address if no search address is present
             if (!searchAddress) {
@@ -74,24 +89,26 @@ export default function WalletPage() {
       }
     };
 
+    const handleWalletDisconnected = () => {
+      // Only reset wallet address if no search address is present
+      if (!searchAddress) {
+        setWalletAddress("");
+        setHasFetchedPortfolio(false);
+      }
+    };
+
     // Initial check
     handleWalletChange();
 
     // Add event listeners
     window.addEventListener('storage', handleWalletChange);
     window.addEventListener('walletConnected', handleWalletChange);
-    window.addEventListener('walletDisconnected', () => {
-      // Only reset wallet address if no search address is present
-      if (!searchAddress) {
-        setWalletAddress("");
-        setHasFetchedPortfolio(false);
-      }
-    });
+    window.addEventListener('walletDisconnected', handleWalletDisconnected);
 
     return () => {
       window.removeEventListener('storage', handleWalletChange);
       window.removeEventListener('walletConnected', handleWalletChange);
-      window.removeEventListener('walletDisconnected', () => {});
+      window.removeEventListener('walletDisconnected', handleWalletDisconnected);
     };
   }, [searchAddress]); // Add searchAddress to dependency array
 
@@ -132,22 +149,24 @@ export default function WalletPage() {
       console.log('Raw API Response:', response);
       
       if (response.data.success) {
+        const apiData = response.data as ApiResponse;
+        
         // Log the exact structure of the response
         console.log('Response data structure:', {
-          success: response.data.success,
-          hasPortfolio: !!response.data.portfolio,
-          hasData: !!response.data.data,
-          portfolioType: typeof response.data.portfolio,
-          dataType: typeof response.data.data
+          success: apiData.success,
+          hasPortfolio: !!apiData.portfolio,
+          hasData: !!apiData.data,
+          portfolioType: typeof apiData.portfolio,
+          dataType: typeof apiData.data
         });
 
         // Get the portfolio data from either location
-        const portfolioData = response.data.portfolio || response.data.data || [];
+        const portfolioData = apiData.portfolio || apiData.data || [];
         console.log('Raw portfolio data:', portfolioData);
 
         // Validate each token has required fields
-        const validPortfolio = portfolioData.map((token: any) => {
-          const processedToken = {
+        const validPortfolio = portfolioData.map((token: Partial<Token>) => {
+          const processedToken: Token = {
             name: token.name || 'Unknown Token',
             symbol: token.symbol || '',
             mintAddress: token.mintAddress || token.address || '',
@@ -182,11 +201,6 @@ export default function WalletPage() {
       setIsLoadingPortfolio(false);
     }
   };
-
-  function shortenAddress(address: string) {
-    if (!address) return "";
-    return address.slice(0, 4) + "..." + address.slice(-4);
-  }
 
   // Only show tokens with non-zero balance
   const filteredPortfolio = portfolio.filter(token => {
@@ -272,7 +286,13 @@ export default function WalletPage() {
                       <td className="px-4 py-3 whitespace-nowrap align-middle">
                         <div className="inline-flex items-center gap-2">
                           {token.logo ? (
-                            <img src={token.logo} alt={token.symbol} className="w-7 h-7 rounded-full border border-gray-700" />
+                            <Image 
+                              src={token.logo} 
+                              alt={token.symbol} 
+                              width={28}
+                              height={28}
+                              className="rounded-full border border-gray-700" 
+                            />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-white font-bold">
                               {token.symbol ? token.symbol[0] : token.address[0]}
@@ -322,4 +342,4 @@ export default function WalletPage() {
       />
     </div>
   );
-} 
+}

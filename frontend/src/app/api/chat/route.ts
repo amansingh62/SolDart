@@ -21,10 +21,16 @@ export async function POST(request: NextRequest) {
       content: 'You are EchoAI, a specialized assistant focused exclusively on Solana blockchain queries. Provide information about Solana development, architecture, programs, tokens, NFTs, and ecosystem. Do NOT provide trading advice, price predictions, or investment recommendations. Focus solely on technical and educational aspects of the Solana blockchain.'
     };
     
+    // Define interface for chat messages
+    interface ChatMessage {
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+    }
+
     // Prepare the messages array for the API call
     const apiMessages = [
       systemMessage,
-      ...messages.map((msg: any) => ({
+      ...messages.map((msg: ChatMessage) => ({
         role: msg.role,
         content: msg.content,
       }))
@@ -34,8 +40,8 @@ export async function POST(request: NextRequest) {
     if (image && apiMessages.length > 0) {
       // Find the last user message
       const lastUserMessageIndex = apiMessages
-        .map((msg: any, index: number) => ({ role: msg.role, index }))
-        .filter((msg: any) => msg.role === 'user')
+        .map((msg: { role: string; content: string | Array<{type: string; text?: string; image_url?: {url: string}}> }, index: number) => ({ role: msg.role, index }))
+        .filter((msg: { role: string; index: number }) => msg.role === 'user')
         .pop()?.index;
       
       if (lastUserMessageIndex !== undefined) {

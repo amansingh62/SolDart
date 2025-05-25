@@ -78,7 +78,7 @@ const MessagePopup = ({
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [unreadTotal, setUnreadTotal] = useState(0);
+  const [, setUnreadTotal] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -143,7 +143,7 @@ const MessagePopup = ({
     if (isOpen) {
       fetchContacts();
       // Don't fetch unread count here as it will be updated after messages are marked as read
-      
+
       // If initialContactId is provided, set it as active contact
       if (initialContactId && initialContactUsername) {
         setActiveContact({
@@ -254,7 +254,7 @@ const MessagePopup = ({
     if (!contactId) return;
 
     const isFromMe = message.sender === 'me';
-    
+
     // Check if this message is from the active contact and popup is open
     // If so, we don't need to increment the unread count as it will be marked as read
     const isFromActiveContact = activeContact && contactId === activeContact._id && isOpen;
@@ -273,9 +273,9 @@ const MessagePopup = ({
           lastMessage: message.text,
           lastMessageTime: message.createdAt,
           // Only increment unread count if not from me and not from active contact when popup is open
-          unreadCount: isFromMe ? (contact?.unreadCount ?? 0) : 
-                      isFromActiveContact ? (contact?.unreadCount ?? 0) : 
-                      (contact?.unreadCount ?? 0) + 1
+          unreadCount: isFromMe ? (contact?.unreadCount ?? 0) :
+            isFromActiveContact ? (contact?.unreadCount ?? 0) :
+              (contact?.unreadCount ?? 0) + 1
         };
 
         // Move this contact to the top
@@ -426,7 +426,6 @@ const MessagePopup = ({
   };
 
 
-
   // Close emoji picker when clicking outside
   useClickOutside(emojiPickerRef as React.RefObject<HTMLElement>, () => {
     if (showEmojiPicker) setShowEmojiPicker(false);
@@ -500,15 +499,14 @@ const MessagePopup = ({
     setMessageText('');
   };
 
-  // Message context menu component
-  const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
+  // Message context menu component - using directly in the component where needed
+  const renderMessageContextMenu = ({ 
     isOpen,
     setIsOpen,
     position,
     messageId,
-    isOwnMessage,
     onDelete
-  }) => {
+  }: MessageContextMenuProps) => {
     if (!isOpen) return null;
 
     return (
@@ -538,7 +536,7 @@ const MessagePopup = ({
   });
 
   // Close context menu when clicking outside
-  const handleClickOutside = useCallback((e: MouseEvent) => {
+  const handleClickOutside = useCallback(() => {
     if (contextMenu.isOpen) {
       setContextMenu(prev => ({ ...prev, isOpen: false }));
     }
@@ -870,3 +868,5 @@ const MessagePopup = ({
 };
 
 export default MessagePopup;
+
+

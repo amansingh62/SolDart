@@ -6,11 +6,24 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Icon } from "@iconify/react";
 import api from '@/lib/apiUtils';
 
+// Define socket interface for better type safety
+interface SocketData {
+  postId: string;
+  views: number;
+  [key: string]: unknown;
+}
+
+interface Socket {
+  on: (event: string, callback: (data: SocketData) => void) => void;
+  off: (event: string) => void;
+}
+
 interface MatrixPostProps {
   postId?: string;
   currentUserId?: string;
   initialViews?: number;
-  socket?: any;
+  socket?: Socket;
+  onDelete?: (postId: string, event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function MatrixPost({ 
@@ -20,6 +33,7 @@ export function MatrixPost({
   socket
 }: MatrixPostProps) {
   const [localViews, setLocalViews] = useState<number>(initialViews);
+  
   // Track view when component mounts - only once per user ID
   useEffect(() => {
     // Always track the view for each user session

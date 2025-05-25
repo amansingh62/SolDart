@@ -98,8 +98,10 @@ export async function GET() {
     }))
 
     return NextResponse.json(trendingCoins);
-  } catch (error: any) {
-    console.error('Error fetching trending coins:', error.response?.data || error.message);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const responseData = (error as { response?: { data: unknown } })?.response?.data;
+    console.error('Error fetching trending coins:', responseData || errorMessage);
     
     return NextResponse.json(
       { error: 'Failed to fetch trending coins' },

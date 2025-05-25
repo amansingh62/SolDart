@@ -53,7 +53,7 @@ export function HomePage() {
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | undefined>(undefined);
   const { selectedHashtag, setSelectedHashtag } = useHashtag();
   const postsContainerRef = useRef<HTMLDivElement>(null);
 

@@ -9,6 +9,7 @@ import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { verifyRegisteredWallet } from '@/lib/walletUtils';
+import Image from 'next/image';
 
 interface CreateDartFormProps {
   onPostCreated?: () => void;
@@ -285,7 +286,15 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           {mediaPreview.map((preview, index) => (
             <div key={index} className="relative rounded-lg overflow-hidden">
               {mediaFiles[index].type.startsWith('image/') ? (
-                <img src={preview} alt="Preview" className="w-full h-32 object-cover" />
+                  <div className="relative w-full h-32">
+            <Image 
+              src={preview} 
+              alt="Preview" 
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
               ) : mediaFiles[index].type.startsWith('video/') && (
                 <video className="w-full h-32 object-cover" controls>
                   <source src={preview} type={mediaFiles[index].type} />

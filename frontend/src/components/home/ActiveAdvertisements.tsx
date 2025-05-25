@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import api from '@/lib/apiUtils';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icon } from '@iconify/react';
 
 interface Advertisement {
@@ -117,10 +118,13 @@ export function ActiveAdvertisements() {
             rel="noopener noreferrer"
             className="block"
           >
-            <img
+            <Image
               src={currentAd.bannerImage.startsWith('http') ? currentAd.bannerImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`}
               alt={currentAd.projectName}
+              width={800}
+              height={120}
               className="w-full h-[120px] object-cover"
+              priority={currentAdIndex === 0}
             />
           </a>
 

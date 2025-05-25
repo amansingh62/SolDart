@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Paperclip, Send, Image as ImageIcon, X } from "lucide-react"
+import Image from "next/image"
+import {  Send, Image as ImageIcon, X } from "lucide-react"
 import { Icon } from "@iconify/react"
 
 type Message = {
@@ -153,8 +154,14 @@ export default function SupportChat() {
               : 'bg-white/80 text-gray-800 rounded-tl-none shadow-sm'
               }`}>
               {msg.image && (
-                <div className="mb-2 rounded-lg overflow-hidden">
-                  <img src={msg.image} alt="Attached" className="max-w-full max-h-[200px] object-cover" />
+                <div className="mb-2 rounded-lg overflow-hidden relative w-full max-w-[200px] h-[200px]">
+                  <Image 
+                    src={msg.image} 
+                    alt="Attached image" 
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 200px) 100vw, 200px"
+                  />
                 </div>
               )}
               <p className="text-sm break-words whitespace-normal overflow-wrap-break-word">{msg.content}</p>
@@ -210,15 +217,19 @@ export default function SupportChat() {
         )}
 
         {selectedImage && (
-          <div className="mb-3 relative">
-            <img
-              src={selectedImage}
-              alt="Selected"
-              className="max-h-[100px] rounded-lg object-cover"
-            />
+          <div className="mb-3 relative w-fit">
+            <div className="relative w-[100px] h-[100px] rounded-lg overflow-hidden">
+              <Image
+                src={selectedImage}
+                alt="Selected image preview"
+                fill
+                className="object-cover"
+                sizes="100px"
+              />
+            </div>
             <button
               onClick={removeSelectedImage}
-              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-md"
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md"
             >
               <X size={14} />
             </button>

@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Icon } from "@iconify/react";
 import api from '@/lib/apiUtils';
-import { useRouter } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { io } from 'socket.io-client';
 import { useHashtag } from '@/context/HashtagContext';
@@ -36,7 +34,6 @@ export function TrendingHashtags() {
   const [trendingHashtags, setTrendingHashtags] = useState<TrendingHashtag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const { setSelectedHashtag } = useHashtag();
 
   useEffect(() => {
@@ -92,11 +89,6 @@ export function TrendingHashtags() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Navigate to user profile
-  const navigateToProfile = (username: string) => {
-    router.push(`/profile/${username}`);
-  };
-
   if (isLoading) {
     return (
       <div className="rounded-2xl overflow-hidden bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] p-4">
@@ -141,7 +133,7 @@ export function TrendingHashtags() {
           <Icon icon="lucide:hash" className="text-xl" />
           Trending Hashtags
         </h3>
-        <p className="text-sm text-white/80">Explore what's hot right now</p>
+        <p className="text-sm text-white/80">Explore what&apos;s hot right now</p>
       </div>
 
       <div className="p-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Popover, PopoverTrigger, PopoverContent, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { initializeSocket, getSocket } from "../../lib/socketUtils";
@@ -26,14 +26,31 @@ interface NotificationPopupProps {
 export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, setIsOpen, children, onUnreadCountChange }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [userId, setUserId] = useState<string>("");
+  
+  // Memoize the onUnreadCountChange callback to prevent unnecessary re-renders
+  const memoizedOnUnreadCountChange = useCallback((count: number) => {
+    if (onUnreadCountChange) {
+      onUnreadCountChange(count);
+    }
+  }, [onUnreadCountChange]);
   
   // Fetch notifications from API
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const response = await api.get('/notifications');
       if (response.data.success) {
-        const apiNotifications = response.data.notifications.map((notification: any) => ({
+        interface ApiNotification {
+          _id: string;
+          type: string;
+          message: string;
+          createdAt: string;
+          isRead: boolean;
+          sender?: {
+            username: string;
+          };
+        }
+        
+        const apiNotifications = response.data.notifications.map((notification: ApiNotification) => ({
           id: notification._id,
           title: getNotificationTitle(notification.type),
           message: notification.message,
@@ -47,14 +64,12 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         setUnreadCount(newUnreadCount);
         
         // Update parent component's unread count
-        if (onUnreadCountChange) {
-          onUnreadCountChange(newUnreadCount);
-        }
+        memoizedOnUnreadCountChange(newUnreadCount);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
-  };
+  }, [memoizedOnUnreadCountChange]);
   
   // Get notification title based on type
   const getNotificationTitle = (type: string) => {
@@ -89,12 +104,22 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
       try {
         const response = await api.get('/auth/current-user');
         if (response.data.user) {
-          setUserId(response.data.user._id);
           // Initialize socket with user ID
           const socket = initializeSocket(response.data.user._id);
           
           // Listen for real-time notifications
-          socket.on('notification', (newNotification: any) => {
+          interface SocketNotification {
+            _id: string;
+            type: string;
+            message: string;
+            createdAt: string;
+            isRead: boolean;
+            sender?: {
+              username: string;
+            };
+          }
+          
+          socket.on('notification', (newNotification: SocketNotification) => {
             const formattedNotification = {
               id: newNotification._id,
               title: getNotificationTitle(newNotification.type),
@@ -106,13 +131,12 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
             };
             
             setNotifications(prev => [formattedNotification, ...prev]);
-            const newCount = unreadCount + 1;
-            setUnreadCount(newCount);
-            
-            // Update parent component's unread count
-            if (onUnreadCountChange) {
-              onUnreadCountChange(newCount);
-            }
+            setUnreadCount(prevCount => {
+              const newCount = prevCount + 1;
+              // Update parent component's unread count
+              memoizedOnUnreadCountChange(newCount);
+              return newCount;
+            });
           });
         }
       } catch (error) {
@@ -129,7 +153,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         socket.off('notification');
       }
     };
-  }, []);
+  }, [fetchNotifications, memoizedOnUnreadCountChange]);
 
   const [activeTab, setActiveTab] = useState("all");
   // Modified filtering logic to ensure read notifications only appear in the 'Read' tab
@@ -146,9 +170,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         setUnreadCount(0);
         
         // Update parent component's unread count
-        if (onUnreadCountChange) {
-          onUnreadCountChange(0);
-        }
+        memoizedOnUnreadCountChange(0);
       }
     } catch (error) {
       console.error('Error deleting all notifications:', error);
@@ -165,9 +187,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         setUnreadCount(0);
         
         // Update parent component's unread count
-        if (onUnreadCountChange) {
-          onUnreadCountChange(0);
-        }
+        memoizedOnUnreadCountChange(0);
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -181,13 +201,12 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         setNotifications((prev) =>
           prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
         );
-        const newCount = Math.max(0, unreadCount - 1);
-        setUnreadCount(newCount);
-        
-        // Update parent component's unread count
-        if (onUnreadCountChange) {
-          onUnreadCountChange(newCount);
-        }
+        setUnreadCount(prevCount => {
+          const newCount = Math.max(0, prevCount - 1);
+          // Update parent component's unread count
+          memoizedOnUnreadCountChange(newCount);
+          return newCount;
+        });
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);

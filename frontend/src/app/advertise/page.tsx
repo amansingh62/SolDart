@@ -2,7 +2,6 @@
 
 import React from 'react';
 import AdvertiseForm from '@/components/home/AdvertiseForm';
-import { Card, CardContent } from "@/components/ui/card";
 
 export default function AdvertisePage() {  
   return ( 

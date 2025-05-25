@@ -8,6 +8,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import api from '../../lib/apiUtils';
 import { initializeSocket } from '../../lib/socketUtils';
 import ChatMessage from './ChatMessage';
+import { Socket } from 'socket.io-client';
 
 // Lazy load the MessageContextMenu component
 const MessageContextMenu = lazy(() => import('./MessageContextMenu'));
@@ -32,6 +33,12 @@ interface LiveChatMessage {
     };
 }
 
+// Type for the message payload when sending
+interface MessagePayload {
+    text: string;
+    replyTo?: string;
+}
+
 const LiveChatPage = () => {
     const { t } = useLanguage();
     const [messages, setMessages] = useState<LiveChatMessage[]>([]);
@@ -44,7 +51,7 @@ const LiveChatPage = () => {
     const [replyingTo, setReplyingTo] = useState<LiveChatMessage | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const socketRef = useRef<any>(null);
+    const socketRef = useRef<Socket | null>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +66,7 @@ const LiveChatPage = () => {
         if (newMessage.trim() === '') return;
 
         try {
-            const payload: any = { text: newMessage };
+            const payload: MessagePayload = { text: newMessage };
 
             if (replyingTo) {
                 payload.replyTo = replyingTo._id;
@@ -79,9 +86,6 @@ const LiveChatPage = () => {
     // Memoize the online users object
     const memoizedOnlineUsers = useMemo(() => onlineUsers, [onlineUsers]);
 
-    // Memoize the typing users object
-    const memoizedTypingUsers = useMemo(() => typingUsers, [typingUsers]);
-
     // Memoize the online users count
     const onlineUsersCount = useMemo(() => {
         const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
@@ -90,9 +94,16 @@ const LiveChatPage = () => {
     }, [onlineUsers]);
 
     // Memoize the message list
+    // Add this function to handle right-click on messages
+    const handleMessageContextMenu = useCallback((e: React.MouseEvent, message: LiveChatMessage) => {
+        e.preventDefault();
+        setContextMenuPosition({ x: e.clientX, y: e.clientY });
+        setSelectedMessage(message);
+    }, []);
+
     const messageList = useMemo(() => {
         return memoizedMessages
-            .filter(message => {
+            .filter((message) => {
                 const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
                 return !message.hiddenFor?.includes(userId || '');
             })
@@ -101,16 +112,20 @@ const LiveChatPage = () => {
                 const isOwnMessage = message.sender._id === userId;
 
                 return (
-                    <ChatMessage
+                    <div 
                         key={message._id}
-                        message={message}
-                        isOwnMessage={isOwnMessage}
-                        onlineUsers={memoizedOnlineUsers}
-                        onReply={handleReplyToMessage}
-                    />
+                        onContextMenu={(e) => handleMessageContextMenu(e, message)}
+                    >
+                        <ChatMessage
+                            message={message}
+                            isOwnMessage={isOwnMessage}
+                            onlineUsers={memoizedOnlineUsers}
+                            onReply={handleReplyToMessage}
+                        />
+                    </div>
                 );
             });
-    }, [memoizedMessages, memoizedOnlineUsers, handleReplyToMessage]);
+    }, [memoizedMessages, memoizedOnlineUsers, handleReplyToMessage, handleMessageContextMenu]);
 
     // Close context menu when clicking outside
     useEffect(() => {
@@ -223,11 +238,13 @@ const LiveChatPage = () => {
 
             timerRef.current = setTimeout(() => {
                 setIsTyping(false);
-                socketRef.current.emit('liveChatTyping', {
-                    senderId: typeof window !== 'undefined' ? localStorage.getItem('userId') : null,
-                    username: typeof window !== 'undefined' ? localStorage.getItem('username') : null,
-                    isTyping: false
-                });
+                if (socketRef.current) {
+                    socketRef.current.emit('liveChatTyping', {
+                        senderId: typeof window !== 'undefined' ? localStorage.getItem('userId') : null,
+                        username: typeof window !== 'undefined' ? localStorage.getItem('username') : null,
+                        isTyping: false
+                    });
+                }
             }, 1000);
         } else if (isTyping) {
             setIsTyping(false);

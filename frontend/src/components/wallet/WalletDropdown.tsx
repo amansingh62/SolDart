@@ -3,16 +3,23 @@ import { Icon } from "@iconify/react";
 import { connectWallet, disconnectWallet, checkWalletInstalled } from "@/lib/walletUtils";
 import { toast } from "react-hot-toast";
 
+// Define a proper type for wallet data
+interface WalletData {
+  blockchain?: string;
+  address?: string;
+  [key: string]: unknown; // Allow additional properties if needed
+}
+
 interface WalletDropdownProps {
   isOpen: boolean;
   onClose: () => void;
   connectedWallet: {
     type: "wallet" | "email";
-    data: any;
+    data: WalletData;
     emoji: string;
     address?: string;
   } | null;
-  onConnect: (type: "wallet" | "email", data: any) => void;
+  onConnect: (type: "wallet" | "email", data: WalletData) => void;
   onDisconnect: () => void;
 }
 
@@ -44,7 +51,7 @@ export function WalletDropdown({ isOpen, onClose, connectedWallet, onConnect, on
       if (walletAddress) {
         // Store wallet info in localStorage
         const walletInfo = {
-          type: "wallet",
+          type: "wallet" as const,
           data: {
             blockchain: "phantom",
             address: walletAddress
@@ -114,4 +121,4 @@ export function WalletDropdown({ isOpen, onClose, connectedWallet, onConnect, on
       )}
     </div>
   );
-} 
+}

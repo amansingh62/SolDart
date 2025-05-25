@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Enable source maps in development
   productionBrowserSourceMaps: true,
-  // Configure API proxy
+  images: {
+    domains: ['s2.coinmarketcap.com', 'ui-avatars.com', 'solecho.s3.eu-north-1.amazonaws.com'],
+  },
   async rewrites() {
     return [
       {
@@ -16,7 +17,6 @@ const nextConfig = {
       }
     ];
   },
-  // Configure CORS
   async headers() {
     return [
       {
@@ -41,4 +41,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;

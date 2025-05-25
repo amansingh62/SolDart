@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@iconify/react";
 import clsx from "clsx";
+import Image from 'next/image';
 import { fetchTrendingCoins, TrendingCoin } from '@/lib/coinMarketCapApi';
 import { subscribeToCryptoUpdates } from '@/lib/cryptoWebSocket';
 
@@ -18,7 +19,6 @@ interface CoinDisplay {
 
 export function HotCoins() {
   const [trendingCoins, setTrendingCoins] = useState<CoinDisplay[]>([]);
-  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef<boolean>(true);
 
@@ -44,7 +44,6 @@ export function HotCoins() {
           // Use cached data for initial render to prevent flickering
           const parsedData = JSON.parse(cachedData);
           setTrendingCoins(parsedData);
-          setLoading(false);
         }
         
         // Always fetch fresh data from API
@@ -75,8 +74,6 @@ export function HotCoins() {
         if (cachedData) {
           setTrendingCoins(JSON.parse(cachedData));
         }
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -177,10 +174,12 @@ export function HotCoins() {
               className={clsx("font-medium px-3 py-1.5 flex items-center bg-white/20 rounded-lg hover:bg-white/30 transition-all duration-300", coin.color)}
             >
               {coin.image && (
-                <img 
+                <Image 
                   src={coin.image} 
                   alt={coin.symbol} 
-                  className="w-4 h-4 mr-1.5 rounded-full" 
+                  width={16}
+                  height={16}
+                  className="mr-1.5 rounded-full" 
                 />
               )}
               <span className="text-xs font-bold mr-1">#{coin.number}</span> {coin.symbol}

@@ -3,13 +3,34 @@
 import React, { useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { toast } from "react-hot-toast";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (userData: { username?: string; email?: string; emoji?: string }) => void;
+}
+
+interface AuthResponse {
+  success?: boolean;
+  statusCode?: number;
+  user?: {
+    username?: string;
+    email?: string;
+    emoji?: string;
+  };
+  data?: {
+    user?: {
+      username?: string;
+      email?: string;
+      emoji?: string;
+    };
+  };
+}
+
+interface ErrorResponse {
+  message?: string;
 }
 
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
@@ -26,7 +47,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
     try {
       const endpoint = isSignUp ? "/auth/register" : "/auth/login";
-      const response = await axios.post(
+      const response = await axios.post<AuthResponse>(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${endpoint}`,
         { email, password, username, name },
         { withCredentials: true }
@@ -51,8 +72,9 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           window.location.reload();
         }, 1000);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      toast.error(axiosError.response?.data?.message || "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +83,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const handleGoogleAuth = async () => {
     try {
       window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/google`;
-    } catch (error) {
+    } catch {
       toast.error("Failed to initiate Google authentication");
     }
   };
@@ -163,4 +185,4 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       </ModalContent>
     </Modal>
   );
-} 
+}

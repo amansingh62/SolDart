@@ -9,21 +9,19 @@ import { FearGreedIndex } from "@/components/home/FearGreedIndex";
 import { TrendingHashtags } from "@/components/home/TrendingHashtags";
 import SolanaTrendingSection from "@/components/home/SolanaTrendingSection";
 import SupportChat from "@/components/home/SupportChat";
-import { AdsSection } from "@/components/home/AdsSection";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { UserProfileModal } from "@/components/auth/UserProfileModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import MessagePopup from "./MessagePopup";
-import { usePathname, useRouter } from "next/navigation";
+import {  useRouter } from "next/navigation";
 import DartAIButton from "@/components/home/DartAIButton";
 import EventsPopup from "@/components/home/EventsPopUP";
-import { LanguageSelector } from "@/components/home/LanguageSelector";
 import { useLanguage } from "@/context/LanguageContext";
 import { RecentSearches } from "@/components/home/RecentSearches";
-import { WalletDropdown } from "@/components/wallet/WalletDropdown";
 import api from '@/lib/apiUtils';
+import Image from 'next/image';
 
 const EMOJIS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐙", "🦄", "🐳", "🦋", "🐝", "🦖", "🐢"];
 
@@ -49,8 +47,7 @@ export default function Layout({ children }: LayoutProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
-  const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [, setToken] = useState<string | null>(null);
   const router = useRouter();
   const [authState, setAuthState] = useState<{
     wallet: {
@@ -131,14 +128,14 @@ export default function Layout({ children }: LayoutProps) {
     try {
       const response = await api.get(`/api/solana/token/${address}`);
       return response.data.success;
-    } catch (error) {
+    } catch {
       return false;
     }
   };
 
   // Function to search for users or hashtags
-  const searchUsers = async (query?: string, isButtonClick: boolean = false) => {
-    let searchTerm = query || searchQuery;
+const searchUsers = async (query?: string) => {
+    const searchTerm = query || searchQuery;
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
@@ -384,28 +381,12 @@ export default function Layout({ children }: LayoutProps) {
     localStorage.removeItem('walletModalSource');
   };
 
-  const toggleWalletModal = () => {
-    setIsWalletModalOpen(!isWalletModalOpen);
-    // Close the menu when opening wallet modal from mobile
-    if (!isWalletModalOpen && menuOpen) {
-      setMenuOpen(false);
-    }
-  };
+ 
 
   const { t } = useLanguage();
 
   // Add click outside handler for the dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.wallet-dropdown-container')) {
-        setIsWalletDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  
 
   const renderAuthButton = () => {
     const { wallet, user } = authState;
@@ -581,11 +562,20 @@ export default function Layout({ children }: LayoutProps) {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo on the left for both mobile and desktop */}
           <div className="flex items-center">
-            <img src="/solecho_logo.png" alt="SolEcho Logo" className="w-10" />
-
-            <h1 className="text-2xl font-bold">Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
-              Echo</span></h1>
-          </div>
+  <Image 
+    src="/solecho_logo.png" 
+    alt="SolEcho Logo" 
+    width={40}
+    height={40}
+    className="w-10"
+    priority
+  />
+  <h1 className="text-2xl font-bold">
+    Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
+      Echo
+    </span>
+  </h1>
+</div>
 
           <div className="fixed left-1/2 transform -translate-x-1/2 w-[30vw] search-container mt-2 hidden md:block">
             <Input
@@ -637,11 +627,14 @@ export default function Layout({ children }: LayoutProps) {
                         className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
                         onClick={() => navigateToProfile(user.username)}
                       >
-                        <img
-                          src={user.profileImage || '/svg.png'}
-                          alt={user.username}
-                          className="w-8 h-8 rounded-full mr-2"
-                        />
+                      <Image
+  src={user.profileImage || '/svg.png'}
+  alt={user.username}
+  width={32}
+  height={32}
+  className="w-8 h-8 rounded-full mr-2"
+  unoptimized={!user.profileImage || user.profileImage.startsWith('data:')}
+/>
                         <span className="text-sm">{user.username}</span>
                       </div>
                     ))}
@@ -776,11 +769,14 @@ export default function Layout({ children }: LayoutProps) {
                           className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
                           onClick={() => navigateToProfile(user.username)}
                         >
-                          <img
-                            src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'}
-                            alt={user.username}
-                            className="w-10 h-10 rounded-full mr-3 border border-gray-200"
-                          />
+                         <Image
+  src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'}
+  alt={user.username}
+  width={40}
+  height={40}
+  className="w-10 h-10 rounded-full mr-3 border border-gray-200"
+  unoptimized={Boolean(user.profileImage && !user.profileImage.startsWith('http') && !user.profileImage.startsWith('/'))}
+/>
                           <span className="font-medium">@{user.username}</span>
                         </div>
                       ))}

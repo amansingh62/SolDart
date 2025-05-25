@@ -11,12 +11,22 @@ interface User {
   // Add other user properties as needed
 }
 
+// Define registration data interface
+interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  profileImage?: string;
+  [key: string]: unknown; // Allow additional properties if needed
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: any) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -89,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const register = async (userData: any) => {
+  const register = async (userData: RegisterData) => {
     try {
       console.log("AuthContext: Attempting registration");
       const response = await api.post('/auth/register', userData);

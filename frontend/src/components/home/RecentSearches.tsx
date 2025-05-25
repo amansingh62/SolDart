@@ -37,7 +37,7 @@ export const RecentSearches: React.FC<RecentSearchesProps> = ({
           >
             <div
               className="flex items-center flex-grow"
-              onClick={(e: React.MouseEvent<HTMLDivElement>) => onSelectSearch(search)}
+              onClick={() => onSelectSearch(search)}
             >
               <Icon icon="lucide:clock" className="text-gray-400 mr-2" />
               <span className="text-sm">{search}</span>

@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { useLanguage } from '../../context/LanguageContext';
 import { trackPostLike } from '../../lib/questUtils';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";

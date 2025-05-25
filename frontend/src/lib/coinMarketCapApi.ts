@@ -26,6 +26,21 @@ export interface FearGreedData {
   volume_to_cap_ratio?: number;
 }
 
+// Interface for raw token data from API before transformation
+interface RawTokenData {
+  id: number;
+  name: string;
+  symbol: string;
+  slug: string;
+  price: number;
+  percent_change_24h: number;
+  market_cap: number;
+  volume_24h: number;
+  rank: number;
+  image?: string;
+  graduationTime?: number;
+}
+
 // Function to fetch trending Solana cryptocurrencies from CoinMarketCap API
 export const fetchTrendingCoins = async (): Promise<TrendingCoin[]> => {
   try {
@@ -54,7 +69,7 @@ export const fetchGraduatedTokens = async (): Promise<TrendingCoin[]> => {
     }
     
     // Transform the data to ensure all tokens are marked as graduated
-    const graduatedTokens = response.data.map((token: any) => ({
+    const graduatedTokens = response.data.map((token: RawTokenData) => ({
       ...token,
       isGraduated: true,
       // Add graduation time if not already present

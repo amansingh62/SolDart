@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import api from '@/lib/apiUtils';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icon } from '@iconify/react';
 
 interface Advertisement {
@@ -106,10 +107,12 @@ export function AdsSection({ className }: AdsSectionProps) {
         {/* Banner Image */}
         <div className="w-full h-48 bg-gray-200 relative overflow-hidden">
           {currentAd.bannerImage ? (
-            <img
+            <Image
               src={currentAd.bannerImage.startsWith('http') ? currentAd.bannerImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${currentAd.bannerImage}`}
               alt={currentAd.projectName}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              priority={currentAdIndex === 0}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-100">

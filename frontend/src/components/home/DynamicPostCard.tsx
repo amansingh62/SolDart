@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { verifyRegisteredWallet } from '@/lib/walletUtils';
 import { trackPostComment } from '@/lib/questUtils';
+import { Socket } from 'socket.io-client';
+import Image from 'next/image';
 
 interface PollOption {
   text: string;
@@ -66,7 +68,7 @@ interface PostProps {
   isHomePage?: boolean;
   isSaved?: boolean;
   views?: number;
-  socket?: any; // Socket.io instance for real-time updates
+  socket?: Socket; // Socket.io instance for real-time updates
 }
 
 export function DynamicPostCard({
@@ -85,7 +87,6 @@ export function DynamicPostCard({
   onDelete,
   onCommentDelete,
   onCommentPin,
-  isHomePage,
   isSaved = false,
   views = 0,
   socket
@@ -158,7 +159,7 @@ export function DynamicPostCard({
 
   // Add this useEffect at the top of the component
   React.useEffect(() => {
-    const handleAccountChange = async (publicKey: any) => {
+    const handleAccountChange = async () => {
       try {
         // If the wallet changes, disconnect from our app
         const wallet = (window as any).solana;
@@ -230,7 +231,6 @@ export function DynamicPostCard({
 
       // Sign a non-gas transaction message
       const message = `Sign this message to like post: ${_id}`;
-      const walletInfo = JSON.parse(storedWalletInfo);
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
@@ -303,7 +303,6 @@ export function DynamicPostCard({
 
       // Sign a non-gas transaction message
       const message = `Sign this message to comment on post: ${_id}`;
-      const walletInfo = JSON.parse(storedWalletInfo);
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
@@ -466,7 +465,6 @@ export function DynamicPostCard({
 
       // Sign a non-gas transaction message
       const message = `Sign this message to like comment: ${commentId}`;
-      const walletInfo = JSON.parse(storedWalletInfo);
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
@@ -568,7 +566,6 @@ export function DynamicPostCard({
 
       // Sign a non-gas transaction message
       const message = `Sign this message to reply to comment: ${replyingTo}`;
-      const walletInfo = JSON.parse(storedWalletInfo);
       const wallet = (window as any).solana; // Assuming Phantom wallet is used
       if (!wallet) {
         toast.error('Wallet not found');
@@ -936,7 +933,7 @@ export function DynamicPostCard({
             text: content?.substring(0, 50) + (content && content.length > 50 ? '...' : ''),
             url: postUrl
           });
-        } catch (shareError) {
+        } catch  {
           // User likely canceled the share operation, no need to show error
           console.log('Share canceled or not supported');
         }
@@ -1251,26 +1248,49 @@ export function DynamicPostCard({
         )}
 
         {/* Media Content */}
-        {media && media.length > 0 && (
-          <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-            {media.map((item, index) => (
-              <div key={index} className="rounded-lg overflow-hidden pb-5 pt-4 shadow-md">
-                {item.type === 'image' && (
-                  <img src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post media" className="w-auto mx-auto max-h-96 rounded-xl" />
-                )}
-                {item.type === 'video' && (
-                  <video controls className="w-full h-auto" preload="metadata">
-                    <source src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                )}
-                {item.type === 'gif' && (
-                  <img src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} alt="Post GIF" className="w-auto max-h-96" />
-                )}
-              </div>
-            ))}
+       {media && media.length > 0 && (
+  <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+    {media.map((item, index) => (
+      <div key={index} className="rounded-lg overflow-hidden pb-5 pt-4 shadow-md">
+        {item.type === 'image' && (
+          <div className="relative w-full max-h-96 mx-auto">
+            <Image 
+              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+              alt="Post media"
+              width={400}
+              height={384}
+              className="w-auto mx-auto max-h-96 rounded-xl object-contain"
+              style={{ maxHeight: '384px' }}
+              priority={index === 0} // Prioritize first image for LCP
+            />
           </div>
         )}
+        {item.type === 'video' && (
+          <video controls className="w-full h-auto" preload="metadata">
+            <source 
+              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} 
+              type="video/mp4" 
+            />
+            Your browser does not support the video tag.
+          </video>
+        )}
+        {item.type === 'gif' && (
+          <div className="relative w-full max-h-96">
+            <Image 
+              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+              alt="Post GIF"
+              width={400}
+              height={384}
+              className="w-auto max-h-96 object-contain"
+              style={{ maxHeight: '384px' }}
+              unoptimized // GIFs should remain unoptimized to preserve animation
+            />
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+)}
 
         {/* Poll Content */}
         {poll && (

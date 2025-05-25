@@ -2,7 +2,13 @@
 
 import React from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, Button } from "@heroui/react";
-import { Icon } from "@iconify/react";
+
+interface WalletData {
+  address?: string;
+  publicKey?: string;
+  name?: string;
+  [key: string]: unknown; // Allow for additional properties
+}
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -16,7 +22,7 @@ interface UserProfileModalProps {
   onLogout: () => void;
   connectedWalletInfo?: {
     type: "wallet" | "email";
-    data: any;
+    data: WalletData;
     emoji: string;
     address?: string;
   } | null;

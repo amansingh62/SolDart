@@ -49,10 +49,10 @@ const DartPost: React.FC<DartPostProps> = ({ author, avatar, content, time, view
             
             {/* Icons Section */}
             <div className="flex items-center gap-4 mt-2 text-default-500 text-sm">
-              {/* 1hr Timing */}
+              {/* Dynamic Time from Props */}
               <span className="flex items-center gap-1">
                 <Icon icon="lucide:clock" />
-                1hr
+                {time}
               </span>
 
               {/* Share Icon */}

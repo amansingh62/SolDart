@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { X as XIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Clock as ClockIcon, CheckCircle, Award } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import axios from 'axios';
 import api from '@/lib/apiUtils';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '@/context/LanguageContext';
@@ -22,6 +21,14 @@ interface EventsPopupProps {
   children: React.ReactNode;
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 const EventsPopup: React.FC<EventsPopupProps> = ({ isOpen, onClose, setIsOpen, children }) => {
   const [loading, setLoading] = useState(false);
   const [checkInData, setCheckInData] = useState<CheckInData | null>(null);
@@ -30,10 +37,7 @@ const EventsPopup: React.FC<EventsPopupProps> = ({ isOpen, onClose, setIsOpen, c
   
   // Get current month and year
   const now = new Date();
-  const [currentMonth, setCurrentMonth] = useState(
-    now.toLocaleString('default', { month: 'short' }) + ' ' + now.getFullYear()
-  );
-  const [selectedDay, setSelectedDay] = useState(now.getDate());
+  const currentMonth = now.toLocaleString('default', { month: 'short' }) + ' ' + now.getFullYear();
   
   // Generate calendar data for current month
   const generateCalendarDays = () => {
@@ -154,9 +158,10 @@ const EventsPopup: React.FC<EventsPopupProps> = ({ isOpen, onClose, setIsOpen, c
         toast.success(`Check-in successful! +${response.data.points} points`);
         fetchCheckInData(); // Refresh data
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error during check-in:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to check in';
+      const apiError = error as ApiError;
+      const errorMessage = apiError.response?.data?.message || 'Failed to check in';
       toast.error(errorMessage);
     } finally {
       setCheckingIn(false);

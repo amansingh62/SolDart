@@ -6,11 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Icon } from '@iconify/react';
+import Image from 'next/image';
 import api from '@/lib/apiUtils';
-import { useAuth } from '@/context/AuthContext';
+// Removed unused import: useAuth
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 const AdvertiseForm: React.FC = () => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     projectName: '',
     projectDetails: '',
@@ -84,7 +92,7 @@ const AdvertiseForm: React.FC = () => {
       submitData.append('transactionHash', formData.transactionHash);
       submitData.append('bannerImage', bannerImage);
 
-      const response = await api.post('/advertisements', submitData, {
+      await api.post('/advertisements', submitData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -105,11 +113,20 @@ const AdvertiseForm: React.FC = () => {
       });
       setBannerImage(null);
       setBannerPreview('');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error submitting advertisement:', err);
-      setError(err.response?.data?.message || 'Failed to submit advertisement');
+      const apiError = err as ApiError;
+      setError(apiError.response?.data?.message || 'Failed to submit advertisement');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText('7FzyP3EQobFFHweZTMtoi6Yg6rUu5NNoUJyhmy7ZAggZ');
+    } catch (err) {
+      console.error('Failed to copy address:', err);
     }
   };
 
@@ -224,7 +241,14 @@ const AdvertiseForm: React.FC = () => {
                   required
                 />
                 {bannerPreview ? (
-                  <img src={bannerPreview} alt="Banner preview" className="max-h-full max-w-full object-contain" />
+                  <div className="relative w-full h-full">
+                    <Image 
+                      src={bannerPreview} 
+                      alt="Banner preview" 
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
                 ) : (
                   <div className="text-center">
                     <Icon icon="lucide:upload" className="mx-auto h-8 w-8 text-gray-400" />
@@ -259,7 +283,7 @@ const AdvertiseForm: React.FC = () => {
               <code className="text-sm flex-1 break-all">7FzyP3EQobFFHweZTMtoi6Yg6rUu5NNoUJyhmy7ZAggZ</code>
               <button
                 type="button"
-                onClick={() => navigator.clipboard.writeText('7FzyP3EQobFFHweZTMtoi6Yg6rUu5NNoUJyhmy7ZAggZ')}
+                onClick={handleCopyAddress}
                 className="ml-2 text-blue-500 hover:text-blue-700"
               >
                 <Icon icon="lucide:copy" className="h-4 w-4" />

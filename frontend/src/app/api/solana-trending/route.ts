@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-// Define the structure of a Solana trending coin response
-interface SolanaTrendingCoin {
+// Define the structure of a Solana trending coin
+interface SolanaTrendingToken {
   mintAddress: string;
   name: string;
   symbol: string;
@@ -10,52 +10,22 @@ interface SolanaTrendingCoin {
   fungible: boolean;
   decimals: number;
   uri?: string;
+  price?: number;
+  volume24h?: number;
+  priceChange24h?: number;
 }
 
-// Define the structure that matches the example format
-interface TokenSupplyUpdateResponse {
-  Solana: {
-    TokenSupplyUpdates: Array<{
-      TokenSupplyUpdate: {
-        Currency: {
-          Decimals: number;
-          Fungible: boolean;
-          MintAddress: string;
-          Name: string;
-          Symbol: string;
-          Uri?: string;
-        };
-        Marketcap: string;
-      };
-    }>;
-  };
+// Define the structure for Moralis API response
+interface MoralisTokenResponse {
+  mint: string;
+  name: string;
+  symbol: string;
+  marketCap?: number;
+  decimals?: number;
+  price?: number;
+  volume24h?: number;
+  priceChange24h?: number;
 }
-
-// GraphQL query to fetch trending Solana coins with 'pump' in their MintAddress
-const TRENDING_COINS_QUERY = `
-query MyQuery {
-  Solana {
-    TokenSupplyUpdates(
-      where: {TokenSupplyUpdate_Currency_MintAddress: {_regex: "pump$"}}
-      orderBy: { descendingByField: "TokenSupplyUpdate_Marketcap"}
-      limitBy: {by: TokenSupplyUpdate_Currency_MintAddress, count: 1}
-      limit: {count: 20}
-    ) {
-      TokenSupplyUpdate {
-        Marketcap: PostBalanceInUSD
-        Currency {
-          Name
-          Symbol
-          MintAddress
-          Fungible
-          Decimals
-          Uri
-        }
-      }
-    }
-  }
-}
-`;
 
 const MORALIS_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImIyODBiMTkyLWUzYzAtNDI0My05NDdjLWMzZGZkMDlhYWFiMSIsIm9yZ0lkIjoiNDQzMzUwIiwidXNlcklkIjoiNDU2MTUzIiwidHlwZUlkIjoiNzgyYjI3NjUtMmVjZS00OGY2LTg0YTYtYjU0MTFkYTMxYjE3IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDUzODI0NDUsImV4cCI6NDkwMTE0MjQ0NX0.I8rIqjHKKPoDesjLWEf-l5Tsj2LghAR14ggIJ8_pcLY';
 
@@ -87,7 +57,7 @@ export async function GET() {
     }
 
     // Transform the data to match our interface
-    const transformedData = response.data.result.map((token: any) => ({
+    const transformedData = response.data.result.map((token: MoralisTokenResponse) => ({
       mintAddress: token.mint,
       name: token.name,
       symbol: token.symbol,
@@ -100,7 +70,7 @@ export async function GET() {
     }));
 
     // Sort by market cap in descending order
-    const sortedData = transformedData.sort((a: any, b: any) => b.marketcap - a.marketcap);
+    const sortedData = transformedData.sort((a: SolanaTrendingToken, b: SolanaTrendingToken) => b.marketcap - a.marketcap);
 
     console.log(`Transformed ${transformedData.length} tokens`);
 
@@ -146,8 +116,10 @@ export async function GET() {
     }
 
     return NextResponse.json(sortedData);
-  } catch (error: any) {
-    console.error('Error fetching graduated tokens:', error.response?.data || error.message);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const responseData = (error as { response?: { data: unknown } })?.response?.data;
+    console.error('Error fetching graduated tokens:', responseData || errorMessage);
     return NextResponse.json(
       { error: 'Failed to fetch graduated tokens' },
       { status: 500 }

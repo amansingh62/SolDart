@@ -8,8 +8,19 @@ import { NotificationPopup } from './NotificationPopup';
 import MessagePopup from './MessagePopup';
 import api from '../../lib/apiUtils';
 import { initializeSocket } from '../../lib/socketUtils';
-import { LanguageSelector } from './LanguageSelector';
 import { useLanguage } from '../../context/LanguageContext';
+
+// Define types for notification and API response
+interface Notification {
+  id: string;
+  isRead: boolean;
+  // Add other notification properties as needed
+}
+
+interface NotificationResponse {
+  success: boolean;
+  notifications: Notification[];
+}
 
 export function Sidebar() {
   const router = useRouter();
@@ -24,9 +35,9 @@ export function Sidebar() {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
-        const response = await api.get('/notifications');
+        const response = await api.get<NotificationResponse>('/notifications');
         if (response.data.success) {
-          const unreadCount = response.data.notifications.filter((n: any) => !n.isRead).length;
+          const unreadCount = response.data.notifications.filter((n: Notification) => !n.isRead).length;
           setUnreadNotifications(unreadCount);
         }
       } catch (error) {
@@ -73,7 +84,7 @@ export function Sidebar() {
   ];
 
   // Function to check if a menu item is active based on the current path or popup state
-  const isActive = (item: any) => {
+  const isActive = (item: MenuItem) => {
     // For items with paths
     if (item.path) {
       // For home path

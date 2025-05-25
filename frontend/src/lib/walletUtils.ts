@@ -1,6 +1,38 @@
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
+// Type definitions for wallet providers
+interface PublicKey {
+  toString(): string;
+}
+
+interface WalletConnectionResponse {
+  publicKey: PublicKey;
+}
+
+interface PhantomProvider {
+  isConnected: boolean;
+  publicKey?: PublicKey;
+  connect(options?: { onlyIfTrusted?: boolean }): Promise<WalletConnectionResponse>;
+  disconnect(): Promise<void>;
+}
+
+interface SolflareProvider {
+  isConnected: boolean;
+  publicKey?: PublicKey;
+  connect(options?: { onlyIfTrusted?: boolean }): Promise<WalletConnectionResponse>;
+  disconnect?(): Promise<void>;
+}
+
+interface BackpackProvider {
+  isConnected: boolean;
+  publicKey?: PublicKey;
+  connect(options?: { onlyIfTrusted?: boolean }): Promise<WalletConnectionResponse>;
+  disconnect?(): Promise<void>;
+}
+
+type WalletProvider = PhantomProvider | SolflareProvider | BackpackProvider;
+
 /**
  * Check if a wallet extension is installed
  * @param walletType The type of wallet to check (phantom, solflare, backpack)
@@ -52,9 +84,10 @@ export async function connectWallet(walletType: string): Promise<string> {
       throw new Error('Failed to get public key from wallet');
     }
     return response.publicKey.toString();
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : `Failed to connect to ${walletType} wallet`;
     console.error(`Error connecting to ${walletType} wallet:`, error);
-    toast.error(error.message || `Failed to connect to ${walletType} wallet`);
+    toast.error(errorMessage);
     throw error;
   }
 }
@@ -82,9 +115,10 @@ export async function disconnectWallet(walletType: string): Promise<void> {
     }
 
     toast.success(`Disconnected from ${walletType} wallet`);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : `Failed to disconnect from ${walletType} wallet`;
     console.error(`Error disconnecting from ${walletType} wallet:`, error);
-    toast.error(error.message || `Failed to disconnect from ${walletType} wallet`);
+    toast.error(errorMessage);
     throw error;
   }
 }
@@ -94,16 +128,16 @@ export async function disconnectWallet(walletType: string): Promise<void> {
  * @param walletType The type of wallet to get the provider for
  * @returns The wallet provider or null if not found
  */
-function getWalletProvider(walletType: string): any {
+function getWalletProvider(walletType: string): WalletProvider | null {
   if (typeof window === 'undefined') return null;
 
   switch (walletType) {
     case 'phantom':
-      return window.phantom?.solana;
+      return window.phantom?.solana || null;
     case 'solflare':
-      return window.solflare;
+      return window.solflare || null;
     case 'backpack':
-      return window.backpack?.solana;
+      return window.backpack?.solana || null;
     default:
       return null;
   }
@@ -138,9 +172,10 @@ export const connectWalletToAccount = async (walletType: string, walletAddress: 
     } else {
       throw new Error(response.data.message || "Failed to connect wallet to account");
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet to account";
     console.error("Error connecting wallet to account:", error);
-    toast.error(error.message || "Failed to connect wallet to account");
+    toast.error(errorMessage);
     throw error;
   }
 };
@@ -218,11 +253,11 @@ export const verifyRegisteredWallet = async (): Promise<boolean> => {
 declare global {
   interface Window {
     phantom?: {
-      solana?: any;
+      solana?: PhantomProvider;
     };
-    solflare?: any;
+    solflare?: SolflareProvider;
     backpack?: {
-      solana?: any;
+      solana?: BackpackProvider;
     };
   }
 }

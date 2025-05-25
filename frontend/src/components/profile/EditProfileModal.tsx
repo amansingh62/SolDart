@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useEffect } from "react";
+import Image from "next/image";
 import api from '@/lib/apiUtils'; // Adjust the path based on your project structure
 import { toast } from 'react-hot-toast';
 
@@ -34,6 +35,15 @@ interface EditProfileModalProps {
   setProfileData: React.Dispatch<React.SetStateAction<ProfileData>>; // ✅ Required to update state
   fetchProfileData: () => Promise<void>; // ✅ Fetch latest data after saving
   onSave: (updatedData: Partial<ProfileData>) => Promise<void>;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, profileData, setProfileData, fetchProfileData, onSave }) => {
@@ -70,8 +80,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
         setUsernameError(""); // No error, username is available
         setIsUsernameValid(true);
       }
-    } catch (error: any) {
-      console.error("API error:", error.response?.data || error.message); // ✅ Log API error
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error("API error:", apiError.response?.data || apiError.message); // ✅ Log API error
   
       setUsernameError("Username is already taken");
       setIsUsernameValid(false);
@@ -80,54 +91,60 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
     }
   };
 
-  const handleEditProfileModalSave = async (newData: Partial<ProfileData>) => {
-    try {
-      const formData = new FormData();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isUsernameValid) return; // Prevent submission if username is invalid
   
-      if (newData.name) formData.append("name", newData.name);
-      formData.append("username", newData.username || profileData.username);
-      if (newData.bio) formData.append("bio", newData.bio);
-      if (newData.walletAddress) formData.append("walletAddress", newData.walletAddress);
+    try {
+      const formDataToSend = new FormData();
+  
+      if (formData.name) formDataToSend.append("name", formData.name);
+      formDataToSend.append("username", formData.username || profileData.username);
+      if (formData.bio) formDataToSend.append("bio", formData.bio);
+      if (formData.walletAddress) formDataToSend.append("walletAddress", formData.walletAddress);
   
       // Ensure socialLinks exist and are properly formatted
-      const socialLinksToSave = newData.socialLinks || profileData.socialLinks || {};
-      formData.append("socialLinks", JSON.stringify(socialLinksToSave));
+      const socialLinksToSave = formData.socialLinks || profileData.socialLinks || {};
+      formDataToSend.append("socialLinks", JSON.stringify(socialLinksToSave));
   
       // Handle profile image (only upload if new)
-      if (newData.profileImage?.startsWith("data:image")) {
-        const blob = await fetch(newData.profileImage).then((r) => r.blob());
-        formData.append("profileImage", blob, "profile-image.jpg");
+      if (formData.profileImage?.startsWith("data:image")) {
+        const blob = await fetch(formData.profileImage).then((r) => r.blob());
+        formDataToSend.append("profileImage", blob, "profile-image.jpg");
       }
   
       // Handle cover image (only upload if new)
-      if (newData.coverImage?.startsWith("data:image")) {
-        const blob = await fetch(newData.coverImage).then((r) => r.blob());
-        formData.append("coverImage", blob, "cover-image.jpg");
+      if (formData.coverImage?.startsWith("data:image")) {
+        const blob = await fetch(formData.coverImage).then((r) => r.blob());
+        formDataToSend.append("coverImage", blob, "cover-image.jpg");
       }
   
-      const response = await api.put("/users/profile", formData, {
+      const response = await api.put("/users/profile", formDataToSend, {
         headers: { "Content-Type": "multipart/form-data" },
       });
   
       if (response.data.success) {
         setProfileData((prev) => ({
           ...prev,
-          ...newData,
+          ...formData,
           socialLinks: {
             ...prev.socialLinks,
-            ...(newData.socialLinks || {}),
+            ...(formData.socialLinks || {}),
           },
         }));
   
         toast.success("Profile updated successfully");
         // Immediately fetch the latest data to ensure it's properly saved
         await fetchProfileData();
+        await onSave(formData);
+        onClose();
       } else {
         throw new Error(response.data.message || "Failed to update profile");
       }
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to update profile";
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error("Error updating profile:", apiError);
+      const errorMessage = apiError.response?.data?.message || apiError.message || "Failed to update profile";
       toast.error(
         <div className="flex items-center gap-2">
           <Icon icon="mdi:alert-circle" className="text-red-500 text-xl" />
@@ -144,18 +161,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
           }
         }
       );
-    }
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isUsernameValid) return; // Prevent submission if username is invalid
-  
-    try {
-      await onSave(formData);
-      onClose();
-    } catch (error) {
-      console.error("Error saving profile changes:", error);
     }
   };
   
@@ -193,7 +198,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
       onClick={() => handleFileChange("cover")}
     >
       {formData.coverImage ? (
-        <img src={formData.coverImage} alt="Cover" className="w-full h-full object-cover rounded-lg" />
+        <Image 
+          src={formData.coverImage} 
+          alt="Cover" 
+          fill
+          className="object-cover rounded-lg" 
+        />
       ) : (
         <div className="flex items-center justify-center h-full">
           <Icon icon="lucide:image-plus" className="text-4xl text-gray-400" />
@@ -210,7 +220,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
       onClick={() => handleFileChange("profile")}
     >
       {formData.profileImage ? (
-        <img src={formData.profileImage} alt="Profile" className="w-full h-full object-cover rounded-full" />
+        <Image 
+          src={formData.profileImage} 
+          alt="Profile" 
+          fill
+          className="object-cover rounded-full" 
+        />
       ) : (
         <div className="flex items-center justify-center h-full">
           <Icon icon="lucide:user-plus" className="text-4xl text-gray-400" />
