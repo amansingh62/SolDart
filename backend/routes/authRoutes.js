@@ -7,9 +7,6 @@ const Post = require('../models/Post');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const auth = require('../middleware/authMiddleware');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
 router.post('/register', async (req, res) => {
   console.log("Received Data:", req.body);
@@ -116,7 +113,7 @@ router.post('/register', async (req, res) => {
     // Set secure cookie
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'Lax',
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
@@ -181,7 +178,7 @@ router.post('/login', async (req, res) => {
     // Set cookie with token
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'Lax',
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 1 day in milliseconds
     });
@@ -274,7 +271,7 @@ router.post('/refresh-token', async (req, res) => {
     // Set new cookie
     res.cookie('token', newToken, {
       httpOnly: true,
-      sameSite: 'Lax',
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000
     });
@@ -572,7 +569,7 @@ router.post('/wallet-signup', async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'Lax',
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000
     });
@@ -704,7 +701,7 @@ router.put('/update-wallet-user', async (req, res) => {
     // Set secure cookie
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'Lax',
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
