@@ -405,6 +405,28 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     }
   }, [isOwnProfile, profileData._id, fetchSavedPosts]);
 
+  // Add the verifyRegisteredWallet function
+  const verifyRegisteredWallet = async () => {
+    try {
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) return false;
+
+      // Parse the stored wallet info
+      const walletInfo = JSON.parse(storedWalletInfo);
+      const walletAddress = walletInfo.publicKey;
+
+      if (!walletAddress) return false;
+
+      // Verify if this wallet is registered with the user's account
+      const response = await api.get(`/auth/verify-wallet/${walletAddress}`);
+      return response.data.isRegistered;
+    } catch (error) {
+      console.error('Error verifying registered wallet:', error);
+      return false;
+    }
+  };
+
   const handleFollow = async () => {
     try {
       // Use the follow endpoint for both follow and unfollow actions
@@ -519,8 +541,6 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   };
 
   // Handle post like
-  // In ProfileSection.tsx, update the handleLikePost function:
-
   const handleLikePost = async (postId: string) => {
     try {
       // Find the post in the current state
@@ -530,16 +550,45 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       // Make a COMPLETE copy of the post we want to update
       const postToUpdate = { ...posts[postIndex] };
 
+      // Check if wallet is connected
+      const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
+      if (!storedWalletInfo) {
+        toast.error('Please connect your wallet to like');
+        return;
+      }
+
+      // Verify if the connected wallet is registered
+      const isRegisteredWallet = await verifyRegisteredWallet();
+      if (!isRegisteredWallet) {
+        toast.error('Please connect with your registered wallet to like');
+        return;
+      }
+
+      // Get current user ID from API if not available
+      let currentUserId = profileData._id;
+      if (!currentUserId) {
+        try {
+          const userResponse = await api.get('/auth/current-user');
+          if (userResponse.data && userResponse.data.user) {
+            currentUserId = userResponse.data.user._id;
+          }
+        } catch (userError) {
+          console.error('Error fetching user data:', userError);
+          toast.error('Failed to verify user identity');
+          return;
+        }
+      }
+
       // Check if the current user has already liked this post
-      const isLiked = postToUpdate.likes.includes(profileData._id || '');
+      const isLiked = postToUpdate.likes.includes(currentUserId || '');
 
       // Update the likes array based on whether the user has already liked it
       if (isLiked) {
         // Remove the like
-        postToUpdate.likes = postToUpdate.likes.filter(id => id !== profileData._id);
+        postToUpdate.likes = postToUpdate.likes.filter(id => id !== currentUserId);
       } else {
         // Add the like
-        postToUpdate.likes = [...postToUpdate.likes, profileData._id || ''];
+        postToUpdate.likes = [...postToUpdate.likes, currentUserId || ''];
       }
 
       // Create a new posts array with the updated post
@@ -549,12 +598,32 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       // Update state with the new array
       setPosts(updatedPosts);
 
+      // Sign a non-gas transaction message
+      const message = `Sign this message to like post: ${postId}`;
+      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      if (!wallet) {
+        toast.error('Wallet not found');
+        return;
+      }
+
+      const signature = await wallet.signMessage(new TextEncoder().encode(message));
+      console.log('Like transaction signed:', signature);
+
       // Send API request to update like status on the server
-      await api.post(`/posts/like/${postId}`);
+      await api.post(`/posts/like/${postId}`, { signature });
 
       // Emit socket event for real-time updates
       if (socket) {
         socket.emit('updatePost', postToUpdate);
+      }
+
+      // Track like for quest system
+      try {
+        const { trackPostLike } = await import('@/lib/questUtils');
+        await trackPostLike(postId);
+      } catch (trackingError) {
+        console.error('Error tracking like for quest:', trackingError);
+        // Don't fail if tracking fails
       }
     } catch (error) {
       console.error('Error updating post like state:', error);

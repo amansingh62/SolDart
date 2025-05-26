@@ -268,16 +268,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
       className="w-full p-2 border rounded bg-gray-800 border-gray-700 text-white focus:border-[#B671FF] focus:outline-none"
     />
   </div>
-
-  <div className="col-span-2">
-    <label className="block text-gray-300">Wallet Address</label>
-    <input
-      type="text"
-      value={formData.walletAddress}
-      onChange={(e) => setFormData({ ...formData, walletAddress: e.target.value })}
-      className="w-full p-2 border rounded bg-gray-800 border-gray-700 text-white focus:border-[#B671FF] focus:outline-none"
-    />
-  </div>
   
   {/* Social Links Section */}
   <div className="col-span-2 mt-4">
