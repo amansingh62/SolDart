@@ -124,12 +124,46 @@ const MessagePopup = ({
         }
       });
 
+      // Listen for online status changes
+      socket.on('userOnline', (userId: string) => {
+        setContacts(prev => prev.map(contact =>
+          contact._id === userId ? { ...contact, isOnline: true } : contact
+        ));
+        if (activeContact && activeContact._id === userId) {
+          setActiveContact(prev => prev ? { ...prev, isOnline: true } : null);
+        }
+      });
+
+      socket.on('userOffline', (userId: string) => {
+        setContacts(prev => prev.map(contact =>
+          contact._id === userId ? { ...contact, isOnline: false } : contact
+        ));
+        if (activeContact && activeContact._id === userId) {
+          setActiveContact(prev => prev ? { ...prev, isOnline: false } : null);
+        }
+      });
+
+      // Request initial online status for all contacts
+      socket.emit('getOnlineStatus', contacts.map(contact => contact._id));
+
       return () => {
         socket.off('message');
         socket.off('userTyping');
+        socket.off('userOnline');
+        socket.off('userOffline');
       };
     }
-  }, [isOpen, activeContact]);
+  }, [isOpen, activeContact, contacts]);
+
+  // Update online status when contacts change
+  useEffect(() => {
+    if (isOpen && contacts.length > 0) {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('getOnlineStatus', contacts.map(contact => contact._id));
+      }
+    }
+  }, [contacts, isOpen]);
 
   // Reset activeContact when popup is closed (only when opened from sidebar)
   useEffect(() => {
@@ -500,7 +534,7 @@ const MessagePopup = ({
   };
 
   // Message context menu component - using directly in the component where needed
-  const renderMessageContextMenu = ({ 
+  const renderMessageContextMenu = ({
     isOpen,
     setIsOpen,
     position,
@@ -548,6 +582,55 @@ const MessagePopup = ({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [handleClickOutside]);
+
+  const handleConversationClick = async (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    setShowPopup(true);
+
+    // Mark messages as read when conversation is opened
+    try {
+      await api.put(`/messages/conversations/${conversation._id}/read`);
+      // Update the unread count in the parent component
+      if (onUnreadCountChange) {
+        onUnreadCountChange(0);
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
+  const handleNewMessage = async (recipientId: string, content: string) => {
+    try {
+      const response = await api.post('/messages', {
+        recipientId,
+        content
+      });
+
+      if (response.data.success) {
+        // Update the conversation with the new message
+        setConversations(prevConversations => {
+          const updatedConversations = prevConversations.map(conv => {
+            if (conv._id === response.data.conversationId) {
+              return {
+                ...conv,
+                lastMessage: {
+                  content,
+                  createdAt: new Date().toISOString()
+                }
+              };
+            }
+            return conv;
+          });
+          return updatedConversations;
+        });
+
+        // Clear the new message input
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
 
   return (
     <Popover

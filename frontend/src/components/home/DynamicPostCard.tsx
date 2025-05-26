@@ -89,7 +89,8 @@ export function DynamicPostCard({
   onCommentPin,
   isSaved = false,
   views = 0,
-  socket
+  socket,
+  isHomePage
 }: PostProps) {
   const router = useRouter();
   const [commentText, setCommentText] = useState('');
@@ -312,71 +313,31 @@ export function DynamicPostCard({
       const signature = await wallet.signMessage(new TextEncoder().encode(message));
       console.log('Comment transaction signed:', signature);
 
-      // Get current user data from props first if available
-      let currentUserData = {
-        _id: currentUserId || '',
-        username: '',
-        profileImage: undefined as string | undefined,
-        walletAddress: undefined as string | undefined
-      };
-
-      // Try multiple sources to ensure we have user data
-      // 1. Check if we can find user data from the post owner (if current user is post owner)
-      if (user && user._id === currentUserId) {
-        currentUserData = {
-          _id: user._id,
-          username: user.username,
-          profileImage: user.profileImage,
-          walletAddress: user.walletAddress
-        };
-      }
-      // 2. Check if we can find user data from existing comments by this user
-      else {
-        const currentUserComment = localComments.find(comment => comment.user._id === currentUserId);
-        if (currentUserComment?.user) {
-          currentUserData = {
-            _id: currentUserId || '',
-            username: currentUserComment.user.username,
-            profileImage: currentUserComment.user.profileImage,
-            walletAddress: currentUserComment.user.walletAddress
-          };
+      // Get current user data from API first
+      let currentUserData;
+      try {
+        const userResponse = await api.get('/users/profile');
+        if (userResponse.data && userResponse.data.user) {
+          currentUserData = userResponse.data.user;
         }
-      }
-
-      // 3. If we still don't have user data, fetch from API as last resort
-      if (!currentUserData.username) {
-        try {
-          const userResponse = await api.get('/auth/current-user');
-          if (userResponse.data && userResponse.data.user) {
-            currentUserData = {
-              _id: userResponse.data.user._id,
-              username: userResponse.data.user.username,
-              profileImage: userResponse.data.user.profileImage,
-              walletAddress: userResponse.data.user.walletAddress
-            };
-          }
-        } catch (userError) {
-          console.error('Error fetching user data from API:', userError);
-          // Continue with whatever data we have
-        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
       }
 
       // Create the new comment with proper user data
       const newComment: Comment = {
         _id: Date.now().toString(), // Temporary ID until real one from server
         user: {
-          _id: currentUserData._id,
-          username: currentUserData.username || 'Anonymous', // Fallback to Anonymous only if username is empty
-          profileImage: currentUserData.profileImage,
-          walletAddress: currentUserData.walletAddress
+          _id: currentUserData?._id || currentUserId || '',
+          username: currentUserData?.username || 'Anonymous',
+          profileImage: currentUserData?.profileImage,
+          walletAddress: currentUserData?.walletAddress
         },
         text: commentText,
         date: new Date().toISOString(),
-        isPinned: false
+        isPinned: false,
+        likes: []
       };
-
-      // Log the comment data to verify it has all required fields
-      console.log('New comment user data:', newComment.user);
 
       // Update local state first for immediate UI feedback
       setLocalComments([...localComments, newComment]);
@@ -413,14 +374,12 @@ export function DynamicPostCard({
             // Make sure the user data is preserved
             const updatedComment = {
               ...newCommentFromApi,
-              user: newCommentFromApi.user && typeof newCommentFromApi.user === 'object'
-                ? {
-                  _id: newCommentFromApi.user._id,
-                  username: newCommentFromApi.user.username,
-                  profileImage: newCommentFromApi.user.profileImage,
-                  walletAddress: newCommentFromApi.user.walletAddress
-                }
-                : currentUserData // Fallback to our local user data if the API response doesn't include complete user data
+              user: {
+                _id: currentUserData?._id || currentUserId || '',
+                username: currentUserData?.username || 'Anonymous',
+                profileImage: currentUserData?.profileImage,
+                walletAddress: currentUserData?.walletAddress
+              }
             };
 
             console.log('Updated comment from API:', updatedComment);
@@ -933,7 +892,7 @@ export function DynamicPostCard({
             text: content?.substring(0, 50) + (content && content.length > 50 ? '...' : ''),
             url: postUrl
           });
-        } catch  {
+        } catch {
           // User likely canceled the share operation, no need to show error
           console.log('Share canceled or not supported');
         }
@@ -1125,7 +1084,7 @@ export function DynamicPostCard({
               {/* Verified Check */}
               <span className="rounded-full p-1 flex items-center shrink-0">
               </span>
-              {isPinned && (
+              {isPinned && !isHomePage && (
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                   <Icon icon="lucide:pin" className="text-xs" /> Pinned
                 </span>
@@ -1223,74 +1182,83 @@ export function DynamicPostCard({
 
         {/* Post Content */}
         {content && (
-          <p className="text-sm md:text-base break-words overflow-wrap-anywhere">
-            {content.split(/\s+/).map((word, index) => {
-              if (word.startsWith('#')) {
-                return (
-                  <span
-                    key={index}
-                    className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
-                    onClick={() => {
-                      try {
-                        router.push(`/hashtag/${word.substring(1)}`);
-                      } catch (error) {
-                        console.error('Navigation error:', error);
-                      }
-                    }}
-                  >
-                    {word}{' '}
-                  </span>
-                );
-              }
-              return <span key={index}>{word}{' '}</span>;
-            })}
+          <p className="text-sm md:text-base break-words overflow-wrap-anywhere whitespace-pre-wrap">
+            {content.split('\n').map((line, lineIndex) => (
+              <React.Fragment key={lineIndex}>
+                {line.split(' ').map((word, wordIndex) => {
+                  if (word.startsWith('#') && word.length > 1) {
+                    return (
+                      <span
+                        key={wordIndex}
+                        className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
+                        onClick={() => {
+                          try {
+                            router.push(`/hashtag/${word.substring(1)}`);
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                          }
+                        }}
+                      >
+                        {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span key={wordIndex}>
+                      {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
+                    </span>
+                  );
+                })}
+                {lineIndex < content.split('\n').length - 1 && '\n'}
+              </React.Fragment>
+            ))}
           </p>
         )}
 
         {/* Media Content */}
-       {media && media.length > 0 && (
-  <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-    {media.map((item, index) => (
-      <div key={index} className="rounded-lg overflow-hidden pb-5 pt-4 shadow-md">
-        {item.type === 'image' && (
-          <div className="relative w-full max-h-96 mx-auto">
-            <Image 
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
-              alt="Post media"
-              width={400}
-              height={384}
-              className="w-auto mx-auto max-h-96 rounded-xl object-contain"
-              style={{ maxHeight: '384px' }}
-              priority={index === 0} // Prioritize first image for LCP
-            />
+        {media && media.length > 0 && (
+          <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+            {media.map((item, index) => (
+              <div key={index} className="rounded-lg overflow-hidden pb-5 pt-4 shadow-md">
+                {item.type === 'image' && (
+                  <div className="relative w-full max-h-96 mx-auto">
+                    <Image
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      alt="Post media"
+                      width={400}
+                      height={384}
+                      className="w-auto mx-auto max-h-96 rounded-xl object-contain"
+                      style={{ maxHeight: '384px' }}
+                      priority={index === 0} // Prioritize first image for LCP
+                    />
+                  </div>
+                )}
+                {item.type === 'video' && (
+                  <video controls className="w-full h-auto" preload="metadata">
+                    <source
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      type="video/mp4"
+                    />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+                {item.type === 'gif' && (
+                  <div className="relative w-full max-h-96">
+                    <Image
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      alt="Post GIF"
+                      width={400}
+                      height={384}
+                      className="w-auto max-h-96 object-contain"
+                      style={{ maxHeight: '384px' }}
+                      unoptimized // GIFs should remain unoptimized to preserve animation
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
-        {item.type === 'video' && (
-          <video controls className="w-full h-auto" preload="metadata">
-            <source 
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`} 
-              type="video/mp4" 
-            />
-            Your browser does not support the video tag.
-          </video>
-        )}
-        {item.type === 'gif' && (
-          <div className="relative w-full max-h-96">
-            <Image 
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
-              alt="Post GIF"
-              width={400}
-              height={384}
-              className="w-auto max-h-96 object-contain"
-              style={{ maxHeight: '384px' }}
-              unoptimized // GIFs should remain unoptimized to preserve animation
-            />
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-)}
 
         {/* Poll Content */}
         {poll && (

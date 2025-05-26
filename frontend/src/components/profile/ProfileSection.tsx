@@ -87,7 +87,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // Track authentication status
   const [isMessageOpen, setIsMessageOpen] = useState(false); // State for message popup
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
+
   const [profileData, setProfileData] = useState<ProfileData>({
     _id: "",
     name: "",
@@ -108,7 +108,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       discord: "",
     },
   });
-  
+
 
   const socialIcons: { [key: string]: string } = {
     website: "mdi:web",
@@ -123,7 +123,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     // Setup real-time socket connection
     const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
     setSocket(socketInstance);
-    
+
     // Listen for new posts
     socketInstance.on("newPost", (newPost: Post) => {
       // Only add posts from this user to the profile page
@@ -137,15 +137,15 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         toast.success("New post created!");
       }
     });
-    
+
     // Listen for post updates
     socketInstance.on("postUpdated", (updatedPost: Post) => {
-      setPosts(prevPosts => 
+      setPosts(prevPosts =>
         prevPosts.map(post => {
           if (post._id === updatedPost._id) {
             // Merge the updated post with the existing post to preserve all data
-            return { 
-              ...post, 
+            return {
+              ...post,
               ...updatedPost,
               // Ensure user data is preserved
               user: updatedPost.user ? {
@@ -158,13 +158,13 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         })
       );
     });
-    
+
     // Listen for post deletions
     socketInstance.on("postDeleted", (postId: string) => {
       setPosts(prevPosts => {
         const wasUserPost = prevPosts.some(post => post._id === postId && post.user._id === profileData._id);
         const updatedPosts = prevPosts.filter(post => post._id !== postId);
-        
+
         // If it was the user's post, update the dart count
         if (wasUserPost) {
           setProfileData(prevData => ({
@@ -172,24 +172,33 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
             darts: updatedPosts.length
           }));
         }
-        
+
         return updatedPosts;
       });
       toast.success("Post removed");
     });
-    
+
     // Cleanup on unmount
     return () => {
       socketInstance.disconnect();
     };
-      
+
   }, [profileData._id, profileData.profileImage, profileData.username]);
 
   // Function to fetch profile data from API
   const fetchProfileData = useCallback(async () => {
     try {
       let response;
-      
+      let currentUserData;
+
+      // First, get the current user's data to compare
+      try {
+        const currentUserResponse = await api.get("/users/profile");
+        currentUserData = currentUserResponse.data.user;
+      } catch (error) {
+        console.error("Error fetching current user data:", error);
+      }
+
       if (username === 'me') {
         // Fetch current user's profile
         response = await api.get("/users/profile");
@@ -197,19 +206,21 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       } else if (username) {
         // Fetch user profile by username
         response = await api.get(`/users/profile/${username}`);
-        setIsOwnProfile(false);
+        // Check if this is the current user's profile by comparing usernames
+        setIsOwnProfile(currentUserData && currentUserData.username === username);
       } else if (userId) {
         // For backward compatibility - fetch by userId if provided
         response = await api.get(`/users/profile/${userId}`);
-        setIsOwnProfile(false);
+        // Check if this is the current user's profile by comparing IDs
+        setIsOwnProfile(currentUserData && currentUserData._id === userId);
       } else {
         // Fetch current user's profile as fallback
         response = await api.get("/users/profile");
         setIsOwnProfile(true);
       }
-      
+
       console.log("Fetched profile data:", response.data);
-  
+
       if (response.data && response.data.user) {
         const userData = response.data.user;
         setProfileData((prevState) => ({
@@ -223,25 +234,23 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
           coverImage: userData.coverImage || prevState.coverImage,
           followers: userData.followers || prevState.followers,
           following: userData.following || prevState.following,
-          // Always use the dart count from the API response for other users' profiles
           darts: userData.darts !== undefined ? userData.darts : prevState.darts,
           events: userData.events || prevState.events,
           isVerified: userData.isVerified || prevState.isVerified,
-          socialLinks: userData.socialLinks || prevState.socialLinks, // Ensure socialLinks is saved
+          socialLinks: userData.socialLinks || prevState.socialLinks,
         }));
-        
+
         // Check if user is following this profile
         if (!isOwnProfile && userData.followers) {
-          // This would need to be implemented on the backend to return if current user is following
           setIsFollowing(userData.isFollowing || false);
         }
-        
+
         // User is authenticated
         setIsAuthenticated(true);
       }
     } catch (error) {
       console.error("Error fetching profile data:", error);
-      
+
       // Fallback to auth/user endpoint if the profile endpoint fails
       try {
         const authResponse = await api.get("/auth/user");
@@ -254,7 +263,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
             bio: authResponse.data.bio || prevState.bio,
             walletAddress: authResponse.data.walletAddress || prevState.walletAddress,
           }));
-          
+
           // User is authenticated
           setIsAuthenticated(true);
         }
@@ -265,7 +274,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         setLoading(false);
       }
     }
-  }, [userId, username, isOwnProfile]);
+  }, [userId, username]);
 
   // Function to fetch user posts
   const fetchUserPosts = useCallback(async () => {
@@ -273,10 +282,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       setLoading(true);
       // Use the api utility instead of axios directly to ensure authentication token is sent
       const response = await api.get(`/posts/user/${profileData._id}`);
-      
+
       if (response.data.success) {
         const fetchedPosts = response.data.posts;
-        
+
         // Sort posts to show pinned posts at the top
         const sortedPosts = [...fetchedPosts].sort((a, b) => {
           // First sort by pinned status (pinned posts first)
@@ -285,9 +294,9 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
           // Then sort by date (newest first)
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
-        
+
         setPosts(sortedPosts);
-        
+
         // Update the dart count based on the actual number of posts ONLY for own profile
         // For other users' profiles, we trust the dart count from their profile data
         // which is now being updated correctly on the backend
@@ -300,7 +309,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       } else {
         // Fallback to empty array if no posts
         setPosts([]);
-        
+
         // If no posts and it's own profile, set dart count to 0
         // For other users, keep their original dart count
         if (isOwnProfile) {
@@ -325,10 +334,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       if (showLoading) {
         setLoading(true);
       }
-      
+
       // Use the api utility to fetch saved posts
       const response = await api.get('/posts/saved');
-      
+
       if (response.data.success) {
         setSavedPosts(response.data.posts);
       } else {
@@ -352,7 +361,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     fetchProfileData();
     // We'll fetch posts after profile data is loaded and authentication is confirmed
   }, [userId, username, fetchProfileData]);
-  
+
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -368,17 +377,17 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         setIsAuthenticated(false);
       }
     };
-    
+
     checkAuth();
   }, []);
-  
+
   // Fetch posts whenever profile data changes
   useEffect(() => {
     if (profileData._id) {
       fetchUserPosts();
     }
   }, [profileData._id, fetchUserPosts]);
-  
+
   // Fetch saved posts when the Saved tab is clicked
   useEffect(() => {
     if (activeTab === "Saved" && profileData._id) {
@@ -387,7 +396,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       fetchSavedPosts(showLoading);
     }
   }, [activeTab, profileData._id, savedPosts.length, fetchSavedPosts]);
-  
+
   // Pre-fetch saved posts when profile data is loaded
   useEffect(() => {
     if (isOwnProfile && profileData._id) {
@@ -401,12 +410,12 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       // Use the follow endpoint for both follow and unfollow actions
       // The backend will handle toggling the follow state
       const response = await api.post(`/users/follow/${profileData._id}`, {});
-      
+
       // Update state based on the response from the server
       if (response.data.success) {
         setIsFollowing(response.data.isFollowing);
         toast.success(response.data.message || (response.data.isFollowing ? 'Following successfully' : 'Unfollowed successfully'));
-        
+
         // Update follower count based on the new follow state
         setProfileData(prev => ({
           ...prev,
@@ -422,33 +431,33 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   const handleEditProfile = async (newData: Partial<ProfileData>) => {
     try {
       const formData = new FormData();
-      
+
       if (newData.name) formData.append("name", newData.name);
       formData.append("username", newData.username || profileData.username);
-  
+
       if (newData.bio) formData.append("bio", newData.bio);
       if (newData.walletAddress) formData.append("walletAddress", newData.walletAddress);
-  
+
       // ✅ Fix: Always include socialLinks to ensure they're saved properly
       const socialLinksToSave = newData.socialLinks || profileData.socialLinks || {};
       formData.append("socialLinks", JSON.stringify(socialLinksToSave));
-  
+
       // Handle profile image if it's a data URL (from file input)
       if (newData.profileImage && newData.profileImage.startsWith("data:image")) {
         const profileImageBlob = await fetch(newData.profileImage).then((r) => r.blob());
         formData.append("profileImage", profileImageBlob, "profile-image.jpg");
       }
-  
+
       // Handle cover image if it's a data URL (from file input)
       if (newData.coverImage && newData.coverImage.startsWith("data:image")) {
         const coverImageBlob = await fetch(newData.coverImage).then((r) => r.blob());
         formData.append("coverImage", coverImageBlob, "cover-image.jpg");
       }
-  
+
       const response = await api.put("/users/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-  
+
       if (response.data.success) {
         // Update local state with the response data
         const updatedUser = response.data.user;
@@ -463,9 +472,9 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
 
         // Close the modal
         setIsEditModalOpen(false);
-        
+
         toast.success("Profile updated successfully");
-        
+
         // Reload the page to ensure all changes are reflected
         window.location.reload();
       }
@@ -474,7 +483,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
       toast.error("Failed to update profile");
     }
   };
-  
+
   const handleEditProfileModalSave = async (updatedData: Partial<ProfileData>) => {
     await handleEditProfile(updatedData);
     setProfileData((prev) => ({ ...prev, ...updatedData })); // ✅ Update state
@@ -485,11 +494,11 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     try {
       // Get the current URL for sharing
       const profileUrl = window.location.href;
-      
+
       // Copy to clipboard
       await navigator.clipboard.writeText(profileUrl);
       toast.success('Profile link copied to clipboard! You can now share it anywhere.');
-      
+
       // If Web Share API is available, offer additional sharing options
       if (navigator.share) {
         try {
@@ -510,58 +519,58 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   };
 
   // Handle post like
- // In ProfileSection.tsx, update the handleLikePost function:
+  // In ProfileSection.tsx, update the handleLikePost function:
 
-const handleLikePost = async (postId: string) => {
-  try {
-    // Find the post in the current state
-    const postIndex = posts.findIndex(post => post._id === postId);
-    if (postIndex === -1) return;
-    
-    // Make a COMPLETE copy of the post we want to update
-    const postToUpdate = { ...posts[postIndex] };
-    
-    // Check if the current user has already liked this post
-    const isLiked = postToUpdate.likes.includes(profileData._id || '');
-    
-    // Update the likes array based on whether the user has already liked it
-    if (isLiked) {
-      // Remove the like
-      postToUpdate.likes = postToUpdate.likes.filter(id => id !== profileData._id);
-    } else {
-      // Add the like
-      postToUpdate.likes = [...postToUpdate.likes, profileData._id || ''];
+  const handleLikePost = async (postId: string) => {
+    try {
+      // Find the post in the current state
+      const postIndex = posts.findIndex(post => post._id === postId);
+      if (postIndex === -1) return;
+
+      // Make a COMPLETE copy of the post we want to update
+      const postToUpdate = { ...posts[postIndex] };
+
+      // Check if the current user has already liked this post
+      const isLiked = postToUpdate.likes.includes(profileData._id || '');
+
+      // Update the likes array based on whether the user has already liked it
+      if (isLiked) {
+        // Remove the like
+        postToUpdate.likes = postToUpdate.likes.filter(id => id !== profileData._id);
+      } else {
+        // Add the like
+        postToUpdate.likes = [...postToUpdate.likes, profileData._id || ''];
+      }
+
+      // Create a new posts array with the updated post
+      const updatedPosts = [...posts];
+      updatedPosts[postIndex] = postToUpdate;
+
+      // Update state with the new array
+      setPosts(updatedPosts);
+
+      // Send API request to update like status on the server
+      await api.post(`/posts/like/${postId}`);
+
+      // Emit socket event for real-time updates
+      if (socket) {
+        socket.emit('updatePost', postToUpdate);
+      }
+    } catch (error) {
+      console.error('Error updating post like state:', error);
+      toast.error('Failed to update like');
     }
-    
-    // Create a new posts array with the updated post
-    const updatedPosts = [...posts];
-    updatedPosts[postIndex] = postToUpdate;
-    
-    // Update state with the new array
-    setPosts(updatedPosts);
-    
-    // Send API request to update like status on the server
-    await api.post(`/posts/like/${postId}`);
-    
-    // Emit socket event for real-time updates
-    if (socket) {
-      socket.emit('updatePost', postToUpdate);
-    }
-  } catch (error) {
-    console.error('Error updating post like state:', error);
-    toast.error('Failed to update like');
-  }
-};
-  
+  };
+
   // Handle post comment
   const handleCommentPost = async (postId: string, commentText: string) => {
     try {
       const response = await api.post(`/posts/comment/${postId}`, {
         text: commentText
       });
-      
+
       if (response.data) {
-        setPosts(prevPosts => 
+        setPosts(prevPosts =>
           prevPosts.map(post => {
             if (post._id === postId) {
               return {
@@ -584,7 +593,7 @@ const handleLikePost = async (postId: string) => {
             return post;
           })
         );
-        
+
         // Emit socket event for real-time updates
         if (socket) {
           socket.emit('updatePost', response.data);
@@ -633,7 +642,7 @@ const handleLikePost = async (postId: string) => {
     return () => {
       window.removeEventListener('storage', handleWalletChange);
       window.removeEventListener('walletConnected', handleWalletChange);
-      window.removeEventListener('walletDisconnected', () => {});
+      window.removeEventListener('walletDisconnected', () => { });
     };
   }, []);
 
@@ -651,18 +660,18 @@ const handleLikePost = async (postId: string) => {
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
               </div>
             ) : profileData.coverImage ? (
-             <Image
-  src={
-    profileData.coverImage.startsWith('http')
-      ? profileData.coverImage
-      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`
-  }
-  alt="Cover"
-  fill
-  className="object-cover rounded-t-xl"
-  style={{ objectFit: 'cover' }}
-  sizes="100vw"
-/>
+              <Image
+                src={
+                  profileData.coverImage.startsWith('http')
+                    ? profileData.coverImage
+                    : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.coverImage}`
+                }
+                alt="Cover"
+                fill
+                className="object-cover rounded-t-xl"
+                style={{ objectFit: 'cover' }}
+                sizes="100vw"
+              />
             ) : (
               <div className="w-full h-full bg-gray-800 rounded-t-xl flex items-center justify-center">
                 <Icon icon="lucide:image" className="text-4xl text-gray-600" />
@@ -670,23 +679,23 @@ const handleLikePost = async (postId: string) => {
             )}
             <div className="absolute -bottom-12 md:-bottom-16 left-4 md:left-6">
               {isAuthenticated === false ? (
-               <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
-    <Icon icon="lucide:user" className="text-4xl text-gray-500" />
-  </div>
-) : profileData.profileImage ? (
-  <div className="w-24 h-24 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden relative">
-    <Image
-      src={
-        profileData.profileImage.startsWith('http')
-          ? profileData.profileImage
-          : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`
-      }
-      alt="Profile"
-      fill
-      className="object-cover rounded-full"
-      sizes="(max-width: 768px) 96px, 128px"
-    />
-  </div>
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
+                  <Icon icon="lucide:user" className="text-4xl text-gray-500" />
+                </div>
+              ) : profileData.profileImage ? (
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden relative">
+                  <Image
+                    src={
+                      profileData.profileImage.startsWith('http')
+                        ? profileData.profileImage
+                        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${profileData.profileImage}`
+                    }
+                    alt="Profile"
+                    fill
+                    className="object-cover rounded-full"
+                    sizes="(max-width: 768px) 96px, 128px"
+                  />
+                </div>
               ) : (
                 <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 rounded-full ring-4 ring-white flex items-center justify-center">
                   <Icon icon="lucide:user" className="text-4xl text-gray-500" />
@@ -710,45 +719,45 @@ const handleLikePost = async (postId: string) => {
                   <p className="text-[#B671FF] text-sm md:text-base"><span className="text-[#B671FF]">@username</span></p>
                 ) : (
                   <p className="text-[#B671FF] text-sm md:text-base">
-                  {profileData.username ? `@${profileData.username}` : <span className="text-[#B671FF]">@username</span>}
-                </p>
+                    {profileData.username ? `@${profileData.username}` : <span className="text-[#B671FF]">@username</span>}
+                  </p>
                 )}
 
-<div className="flex flex-wrap gap-3 mt-4">
-  {isAuthenticated !== false && Object.entries(profileData.socialLinks || {})
-    .filter(([key, link]) => 
-      link && 
-      link.trim() !== '' && 
-      socialIcons[key]
-    )
-    .map(([key, link]) => (
-      <Tooltip 
-        key={key} 
-        content={key.charAt(0).toUpperCase() + key.slice(1)} 
-        className="bg-white text-black shadow-lg rounded-lg p-2"
-      >
-        <a 
-          href={
-            link.startsWith('http://') || link.startsWith('https://') 
-              ? link 
-              : `https://${link}`
-          } 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-black hover:text-primary transition-colors duration-2 rounded-full flex items-center justify-center shadow-md border border-gray-300"
-        >
-          <Icon icon={socialIcons[key]} className="text-xl md:text-xl" />
-        </a>
-      </Tooltip>
-    ))}
-</div>
+                <div className="flex flex-wrap gap-3 mt-4">
+                  {isAuthenticated !== false && Object.entries(profileData.socialLinks || {})
+                    .filter(([key, link]) =>
+                      link &&
+                      link.trim() !== '' &&
+                      socialIcons[key]
+                    )
+                    .map(([key, link]) => (
+                      <Tooltip
+                        key={key}
+                        content={key.charAt(0).toUpperCase() + key.slice(1)}
+                        className="bg-white text-black shadow-lg rounded-lg p-2"
+                      >
+                        <a
+                          href={
+                            link.startsWith('http://') || link.startsWith('https://')
+                              ? link
+                              : `https://${link}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-black hover:text-primary transition-colors duration-2 rounded-full flex items-center justify-center shadow-md border border-gray-300"
+                        >
+                          <Icon icon={socialIcons[key]} className="text-xl md:text-xl" />
+                        </a>
+                      </Tooltip>
+                    ))}
+                </div>
               </div>
 
               {isAuthenticated !== false ? (
                 <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
                   {!isOwnProfile && (
                     <>
-                      <Button 
+                      <Button
                         className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
              hover:text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
@@ -758,15 +767,15 @@ const handleLikePost = async (postId: string) => {
                         {isFollowing ? "Following" : "Follow"}
                       </Button>
 
-                      <Button 
+                      <Button
                         className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
                         onPress={() => setIsMessageOpen(true)}
                         startContent={<Icon icon="lucide:mail" />}
                       >
                         Message
                       </Button>
-                      
-                      <Button 
+
+                      <Button
                         className="bg-green-500 hover:bg-green-600 text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
                         onPress={handleShareProfile}
                         startContent={<Icon icon="lucide:share" />}
@@ -775,17 +784,17 @@ const handleLikePost = async (postId: string) => {
                       </Button>
                     </>
                   )}
-                
+
                   {isOwnProfile && (
                     <>
-                      <Button 
+                      <Button
                         className="bg-green-500 hover:bg-green-600 text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
                         onPress={handleShareProfile}
                         startContent={<Icon icon="lucide:share" />}
                       >
                         Share
                       </Button>
-                      <Button 
+                      <Button
                         className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
                         onPress={() => setIsEditModalOpen(true)}
                       >
@@ -796,7 +805,7 @@ const handleLikePost = async (postId: string) => {
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
-                  <Button 
+                  <Button
                     className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
              hover:text-white font-semibold rounded-md px-6 py-2 transition-all shadow-lg"
@@ -838,7 +847,7 @@ const handleLikePost = async (postId: string) => {
                   <div className="flex items-center gap-2">
                     <span className="text-white font-medium">{profileData.walletAddress}</span>
                     <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
-                      <button 
+                      <button
                         onClick={() => {
                           navigator.clipboard.writeText(profileData.walletAddress);
                           toast.success('Wallet address copied to clipboard!');
@@ -857,16 +866,16 @@ const handleLikePost = async (postId: string) => {
             </div>
 
             <div className="flex w-full rounded-lg border-b mt-10 border-default-200 shadow-[0px_4px_15px_rgba(128,128,128,0.4)]">
-              <Button 
-                variant="light" 
+              <Button
+                variant="light"
                 className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Darts" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                 onClick={() => setActiveTab("Darts")}
               >
                 Echos
               </Button>
               {isOwnProfile ? (
-                <Button 
-                  variant="light" 
+                <Button
+                  variant="light"
                   className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Saved" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                   onClick={() => setActiveTab("Saved")}
                 >
@@ -880,14 +889,18 @@ const handleLikePost = async (postId: string) => {
               <>
                 {/* Posts section header */}
                 <div className="mt-4 mb-4">
-                  <h2 className="text-xl font-bold text-black">My Darts</h2>
+                  <h2 className="text-xl font-bold text-black">All Posts</h2>
                 </div>
 
                 <div className="mt-4">
                   {loading ? (
                     <div className="text-center py-8 text-black">Loading posts...</div>
                   ) : posts.length === 0 ? (
-                    <div className="text-center py-8 text-black">No posts yet. Check out the home page to create your first dart!</div>
+                    isOwnProfile ? (
+                      <div className="text-center py-8 text-black">No posts yet. Check out the home page to create your first dart!</div>
+                    ) : (
+                      <div className="text-center py-8 text-black">No posts yet.</div>
+                    )
                   ) : (
                     posts.map((post) => (
                       <DynamicPostCard
@@ -912,13 +925,14 @@ const handleLikePost = async (postId: string) => {
                         currentUserId={profileData._id}
                         onLike={() => handleLikePost(post._id)}
                         onComment={(postId, comment) => handleCommentPost(postId, comment)}
+                        isHomePage={false}
                       />
                     ))
                   )}
                 </div>
               </>
             )}
-            
+
             {activeTab === "Saved" && (
               <>
                 {/* Saved posts section header */}
@@ -957,6 +971,7 @@ const handleLikePost = async (postId: string) => {
                         onComment={(postId, comment) => handleCommentPost(postId, comment)}
                         isSaved={true}
                         onDelete={() => fetchSavedPosts()} // Refresh saved posts when a post is unsaved
+                        isHomePage={false}
                       />
                     ))
                   )}
@@ -964,8 +979,8 @@ const handleLikePost = async (postId: string) => {
               </>
             )}
 
-            <EditProfileModal 
-              isOpen={isEditModalOpen} 
+            <EditProfileModal
+              isOpen={isEditModalOpen}
               onClose={() => setIsEditModalOpen(false)}
               profileData={profileData}
               setProfileData={setProfileData}

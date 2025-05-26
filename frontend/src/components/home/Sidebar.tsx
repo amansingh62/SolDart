@@ -62,6 +62,36 @@ export function Sidebar() {
     };
   }, []);
 
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadMessageCount = async () => {
+      try {
+        const response = await api.get('/messages/unread-count');
+        if (response.data.success) {
+          setUnreadMessages(response.data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching unread message count:', error);
+      }
+    };
+
+    fetchUnreadMessageCount();
+
+    // Set up socket listener for new messages
+    const socket = initializeSocket();
+    if (socket) {
+      socket.on('message', () => {
+        fetchUnreadMessageCount(); // Fetch updated count when new message arrives
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('message');
+      }
+    };
+  }, []);
+
   // Define the type for menu items
   interface MenuItem {
     icon: string;
