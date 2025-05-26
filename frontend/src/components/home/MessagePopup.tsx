@@ -86,6 +86,14 @@ const MessagePopup = ({
   const messageInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    messageId: '',
+    isOwnMessage: false
+  });
+
   // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,6 +205,25 @@ const MessagePopup = ({
       messageInputRef.current.focus();
     }
   }, [activeContact]);
+
+  // Close context menu when clicking outside
+  const handleClickOutside = useCallback(() => {
+    if (contextMenu.isOpen) {
+      setContextMenu(prev => ({ ...prev, isOpen: false }));
+    }
+  }, [contextMenu.isOpen]);
+
+  useEffect(() => {
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+  // Close emoji picker when clicking outside
+  useClickOutside(emojiPickerRef as React.RefObject<HTMLElement>, () => {
+    if (showEmojiPicker) setShowEmojiPicker(false);
+  });
 
   // Fetch contacts
   const fetchContacts = async () => {
@@ -459,12 +486,6 @@ const MessagePopup = ({
     setShowEmojiPicker(prev => !prev);
   };
 
-
-  // Close emoji picker when clicking outside
-  useClickOutside(emojiPickerRef as React.RefObject<HTMLElement>, () => {
-    if (showEmojiPicker) setShowEmojiPicker(false);
-  });
-
   // Select a contact to chat with
   const selectContact = (contact: Contact) => {
     setActiveContact(contact);
@@ -559,77 +580,6 @@ const MessagePopup = ({
         </button>
       </div>
     );
-  };
-
-  // Handle right-click or long-press on message
-  const [contextMenu, setContextMenu] = useState({
-    isOpen: false,
-    position: { x: 0, y: 0 },
-    messageId: '',
-    isOwnMessage: false
-  });
-
-  // Close context menu when clicking outside
-  const handleClickOutside = useCallback(() => {
-    if (contextMenu.isOpen) {
-      setContextMenu(prev => ({ ...prev, isOpen: false }));
-    }
-  }, [contextMenu.isOpen]);
-
-  useEffect(() => {
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
-  const handleConversationClick = async (conversation: Conversation) => {
-    setSelectedConversation(conversation);
-    setShowPopup(true);
-
-    // Mark messages as read when conversation is opened
-    try {
-      await api.put(`/messages/conversations/${conversation._id}/read`);
-      // Update the unread count in the parent component
-      if (onUnreadCountChange) {
-        onUnreadCountChange(0);
-      }
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
-  const handleNewMessage = async (recipientId: string, content: string) => {
-    try {
-      const response = await api.post('/messages', {
-        recipientId,
-        content
-      });
-
-      if (response.data.success) {
-        // Update the conversation with the new message
-        setConversations(prevConversations => {
-          const updatedConversations = prevConversations.map(conv => {
-            if (conv._id === response.data.conversationId) {
-              return {
-                ...conv,
-                lastMessage: {
-                  content,
-                  createdAt: new Date().toISOString()
-                }
-              };
-            }
-            return conv;
-          });
-          return updatedConversations;
-        });
-
-        // Clear the new message input
-        setNewMessage('');
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
   };
 
   return (
