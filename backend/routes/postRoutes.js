@@ -108,7 +108,7 @@ router.post('/', auth, upload.array('media', 4), async (req, res) => {
 
     // Increment user's dart count
     await User.findByIdAndUpdate(req.user.id, { $inc: { darts: 1 } });
-    
+
     // Track post creation for quest system - no authentication required
     // Use the user ID from the authenticated user
     try {
@@ -327,7 +327,7 @@ router.post('/like/:id', auth, async (req, res) => {
         const io = req.app.get('io');
         io.to(`user-${post.user._id}`).emit('notification', newNotification);
       }
-      
+
       // Track like for quest system - no authentication required
       // Use the user ID from the authenticated user
       try {
@@ -378,10 +378,10 @@ router.post('/comment/:id', auth, async (req, res) => {
       user: req.user.id,
       text
     };
-    
+
     post.comments.push(newComment);
     await post.save();
-    
+
     // Get the ID of the newly created comment
     const commentId = post.comments[post.comments.length - 1]._id;
 
@@ -402,7 +402,7 @@ router.post('/comment/:id', auth, async (req, res) => {
       const io = req.app.get('io');
       io.to(`user-${post.user}`).emit('notification', newNotification);
     }
-    
+
     // Track comment for quest system - no authentication required
     // Use the user ID from the authenticated user
     try {
@@ -602,6 +602,21 @@ router.post('/pin/:id', auth, async (req, res) => {
     // Check if user owns the post
     if (post.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized to pin this post' });
+    }
+
+    // If trying to pin a post, check if user already has a pinned post
+    if (!post.isPinned) {
+      const existingPinnedPost = await Post.findOne({
+        user: req.user.id,
+        isPinned: true
+      });
+
+      if (existingPinnedPost) {
+        return res.status(400).json({
+          success: false,
+          message: 'You can only pin one post at a time. Please unpin your current pinned post first.'
+        });
+      }
     }
 
     // Toggle pin status
@@ -979,6 +994,25 @@ router.post('/comment/like/:postId/:commentId', auth, async (req, res) => {
       isLiked: !wasLiked
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get a single post by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate('user', 'username profileImage walletAddress')
+      .populate('comments.user', 'username profileImage name walletAddress')
+      .populate('comments.replies.user', 'username profileImage name walletAddress');
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.json({ success: true, post });
+  } catch (error) {
+    console.error('Error fetching post:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

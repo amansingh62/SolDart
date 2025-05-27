@@ -124,9 +124,7 @@ router.post('/follow/:userId', auth, async (req, res) => {
     }
 
     // Check if user is blocked
-    if (user.blockedUsers.includes(req.params.userId)) {
-      return res.status(400).json({ success: false, message: 'You have blocked this user' });
-    }
+
 
     // Check if already following
     if (user.followingList.includes(req.params.userId)) {
@@ -185,47 +183,6 @@ router.post('/unfollow/:userId', auth, async (req, res) => {
     await userToUnfollow.save();
 
     res.json({ success: true, message: 'User unfollowed successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Block a user
-router.post('/block/:userId', auth, async (req, res) => {
-  try {
-    if (req.params.userId === req.user.id) {
-      return res.status(400).json({ success: false, message: 'You cannot block yourself' });
-    }
-
-    const user = await User.findById(req.user.id);
-    const userToBlock = await User.findById(req.params.userId);
-
-    if (!userToBlock) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    // Check if already blocked
-    if (user.blockedUsers.includes(req.params.userId)) {
-      return res.status(400).json({ success: false, message: 'Already blocked this user' });
-    }
-
-    // Add to blocked users list
-    user.blockedUsers.push(req.params.userId);
-
-    // If following this user, unfollow them
-    if (user.followingList.includes(req.params.userId)) {
-      user.followingList = user.followingList.filter(id => id.toString() !== req.params.userId);
-      user.following = user.followingList.length;
-
-      // Remove from followers list of the blocked user
-      userToBlock.followersList = userToBlock.followersList.filter(id => id.toString() !== req.user.id);
-      userToBlock.followers = userToBlock.followersList.length;
-      await userToBlock.save();
-    }
-
-    await user.save();
-
-    res.json({ success: true, message: 'User blocked successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -386,6 +343,92 @@ router.get('/search/:query', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to search users'
+    });
+  }
+});
+
+// Get user's followers
+router.get('/followers/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const followers = await User.find(
+      { _id: { $in: user.followersList } },
+      { username: 1, profileImage: 1 }
+    );
+
+    // Check if current user is following each follower
+    let followersWithFollowStatus = followers;
+    if (req.headers['x-auth-token']) {
+      try {
+        const decoded = jwt.verify(req.headers['x-auth-token'], process.env.JWT_SECRET);
+        const currentUser = await User.findById(decoded.user.id);
+        if (currentUser) {
+          followersWithFollowStatus = followers.map(follower => ({
+            ...follower.toObject(),
+            isFollowing: currentUser.followingList.includes(follower._id)
+          }));
+        }
+      } catch (err) {
+        console.error('Token verification error:', err);
+      }
+    }
+
+    res.json({
+      success: true,
+      users: followersWithFollowStatus
+    });
+  } catch (error) {
+    console.error('Error fetching followers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch followers'
+    });
+  }
+});
+
+// Get user's following
+router.get('/following/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const following = await User.find(
+      { _id: { $in: user.followingList } },
+      { username: 1, profileImage: 1 }
+    );
+
+    // Check if current user is following each user in the following list
+    let followingWithFollowStatus = following;
+    if (req.headers['x-auth-token']) {
+      try {
+        const decoded = jwt.verify(req.headers['x-auth-token'], process.env.JWT_SECRET);
+        const currentUser = await User.findById(decoded.user.id);
+        if (currentUser) {
+          followingWithFollowStatus = following.map(followedUser => ({
+            ...followedUser.toObject(),
+            isFollowing: currentUser.followingList.includes(followedUser._id)
+          }));
+        }
+      } catch (err) {
+        console.error('Token verification error:', err);
+      }
+    }
+
+    res.json({
+      success: true,
+      users: followingWithFollowStatus
+    });
+  } catch (error) {
+    console.error('Error fetching following:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch following'
     });
   }
 });

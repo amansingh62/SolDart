@@ -218,14 +218,14 @@ export function DynamicPostCard({
     }
     return null;
   });
-  
+
   // Add useEffect to inject styles on client-side only
   useEffect(() => {
     // Create and inject styles only on the client side
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
     document.head.appendChild(styleSheet);
-    
+
     // Cleanup function to remove the style when component unmounts
     return () => {
       if (styleSheet && document.head.contains(styleSheet)) {
@@ -1011,9 +1011,10 @@ export function DynamicPostCard({
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error pinning/unpinning post:', error);
-      toast.error('Failed to pin/unpin post');
+      // Show the specific error message from the backend if available
+      toast.error(error.response?.data?.message || 'Failed to pin/unpin post');
     } finally {
       // Reset animation state after animation completes
       setTimeout(() => {
@@ -1055,7 +1056,7 @@ export function DynamicPostCard({
   };
 
   // Handle block user
-  
+
 
   // Handle follow user
   const handleFollow = async () => {
@@ -1303,7 +1304,7 @@ export function DynamicPostCard({
                           <Icon icon="lucide:share" className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Share
                         </Button>
-                       
+
                       </>
                     )}
                   </div>

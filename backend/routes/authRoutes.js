@@ -517,10 +517,6 @@ router.delete('/delete-account', auth, async (req, res) => {
       { $pull: { followingList: user._id } }
     );
     
-    await User.updateMany(
-      { blockedUsers: user._id },
-      { $pull: { blockedUsers: user._id } }
-    );
     
     // 10. Finally, delete the user
     await User.findByIdAndDelete(user._id);

@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
 import { AuthModal } from "../auth/AuthModal";
 import Image from 'next/image';
+import UserListModal from './UserListModal';
 
 interface ProfileData {
   _id?: string;
@@ -87,6 +88,8 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // Track authentication status
   const [isMessageOpen, setIsMessageOpen] = useState(false); // State for message popup
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [isFollowingModalOpen, setIsFollowingModalOpen] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     _id: "",
@@ -716,7 +719,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   }, []);
 
   return (
-<div className="max-w-full md:max-w-[1000px] mx-auto px-0 sm:px-6 lg:px-8">
+    <div className="max-w-full md:max-w-[1000px] mx-auto px-0 sm:px-6 lg:px-8">
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -896,9 +899,21 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                 </>
               ) : (
                 <>
-                  <div><span className="font-bold">{profileData.followers.toLocaleString()}</span> <span className="text-default-500">Followers</span></div>
-                  <div><span className="font-bold">{profileData.following}</span> <span className="text-default-500">Following</span></div>
-                  <div><span className="font-bold">{profileData.darts}</span> <span className="text-default-500">Echos</span></div>
+                  <button
+                    onClick={() => setIsFollowersModalOpen(true)}
+                    className="hover:opacity-80 transition-opacity text-left"
+                  >
+                    <span className="font-bold">{profileData.followers.toLocaleString()}</span>{' '}
+                    <span className="text-default-500">Followers</span>
+                  </button>
+                  <button
+                    onClick={() => setIsFollowingModalOpen(true)}
+                    className="hover:opacity-80 transition-opacity text-left"
+                  >
+                    <span className="font-bold">{profileData.following}</span>{' '}
+                    <span className="text-default-500">Following</span>
+                  </button>
+                  <div className="text-left"><span className="font-bold">{profileData.darts}</span> <span className="text-default-500">Echos</span></div>
                 </>
               )}
             </div>
@@ -909,37 +924,37 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
               <p className="mb-4 text-black text-sm md:text-base">{profileData.bio || <span className="text-gray-400"></span>}</p>
             )}
 
-           <div className="flex items-center gap-2 text-white text-xs md:text-sm">
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg w-full max-w-full overflow-hidden">
-  <div className="flex items-center gap-2 min-w-0 flex-1">
-    <Icon icon="lucide:wallet" className="text-[#B671FF] text-base sm:text-lg flex-shrink-0" />
-    {profileData.walletAddress ? (
-      <span className="text-white font-medium truncate sm:truncate-none max-w-[200px] sm:max-w-none">
-        {profileData.walletAddress}
-      </span>
-    ) : (
-      <span className="text-gray-400">No wallet connected</span>
-    )}
-  </div>
-  
-  {profileData.walletAddress && (
-    <div className="flex items-center gap-1 flex-shrink-0 sm:ml-2">
-      <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(profileData.walletAddress);
-            toast.success('Wallet address copied to clipboard!');
-          }}
-          className="text-gray-400 hover:text-[#B671FF] transition-colors"
-        >
-          <Icon icon="lucide:copy" className="text-sm" />
-        </button>
-      </Tooltip>
-      <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
-    </div>
-  )}
-</div>
-</div>
+            <div className="flex items-center gap-2 text-white text-xs md:text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg w-full max-w-full overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Icon icon="lucide:wallet" className="text-[#B671FF] text-base sm:text-lg flex-shrink-0" />
+                  {profileData.walletAddress ? (
+                    <span className="text-white font-medium truncate sm:truncate-none max-w-[200px] sm:max-w-none">
+                      {profileData.walletAddress}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">No wallet connected</span>
+                  )}
+                </div>
+
+                {profileData.walletAddress && (
+                  <div className="flex items-center gap-1 flex-shrink-0 sm:ml-2">
+                    <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(profileData.walletAddress);
+                          toast.success('Wallet address copied to clipboard!');
+                        }}
+                        className="text-gray-400 hover:text-[#B671FF] transition-colors"
+                      >
+                        <Icon icon="lucide:copy" className="text-sm" />
+                      </button>
+                    </Tooltip>
+                    <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+                  </div>
+                )}
+              </div>
+            </div>
 
 
             <div className="flex w-full rounded-lg border-b mt-10 border-default-200 shadow-[0px_4px_15px_rgba(128,128,128,0.4)]">
@@ -1091,6 +1106,40 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                 window.location.reload();
               }}
             />
+
+            {/* Add UserListModal components */}
+            {profileData._id && (
+              <>
+                <UserListModal
+                  isOpen={isFollowersModalOpen}
+                  onClose={() => setIsFollowersModalOpen(false)}
+                  userId={profileData._id}
+                  type="followers"
+                  title="Followers"
+                  onFollowChange={(userId, isFollowing) => {
+                    // Update the followers count
+                    setProfileData(prev => ({
+                      ...prev,
+                      followers: prev.followers + (isFollowing ? 1 : -1)
+                    }));
+                  }}
+                />
+                <UserListModal
+                  isOpen={isFollowingModalOpen}
+                  onClose={() => setIsFollowingModalOpen(false)}
+                  userId={profileData._id}
+                  type="following"
+                  title="Following"
+                  onFollowChange={(userId, isFollowing) => {
+                    // Update the following count
+                    setProfileData(prev => ({
+                      ...prev,
+                      following: prev.following + (isFollowing ? 1 : -1)
+                    }));
+                  }}
+                />
+              </>
+            )}
 
           </div>
         </Card>
