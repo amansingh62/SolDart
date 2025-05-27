@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
-import {  Send, Image as ImageIcon, X } from "lucide-react"
+import { Send, Image as ImageIcon, X } from "lucide-react"
 import { Icon } from "@iconify/react"
 
 type Message = {
@@ -155,9 +155,9 @@ export default function SupportChat() {
               }`}>
               {msg.image && (
                 <div className="mb-2 rounded-lg overflow-hidden relative w-full max-w-[200px] h-[200px]">
-                  <Image 
-                    src={msg.image} 
-                    alt="Attached image" 
+                  <Image
+                    src={msg.image}
+                    alt="Attached image"
                     fill
                     className="object-cover"
                     sizes="(max-width: 200px) 100vw, 200px"
@@ -245,14 +245,14 @@ export default function SupportChat() {
             <ImageIcon size={20} />
           </button>
           <input
-  type="text"
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-  onKeyPress={handleKeyPress}
-  placeholder="Type your message..."
-  className="flex-1 p-2 rounded-xl bg-white/30 focus:outline-none focus:ring-2 focus:ring-[#B671FF]/50 text-sm overflow-hidden text-ellipsis break-words whitespace-normal overflow-wrap-break-word"
-  style={{ wordWrap: 'break-word' }}
-/>
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            className="flex-1 p-2 rounded-xl bg-white/30 focus:outline-none focus:ring-2 focus:ring-[#B671FF]/50 text-sm overflow-hidden text-ellipsis break-words whitespace-normal overflow-wrap-break-word"
+            style={{ wordWrap: 'break-word' }}
+          />
           <button
             onClick={sendMessage}
             disabled={isLoading || (!message.trim() && !selectedImage)}

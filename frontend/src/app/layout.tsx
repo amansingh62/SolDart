@@ -42,7 +42,7 @@ export default function RootLayout({
             </HashtagProvider>
           </LanguageProvider>
         </AuthProvider>
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
             style: {

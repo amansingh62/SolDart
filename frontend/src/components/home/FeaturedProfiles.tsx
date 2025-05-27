@@ -106,10 +106,9 @@ export function FeaturedProfiles() {
         <div className="w-full py-4">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">Featured Profiles</h3>
-
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
                 {profiles.map((profile) => (
                     <Link
                         href={`/profile/${profile.username}`}
@@ -118,17 +117,17 @@ export function FeaturedProfiles() {
                     >
                         <div className="aspect-square relative">
                             <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                <Avatar className="w-24 h-24">
+                                <Avatar className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24">
                                     <AvatarImage src={profile.profileImage} alt={profile.username || 'User'} />
-                                    <AvatarFallback className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white text-xl">
+                                    <AvatarFallback className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-white text-lg sm:text-xl md:text-2xl">
                                         {(profile.username || 'U').charAt(0).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                             </div>
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                                <h4 className="text-white font-bold truncate">@{profile.username || 'unknown'}</h4>
-                                <div className="flex items-center text-white/80 text-xs">
-                                    <Icon icon="mdi:account-group" className="mr-1" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 sm:p-3">
+                                <h4 className="text-white font-bold truncate text-xs sm:text-sm md:text-base">@{profile.username || 'unknown'}</h4>
+                                <div className="flex items-center text-white/80 text-[10px] sm:text-xs">
+                                    <Icon icon="mdi:account-group" className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
                                     <span>{profile.followersCount.toLocaleString()} followers</span>
                                 </div>
                             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Icon } from "@iconify/react";
@@ -71,6 +71,117 @@ interface PostProps {
   socket?: Socket; // Socket.io instance for real-time updates
 }
 
+// Add these styles at the top of the file after the imports
+const styles = `
+  @keyframes likeAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes likePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes likeCountAnimation {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-10px); opacity: 0; }
+    51% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes saveAnimation {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-10deg); }
+    50% { transform: scale(1.2) rotate(10deg); }
+    75% { transform: scale(1.1) rotate(-5deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes saveTextAnimation {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-5px); opacity: 0.5; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes pinAnimation {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.3) rotate(-15deg); }
+    50% { transform: scale(1.3) rotate(15deg); }
+    75% { transform: scale(1.1) rotate(-5deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes pinTextAnimation {
+    0% { transform: translateY(0); opacity: 1; }
+    25% { transform: translateY(-3px); opacity: 0.8; }
+    50% { transform: translateY(0); opacity: 1; }
+    75% { transform: translateY(-2px); opacity: 0.9; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes pollOptionSelect {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes pollBarFill {
+    0% { width: 0%; }
+    100% { width: var(--fill-width); }
+  }
+
+  @keyframes pollVoteCount {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-5px); opacity: 0.5; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .animate-like {
+    animation: likeAnimation 0.3s ease-out;
+  }
+
+  .animate-like-pulse {
+    animation: likePulse 0.3s ease-out;
+  }
+
+  .animate-like-count {
+    animation: likeCountAnimation 0.3s ease-out;
+  }
+
+  .animate-save {
+    animation: saveAnimation 0.5s ease-out;
+  }
+
+  .animate-save-text {
+    animation: saveTextAnimation 0.3s ease-out;
+  }
+
+  .animate-pin {
+    animation: pinAnimation 0.6s ease-out;
+  }
+
+  .animate-pin-text {
+    animation: pinTextAnimation 0.6s ease-out;
+  }
+
+  .animate-poll-option {
+    animation: pollOptionSelect 0.3s ease-out;
+  }
+
+  .animate-poll-bar {
+    animation: pollBarFill 0.5s ease-out;
+  }
+
+  .animate-poll-vote-count {
+    animation: pollVoteCount 0.3s ease-out;
+  }
+`;
+
+// Styles will be injected in useEffect
+
 export function DynamicPostCard({
   _id,
   user,
@@ -107,6 +218,21 @@ export function DynamicPostCard({
     }
     return null;
   });
+  
+  // Add useEffect to inject styles on client-side only
+  useEffect(() => {
+    // Create and inject styles only on the client side
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+    
+    // Cleanup function to remove the style when component unmounts
+    return () => {
+      if (styleSheet && document.head.contains(styleSheet)) {
+        document.head.removeChild(styleSheet);
+      }
+    };
+  }, []);
   const [localLikes, setLocalLikes] = useState<string[]>(likes);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -121,6 +247,11 @@ export function DynamicPostCard({
   const [isSavedState, setIsSavedState] = useState<boolean>(isSaved);
   const [localViews, setLocalViews] = useState<number>(views);
   const [visibleReplies, setVisibleReplies] = useState<{ [key: string]: boolean }>({});
+  const [isLiking, setIsLiking] = useState(false);
+  const [likeCount, setLikeCount] = useState(likes.length);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
+  const [animatingPollOption, setAnimatingPollOption] = useState<number | null>(null);
 
   // Track view when component mounts - only once per user ID
   React.useEffect(() => {
@@ -232,7 +363,7 @@ export function DynamicPostCard({
 
       // Sign a non-gas transaction message
       const message = `Sign this message to like post: ${_id}`;
-      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      const wallet = (window as any).solana;
       if (!wallet) {
         toast.error('Wallet not found');
         return;
@@ -249,6 +380,8 @@ export function DynamicPostCard({
 
       // Update local state first
       setLocalLikes(updatedLikes);
+      setLikeCount(updatedLikes.length);
+      setIsLiking(true);
 
       // Make the API call directly
       const response = await api.post(`/posts/like/${_id}`, {
@@ -261,17 +394,22 @@ export function DynamicPostCard({
         await trackPostLike(_id);
       } catch (trackingError) {
         console.error('Error tracking like for quest:', trackingError);
-        // Don't fail if tracking fails
       }
 
       // Only call onLike after successful API call
       if (response.data && onLike) {
-        // Pass minimal information to prevent parent from over-updating
         onLike(_id);
       }
+
+      // Reset animation state after animation completes
+      setTimeout(() => {
+        setIsLiking(false);
+      }, 300);
+
     } catch (error) {
       // Revert local state if API call fails
       setLocalLikes(likes);
+      setLikeCount(likes.length);
       console.error('Error liking post:', error);
       toast.error('Failed to like post');
     }
@@ -754,6 +892,9 @@ export function DynamicPostCard({
     const previousSelection: number | null = selectedPollOption;
 
     try {
+      // Set the animating option
+      setAnimatingPollOption(optionIndex);
+
       // Update the selection immediately for better UI feedback
       // If clicking the same option, allow toggling the selection off (null)
       if (selectedPollOption === optionIndex) {
@@ -784,8 +925,12 @@ export function DynamicPostCard({
       toast.error('Failed to update vote');
 
       // Revert to previous selection if API call fails
-      // This ensures the UI stays in sync with the server state
       setSelectedPollOption(previousSelection);
+    } finally {
+      // Reset animation state after animation completes
+      setTimeout(() => {
+        setAnimatingPollOption(null);
+      }, 300);
     }
   };
 
@@ -836,6 +981,7 @@ export function DynamicPostCard({
     if (user?._id !== currentUserId) return;
 
     try {
+      setIsPinning(true);
       const response = await api.post(`/posts/pin/${_id}`, {});
       if (response.data && response.status === 200) {
         // Update local state first for immediate UI feedback
@@ -855,7 +1001,7 @@ export function DynamicPostCard({
               name: user.name,
               profileImage: user.profileImage,
               walletAddress: user.walletAddress
-            }, // Include the complete user object with all necessary fields
+            },
             content,
             media,
             poll,
@@ -868,6 +1014,11 @@ export function DynamicPostCard({
     } catch (error) {
       console.error('Error pinning/unpinning post:', error);
       toast.error('Failed to pin/unpin post');
+    } finally {
+      // Reset animation state after animation completes
+      setTimeout(() => {
+        setIsPinning(false);
+      }, 600);
     }
   };
 
@@ -904,29 +1055,7 @@ export function DynamicPostCard({
   };
 
   // Handle block user
-  const handleBlock = async () => {
-    try {
-      if (!user?._id) return;
-
-      const loadingToast = toast.loading('Blocking user...');
-
-      // Call the API to block the user
-      const response = await api.post(`/users/block/${user._id}`);
-
-      toast.dismiss(loadingToast);
-
-      if (response.data && response.data.success) {
-        toast.success(`Blocked ${user.username}`);
-        // Close the menu after blocking
-        setShowMenu(false);
-      } else {
-        toast.error(response.data?.message || 'Failed to block user');
-      }
-    } catch (error) {
-      console.error('Error blocking user:', error);
-      toast.error('Failed to block user');
-    }
-  };
+  
 
   // Handle follow user
   const handleFollow = async () => {
@@ -959,6 +1088,7 @@ export function DynamicPostCard({
 
       // Update local state first for immediate UI feedback
       setIsSavedState(!currentSavedState);
+      setIsSaving(true);
 
       // Call the API to save/unsave the post
       const response = await api.post(`/posts/save/${_id}`, {});
@@ -977,6 +1107,11 @@ export function DynamicPostCard({
       setIsSavedState(isSavedState);
       console.error('Error saving post:', error);
       toast.error('Failed to save post');
+    } finally {
+      // Reset animation state after animation completes
+      setTimeout(() => {
+        setIsSaving(false);
+      }, 500);
     }
   };
 
@@ -1122,34 +1257,39 @@ export function DynamicPostCard({
                     <Icon icon="lucide:more-vertical" className="text-lg text-gray-400" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-40 p-0 bg-white">
+                <PopoverContent className="w-[200px] sm:w-40 p-0 bg-white shadow-lg rounded-lg">
                   <div className="py-1">
                     {/* Show Pin/Delete only if user is the owner */}
                     {currentUserId === user?._id ? (
                       <>
                         <Button
                           variant="ghost"
-                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          className="w-full justify-start text-xs sm:text-sm px-2 sm:px-3 py-2 hover:bg-gray-100"
                           onClick={handlePin}
                         >
-                          <Icon icon="lucide:pin" className="mr-2 h-4 w-4" />
-                          {isPinned ? 'Unpin' : 'Pin'}
+                          <Icon
+                            icon="lucide:pin"
+                            className={`mr-2 h-3 w-3 sm:h-4 sm:w-4 ${isPinning ? 'animate-pin' : ''}`}
+                          />
+                          <span className={isPinning ? 'animate-pin-text' : ''}>
+                            {isPinned ? 'Unpin' : 'Pin'}
+                          </span>
                         </Button>
                         <Button
                           variant="ghost"
-                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          className="w-full justify-start text-xs sm:text-sm px-2 sm:px-3 py-2 hover:bg-gray-100"
                           onClick={() => handleShare()}
                         >
-                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          <Icon icon="lucide:share" className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Share
                         </Button>
                         <Button
                           variant="ghost"
-                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
+                          className="w-full justify-start text-xs sm:text-sm px-2 sm:px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
                           onClick={handleDelete}
                           disabled={isDeleting}
                         >
-                          <Icon icon="lucide:trash-2" className="mr-2 h-4 w-4" />
+                          <Icon icon="lucide:trash-2" className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Delete
                         </Button>
                       </>
@@ -1157,20 +1297,13 @@ export function DynamicPostCard({
                       <>
                         <Button
                           variant="ghost"
-                          className="w-full justify-start text-sm px-3 py-2 hover:bg-gray-100"
+                          className="w-full justify-start text-xs sm:text-sm px-2 sm:px-3 py-2 hover:bg-gray-100"
                           onClick={() => handleShare()}
                         >
-                          <Icon icon="lucide:share" className="mr-2 h-4 w-4" />
+                          <Icon icon="lucide:share" className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Share
                         </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-sm px-3 py-2 text-red-500 hover:bg-gray-100 hover:text-red-600"
-                          onClick={() => handleBlock()}
-                        >
-                          <Icon icon="lucide:shield-ban" className="mr-2 h-4 w-4" />
-                          Block
-                        </Button>
+                       
                       </>
                     )}
                   </div>
@@ -1266,7 +1399,7 @@ export function DynamicPostCard({
             <h4 className="font-semibold text-sm md:text-lg flex items-center gap-2">
               <Icon icon="lucide:bar-chart-2" className="text-black text-lg md:text-xl" />
               {poll.question}
-              <span className="text-gray-600 text-xs md:text-sm">• {totalVotes} votes</span>
+              <span className="text-gray-600 text-xs md:text-sm animate-poll-vote-count">• {totalVotes} votes</span>
             </h4>
 
             {/* Poll Options */}
@@ -1276,16 +1409,17 @@ export function DynamicPostCard({
                 return (
                   <div
                     key={index}
-                    className={`rounded-lg p-2 relative ${selectedPollOption === index ? 'bg-gray-200' : 'bg-gray-100 hover:bg-gray-200 cursor-pointer'}`}
+                    className={`rounded-lg p-2 relative ${selectedPollOption === index ? 'bg-gray-200' : 'bg-gray-100 hover:bg-gray-200 cursor-pointer'} ${animatingPollOption === index ? 'animate-poll-option' : ''}`}
                     onClick={() => handlePollVote(index)}
+                    style={{ '--fill-width': `${percentage}%` } as React.CSSProperties}
                   >
                     <div
-                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg"
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg animate-poll-bar"
                       style={{ width: `${percentage}%` }}
                     />
                     <div className="relative flex justify-between font-medium px-2 text-black text-xs md:text-sm">
                       <span>{option.text}</span>
-                      <span>{percentage}%</span>
+                      <span className="animate-poll-vote-count">{percentage}%</span>
                     </div>
                   </div>
                 );
@@ -1301,7 +1435,6 @@ export function DynamicPostCard({
               className="flex items-center gap-1 cursor-pointer"
               onClick={handleLike}
             >
-              {/* Use direct SVG instead of Icon component */}
               {isLiked ? (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1313,7 +1446,7 @@ export function DynamicPostCard({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-[#B671FF]"
+                  className={`text-[#B671FF] ${isLiking ? 'animate-like' : ''}`}
                 >
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
@@ -1328,11 +1461,14 @@ export function DynamicPostCard({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  className={isLiking ? 'animate-like-pulse' : ''}
                 >
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
               )}
-              <span className={isLiked ? "text-[#B671FF]" : ""}>{localLikes.length}</span>
+              <span className={`${isLiked ? "text-[#B671FF]" : ""} ${isLiking ? 'animate-like-count' : ''}`}>
+                {likeCount}
+              </span>
             </div>
             <div
               className="flex items-center gap-1 cursor-pointer"
@@ -1350,10 +1486,15 @@ export function DynamicPostCard({
               >
                 <Icon
                   icon={isSavedState ? "lucide:bookmark" : "lucide:bookmark-plus"}
-                  className={`text-lg ${isSavedState ? "text-[#B671FF]" : ""}`}
+                  className={`text-lg ${isSavedState ? "text-[#B671FF]" : ""} ${isSaving ? 'animate-save' : ''}`}
                   style={{ color: isSavedState ? "#B671FF" : "" }}
                 />
-                <span className={isSavedState ? "text-[#B671FF]" : ""} style={{ color: isSavedState ? "#B671FF" : "" }}>Save</span>
+                <span
+                  className={`${isSavedState ? "text-[#B671FF]" : ""} ${isSaving ? 'animate-save-text' : ''}`}
+                  style={{ color: isSavedState ? "#B671FF" : "" }}
+                >
+                  Save
+                </span>
               </div>
             )}
             {/* Timestamp moved to right side */}

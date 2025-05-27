@@ -15,7 +15,7 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import MessagePopup from "./MessagePopup";
-import {  useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import DartAIButton from "@/components/home/DartAIButton";
 import EventsPopup from "@/components/home/EventsPopUP";
 import { useLanguage } from "@/context/LanguageContext";
@@ -29,6 +29,41 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+const styles = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+`;
+
 export default function Layout({ children }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -39,6 +74,21 @@ export default function Layout({ children }: LayoutProps) {
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
   const [messageUsername, setMessageUsername] = useState<string>("");
   const [messageUserImage, setMessageUserImage] = useState<string>("");
+
+  // Add useEffect to inject styles on client-side only
+  useEffect(() => {
+    // Create and inject styles only on the client side
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+
+    // Cleanup function to remove the style when component unmounts
+    return () => {
+      if (styleSheet && document.head.contains(styleSheet)) {
+        document.head.removeChild(styleSheet);
+      }
+    };
+  }, []);
   const [messageText, setMessageText] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -134,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   // Function to search for users or hashtags
-const searchUsers = async (query?: string) => {
+  const searchUsers = async (query?: string) => {
     const searchTerm = query || searchQuery;
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -381,12 +431,10 @@ const searchUsers = async (query?: string) => {
     localStorage.removeItem('walletModalSource');
   };
 
- 
-
   const { t } = useLanguage();
 
   // Add click outside handler for the dropdown
-  
+
 
   const renderAuthButton = () => {
     const { wallet, user } = authState;
@@ -397,7 +445,11 @@ const searchUsers = async (query?: string) => {
         <div className="flex gap-2">
           <Button
             className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-            onPress={() => setIsProfileModalOpen(true)}
+            onPress={() => {
+              setIsProfileModalOpen(true);
+              // Close the mobile menu when wallet button is clicked
+              setMenuOpen(false);
+            }}
             data-auth-allowed="true"
           >
             <div className="flex items-center justify-center gap-2">
@@ -409,7 +461,11 @@ const searchUsers = async (query?: string) => {
           </Button>
           <Button
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
-            onPress={handleLogout}
+            onPress={() => {
+              handleLogout();
+              // Close the mobile menu when logout is clicked
+              setMenuOpen(false);
+            }}
             data-auth-allowed="true"
           >
             Logout
@@ -427,6 +483,8 @@ const searchUsers = async (query?: string) => {
             onPress={() => {
               localStorage.setItem("walletModalSource", "userProfile");
               setIsWalletModalOpen(true);
+              // Close the mobile menu when connect wallet is clicked
+              setMenuOpen(false);
             }}
             data-auth-allowed="true"
           >
@@ -434,7 +492,11 @@ const searchUsers = async (query?: string) => {
           </Button>
           <Button
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
-            onPress={handleLogout}
+            onPress={() => {
+              handleLogout();
+              // Close the mobile menu when logout is clicked
+              setMenuOpen(false);
+            }}
             data-auth-allowed="true"
           >
             Logout
@@ -449,6 +511,8 @@ const searchUsers = async (query?: string) => {
         className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
           setIsAuthModalOpen(true);
+          // Close the mobile menu when sign in is clicked
+          setMenuOpen(false);
         }}
         data-auth-allowed="true"
       >
@@ -562,20 +626,20 @@ const searchUsers = async (query?: string) => {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo on the left for both mobile and desktop */}
           <div className="flex items-center">
-  <Image 
-    src="/solecho_logo.png" 
-    alt="SolEcho Logo" 
-    width={40}
-    height={40}
-    className="w-10"
-    priority
-  />
-  <h1 className="text-2xl font-bold">
-    Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
-      Echo
-    </span>
-  </h1>
-</div>
+            <Image
+              src="/solecho_logo.png"
+              alt="SolEcho Logo"
+              width={40}
+              height={40}
+              className="w-10"
+              priority
+            />
+            <h1 className="text-2xl font-bold">
+              Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
+                Echo
+              </span>
+            </h1>
+          </div>
 
           <div className="fixed left-1/2 transform -translate-x-1/2 w-[30vw] search-container mt-2 hidden md:block">
             <Input
@@ -627,14 +691,14 @@ const searchUsers = async (query?: string) => {
                         className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
                         onClick={() => navigateToProfile(user.username)}
                       >
-                      <Image
-  src={user.profileImage || '/svg.png'}
-  alt={user.username}
-  width={32}
-  height={32}
-  className="w-8 h-8 rounded-full mr-2"
-  unoptimized={!user.profileImage || user.profileImage.startsWith('data:')}
-/>
+                        <Image
+                          src={user.profileImage || '/svg.png'}
+                          alt={user.username}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded-full mr-2"
+                          unoptimized={!user.profileImage || user.profileImage.startsWith('data:')}
+                        />
                         <span className="text-sm">{user.username}</span>
                       </div>
                     ))}
@@ -660,7 +724,7 @@ const searchUsers = async (query?: string) => {
               >
                 <Icon icon="lucide:search" className="text-xl" />
               </button>
-              
+
               {/* Check-in (Calendar) Icon */}
               <button
                 onClick={() => setIsEventsOpen(true)}
@@ -668,18 +732,18 @@ const searchUsers = async (query?: string) => {
               >
                 <Icon icon="lucide:calendar" className="text-xl" />
               </button>
-              
+
               {/* Twitter Icon */}
               <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
                 <Icon icon="mdi:twitter" className="text-xl" />
               </a>
-              
+
               {/* Telegram Icon */}
               <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
                 <Icon icon="mdi:telegram" className="text-xl" />
               </a>
             </div>
-            
+
             {/* Mobile Menu Button - now on the right */}
             <button className="text-black text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
               <Icon icon="mdi:menu" />
@@ -769,14 +833,14 @@ const searchUsers = async (query?: string) => {
                           className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
                           onClick={() => navigateToProfile(user.username)}
                         >
-                         <Image
-  src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'}
-  alt={user.username}
-  width={40}
-  height={40}
-  className="w-10 h-10 rounded-full mr-3 border border-gray-200"
-  unoptimized={Boolean(user.profileImage && !user.profileImage.startsWith('http') && !user.profileImage.startsWith('/'))}
-/>
+                          <Image
+                            src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'}
+                            alt={user.username}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full mr-3 border border-gray-200"
+                            unoptimized={Boolean(user.profileImage && !user.profileImage.startsWith('http') && !user.profileImage.startsWith('/'))}
+                          />
                           <span className="font-medium">@{user.username}</span>
                         </div>
                       ))}
@@ -791,33 +855,53 @@ const searchUsers = async (query?: string) => {
 
       {/* Mobile Sidebar */}
       {menuOpen && (
-        <div className="fixed top-16 left-0 w-11/12 h-full bg-white flex flex-col justify-between p-6 z-[99]">
-          {/* Sidebar Content */}
-          <div className="overflow-auto flex-1 pb-12">
-            <button className="text-black text-2xl mb-4" onClick={() => setMenuOpen(false)}>
-              <Icon icon="mdi:close" />
-            </button>
-            <div className="space-y-6">
-              <Sidebar />
-              <TrendingHashtags />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99] animate-fadeIn">
+          <div className="fixed top-0 right-0 w-[85%] h-full bg-white shadow-2xl transform transition-all duration-300 ease-in-out rounded-l-3xl animate-slideIn">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-transparent bg-clip-text">Menu</h2>
+                <button
+                  className="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Icon icon="mdi:close" className="text-2xl text-gray-600" />
+                </button>
+              </div>
 
-              <SolanaTrendingSection />
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-8">
+                  <div className="animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+                    <Sidebar />
+                  </div>
+                  <div className="animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+                    <TrendingHashtags />
+                  </div>
+                  <div className="animate-fadeInUp" style={{ animationDelay: '300ms' }}>
+                    <SolanaTrendingSection />
+                  </div>
+                </div>
+              </div>
 
-
-
+              {/* Footer */}
+              <div className="border-t p-6 bg-gradient-to-r from-gray-50 to-white">
+                <div className="animate-fadeInUp" style={{ animationDelay: '400ms' }}>
+                  {renderAuthButton()}
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Auth Button */}
-          <div className="border-t pt-2 pb-4 mb-10">{renderAuthButton()}</div>
         </div>
       )}
 
       {/* Fixed HotCoins section */}
       <div className="fixed top-0 w-full">
-        <div className="container mx-auto mt-16 px-6 pt-4 pb-2">
-          <div className="flex items-center">
-            <HotCoins />
+        <div className="container mx-auto mt-16 px-2 sm:px-6 pt-4 pb-2">
+          <div className="flex items-center w-full">
+            <div className="w-full overflow-x-auto">
+              <HotCoins />
+            </div>
           </div>
         </div>
       </div>
@@ -851,13 +935,14 @@ const searchUsers = async (query?: string) => {
 
           {/* Main content - fixed position with scrollable content */}
           <main
-            className="w-full px-4 pt-4 md:w-[calc(50%-1.5rem)] md:px-0 md:fixed md:left-1/2 md:transform md:-translate-x-1/2 md:top-[140px] overflow-y-auto"
+            className="w-full px-0 pt-0 sm:px-4 sm:pt-4 md:w-[calc(50%-1.5rem)] md:px-0 md:fixed md:left-1/2 md:transform md:-translate-x-1/2 md:top-[140px] overflow-y-auto"
             style={{
               height: columnHeight,
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
             }}
           >
+
             <style jsx>{`
               main::-webkit-scrollbar {
                 display: none;

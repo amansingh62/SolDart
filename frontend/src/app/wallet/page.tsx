@@ -222,42 +222,51 @@ export default function WalletPage() {
         </div>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="mb-6">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              placeholder="Enter Solana wallet address to search"
-              className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border border-[#2a2a2a] focus:outline-none focus:border-[#B671FF]"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg font-medium hover:opacity-90 transition-opacity"
-            >
-              Search
-            </button>
-          </div>
-        </form>
+       <form onSubmit={handleSearch} className="mb-6 w-full">
+  <div className="flex flex-col sm:flex-row gap-2">
+    <input
+      type="text"
+      value={searchAddress}
+      onChange={(e) => setSearchAddress(e.target.value)}
+      placeholder="Enter Solana wallet address to search"
+      className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border border-[#2a2a2a] focus:outline-none focus:border-[#B671FF] w-full"
+    />
+    <button
+      type="submit"
+      className="px-4 py-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto"
+    >
+      Search
+    </button>
+  </div>
+</form>
 
-        <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6">
-          <Icon icon="lucide:wallet" className="text-[#B671FF]" />
-          <span className="text-white font-medium">{walletAddress ? walletAddress : "No wallet connected"}</span>
-          {walletAddress && (
-            <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(walletAddress);
-                  toast.success('Wallet address copied to clipboard!', TOAST_CONFIG);
-                }}
-                className="text-gray-400 hover:text-[#B671FF] transition-colors"
-              >
-                <Icon icon="lucide:copy" className="text-sm" />
-              </button>
-            </Tooltip>
-          )}
-          {walletAddress && <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />}
-        </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6 w-full max-w-full overflow-hidden">
+  <div className="flex items-center gap-2">
+    <Icon icon="lucide:wallet" className="text-[#B671FF] text-base sm:text-lg" />
+    <span className="text-white font-medium truncate max-w-[200px] sm:max-w-[250px]">
+      {walletAddress ? walletAddress : "No wallet connected"}
+    </span>
+  </div>
+
+  {walletAddress && (
+    <div className="flex items-center gap-2">
+      <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(walletAddress);
+            toast.success('Wallet address copied to clipboard!', TOAST_CONFIG);
+          }}
+          className="text-gray-400 hover:text-[#B671FF] transition-colors"
+        >
+          <Icon icon="lucide:copy" className="text-sm" />
+        </button>
+      </Tooltip>
+      <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+    </div>
+  )}
+</div>
+
         {!walletAddress ? (
           <div className="text-center py-8 text-white">Connect your wallet to view your portfolio.</div>
         ) : isLoadingPortfolio ? (

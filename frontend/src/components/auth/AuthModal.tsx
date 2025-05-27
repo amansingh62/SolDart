@@ -88,101 +88,115 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     }
   };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" placement="center" className="z-[100] modal">
-      <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 modal-content">
-        {() => (
-          <>
-            <ModalHeader className="flex flex-col gap-1 text-center">
-              <h3 className="text-xl font-bold text-white">{isSignUp ? "Create Account" : "Welcome Back"}</h3>
-            </ModalHeader>
-            <ModalBody className="px-2 sm:px-4 py-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {isSignUp && (
-                  <>
-                    <Input
-                      type="text"
-                      label=""
-                      placeholder="Enter your full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      className="bg-gray-800 text-white"
-                    />
-                    <Input
-                      type="text"
-                      label=""
-                      placeholder="Choose a username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      className="bg-gray-800 text-white"
-                    />
-                  </>
-                )}
-                <Input
-                  type="email"
-                  label=""
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-gray-800 text-white"
-                />
-                <Input
-                  type="password"
-                  label=""
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-gray-800 text-white"
-                />
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
-                     text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
-                     hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
-                  isLoading={isLoading}
-                >
-                  {isSignUp ? "Sign Up" : "Log In"}
-                </Button>
-              </form>
+return (
+  <Modal isOpen={isOpen} onClose={onClose} size="md" placement="center" className="z-[100] modal">
+    <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl 
+                           w-full max-w-xs sm:max-w-md mx-auto 
+                           p-3 sm:p-4 md:p-6 
+                           m-2 sm:m-4 
+                           modal-content">
+      {() => (
+        <>
+          <ModalHeader className="flex flex-col gap-1 text-center px-0 sm:px-2">
+            <h3 className="text-lg sm:text-xl font-bold text-white">
+              {isSignUp ? "Create Account" : "Welcome Back"}
+            </h3>
+          </ModalHeader>
+          <ModalBody className="px-1 sm:px-2 md:px-4 py-3 sm:py-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              {isSignUp && (
+                <>
+                  <Input
+                    type="text"
+                    label=""
+                    placeholder="Enter your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="bg-gray-800 text-white text-sm sm:text-base"
+                    size="sm"
+                  />
+                  <Input
+                    type="text"
+                    label=""
+                    placeholder="Choose a username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="bg-gray-800 text-white text-sm sm:text-base"
+                    size="sm"
+                  />
+                </>
+              )}
+              <Input
+                type="email"
+                label=""
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-gray-800 text-white text-sm sm:text-base"
+                size="sm"
+              />
+              <Input
+                type="password"
+                label=""
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-gray-800 text-white text-sm sm:text-base"
+                size="sm"
+              />
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA]
+                           text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black
+                           hover:text-white px-3 sm:px-4 py-2 rounded-md border border-white shadow-md
+                           text-sm sm:text-base"
+                size="sm"
+                isLoading={isLoading}
+              >
+                {isSignUp ? "Sign Up" : "Log In"}
+              </Button>
+            </form>
 
-              <div className="mt-4">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-700"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-gray-900 text-gray-400">Or continue with</span>
-                  </div>
+            <div className="mt-3 sm:mt-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-700"></div>
                 </div>
-
-                <Button
-                  className="w-full mt-4 bg-white text-black hover:bg-gray-100 px-4 py-2 rounded-md"
-                  onPress={handleGoogleAuth}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Icon icon="flat-color-icons:google" className="text-xl" />
-                    <span>Google</span>
-                  </div>
-                </Button>
+                <div className="relative flex justify-center text-xs sm:text-sm">
+                  <span className="px-2 bg-gray-900 text-gray-400">Or continue with</span>
+                </div>
               </div>
 
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  className="text-gray-400 hover:text-white text-sm"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                >
-                  {isSignUp ? "Already have an account? Log in" : "Don't have an account? Sign up"}
-                </button>
-              </div>
-            </ModalBody>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
-  );
+              <Button
+                className="w-full mt-3 sm:mt-4 bg-white text-black hover:bg-gray-100 
+                           px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base"
+                size="sm"
+                onPress={handleGoogleAuth}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Icon icon="flat-color-icons:google" className="text-lg sm:text-xl" />
+                  <span>Google</span>
+                </div>
+              </Button>
+            </div>
+
+            <div className="mt-3 sm:mt-4 text-center">
+              <button
+                type="button"
+                className="text-gray-400 hover:text-white text-xs sm:text-sm"
+                onClick={() => setIsSignUp(!isSignUp)}
+              >
+                {isSignUp ? "Already have an account? Log in" : "Don't have an account? Sign up"}
+              </button>
+            </div>
+          </ModalBody>
+        </>
+      )}
+    </ModalContent>
+  </Modal>
+);
 }

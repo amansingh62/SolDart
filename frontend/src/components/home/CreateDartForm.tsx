@@ -15,6 +15,38 @@ interface CreateDartFormProps {
   onPostCreated?: () => void;
 }
 
+const styles = `
+  @keyframes postCreationAnimation {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.95); opacity: 0.8; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  @keyframes buttonPulseAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes successCheckmarkAnimation {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .animate-post-creation {
+    animation: postCreationAnimation 0.5s ease-out;
+  }
+
+  .animate-button-pulse {
+    animation: buttonPulseAnimation 0.3s ease-out;
+  }
+
+  .animate-success-checkmark {
+    animation: successCheckmarkAnimation 0.5s ease-out;
+  }
+`;
+
 const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
   const [content, setContent] = useState('');
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -22,6 +54,21 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
   const [showPollForm, setShowPollForm] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  
+  // Add useEffect to inject styles on client-side only
+  useEffect(() => {
+    // Create and inject styles only on the client side
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+    
+    // Cleanup function to remove the style when component unmounts
+    return () => {
+      if (styleSheet && document.head.contains(styleSheet)) {
+        document.head.removeChild(styleSheet);
+      }
+    };
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [isOverLimit, setIsOverLimit] = useState(false);
@@ -193,7 +240,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
 
       // Sign a non-gas transaction message
       const message = `Sign this message to create a post: ${content || 'media post'}`;
-      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      const wallet = (window as any).solana;
       if (!wallet) {
         toast.error('Wallet not found');
         setIsSubmitting(false);
@@ -225,35 +272,47 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       });
 
       if (response.data.success) {
-        toast.success('Post created successfully!');
-        
+        // Show success toast with animation
+        toast.success('Post created successfully!', {
+          icon: '✨',
+          style: {
+            animation: 'successCheckmarkAnimation 0.5s ease-out'
+          }
+        });
+
         // Track post creation for quest system
         try {
           const { trackPostCreation } = await import('@/lib/questUtils');
           await trackPostCreation(response.data.post._id);
         } catch (trackingError) {
           console.error('Error tracking post creation for quest:', trackingError);
-          // Don't fail if tracking fails
         }
-        
-        // Reset form
+
+        // Reset form with animation
+        const form = document.querySelector('.dart-textarea')?.parentElement;
+        if (form) {
+          form.classList.add('animate-post-creation');
+          setTimeout(() => {
+            form.classList.remove('animate-post-creation');
+          }, 500);
+        }
+
         setContent('');
         setMediaFiles([]);
         setMediaPreview([]);
         setShowPollForm(false);
         setPollQuestion('');
         setPollOptions(['', '']);
-        
+
         // Notify parent component
         if (onPostCreated) onPostCreated();
-        
+
         // Emit socket event for real-time updates
         try {
           const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
           socket.emit('newPost', response.data.post);
         } catch (socketError) {
           console.error('Socket error:', socketError);
-          // Don't fail if socket fails
         }
       } else {
         toast.error('Failed to create post');
@@ -286,15 +345,15 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           {mediaPreview.map((preview, index) => (
             <div key={index} className="relative rounded-lg overflow-hidden">
               {mediaFiles[index].type.startsWith('image/') ? (
-                  <div className="relative w-full h-32">
-            <Image 
-              src={preview} 
-              alt="Preview" 
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-          </div>
+                <div className="relative w-full h-32">
+                  <Image
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </div>
               ) : mediaFiles[index].type.startsWith('video/') && (
                 <video className="w-full h-32 object-cover" controls>
                   <source src={preview} type={mediaFiles[index].type} />
@@ -412,13 +471,21 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           </Button>
         </div>
         <Button
-          className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
-             hover:text-white px-4 sm:px-6 py-2 font-medium rounded-md shadow-md w-full sm:w-auto transition duration-200"
+          className={`bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
+            text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
+            hover:text-white px-4 sm:px-6 py-2 font-medium rounded-md shadow-md w-full sm:w-auto 
+            transition duration-200 ${isSubmitting ? 'animate-button-pulse' : ''}`}
           onClick={handleSubmit}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Posting...' : 'Echo'}
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin">⚡</span>
+              Posting...
+            </span>
+          ) : (
+            'Echo'
+          )}
         </Button>
 
       </div>
