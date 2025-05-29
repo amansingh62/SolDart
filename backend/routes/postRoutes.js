@@ -623,11 +623,37 @@ router.post('/pin/:id', auth, async (req, res) => {
     post.isPinned = !post.isPinned;
     await post.save();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', post);
+    // Fetch the updated post with all populated fields
+    const populatedPost = await Post.findById(req.params.id)
+      .populate('user', 'username profileImage')
+      .populate({
+        path: 'comments',
+        populate: [
+          {
+            path: 'user',
+            select: 'username profileImage'
+          },
+          {
+            path: 'replies',
+            populate: {
+              path: 'user',
+              select: 'username profileImage'
+            }
+          }
+        ]
+      })
+      .populate('likes', 'username profileImage');
 
-    res.json({ success: true, isPinned: post.isPinned });
+    // Emit socket event for real-time updates with fully populated data
+    req.app.get('io').emit('postUpdated', populatedPost);
+
+    res.json({ 
+      success: true, 
+      isPinned: post.isPinned,
+      post: populatedPost // Optional: return the full post data
+    });
   } catch (error) {
+    console.error('Error pinning/unpinning post:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -716,8 +742,11 @@ router.post('/comment/pin/:postId/:commentId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
-    // Check if user owns the comment
-    if (comment.user.toString() !== req.user.id) {
+    // Check if user owns the comment OR owns the post (post owners should be able to pin any comment)
+    const isCommentOwner = comment.user.toString() === req.user.id;
+    const isPostOwner = post.user.toString() === req.user.id;
+
+    if (!isCommentOwner && !isPostOwner) {
       return res.status(401).json({ success: false, message: 'Not authorized to pin this comment' });
     }
 
@@ -732,8 +761,13 @@ router.post('/comment/pin/:postId/:commentId', auth, async (req, res) => {
     comment.isPinned = !comment.isPinned;
     await post.save();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', post);
+    // Populate the post with user data before emitting socket event
+    const populatedPost = await Post.findById(req.params.postId)
+      .populate('user', 'username profileImage')
+      .populate('comments.user', 'username profileImage');
+
+    // Emit socket event for real-time updates with populated data
+    req.app.get('io').emit('postUpdated', populatedPost);
 
     res.json({ success: true, isPinned: comment.isPinned });
   } catch (error) {
@@ -757,17 +791,25 @@ router.delete('/comment/:postId/:commentId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
-    // Check if user owns the comment
-    if (comment.user.toString() !== req.user.id) {
+    // Check if user owns the comment OR owns the post
+    const isCommentOwner = comment.user.toString() === req.user.id;
+    const isPostOwner = post.user.toString() === req.user.id;
+
+    if (!isCommentOwner && !isPostOwner) {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this comment' });
     }
 
-    // Remove the comment using pull operator instead of deprecated remove() method
+    // Remove the comment using pull operator
     post.comments.pull({ _id: req.params.commentId });
     await post.save();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', post);
+    // Populate the post with user data before emitting socket event
+    const populatedPost = await Post.findById(req.params.postId)
+      .populate('user', 'username profileImage')
+      .populate('comments.user', 'username profileImage');
+
+    // Emit socket event for real-time updates with populated data
+    req.app.get('io').emit('postUpdated', populatedPost);
 
     res.json({ success: true, message: 'Comment deleted successfully' });
   } catch (error) {
@@ -777,54 +819,81 @@ router.delete('/comment/:postId/:commentId', auth, async (req, res) => {
 
 // Add a reply to a comment
 router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
+  console.log('Reply endpoint hit with params:', req.params);
+  console.log('Reply endpoint hit with body:', req.body);
+
   try {
     const { text } = req.body;
 
     if (!text) {
+      console.log('No text provided in request');
       return res.status(400).json({ success: false, message: 'Reply text is required' });
     }
 
     const post = await Post.findById(req.params.postId);
+    console.log('Post found:', !!post);
 
     if (!post) {
+      console.log('Post not found');
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
     // Find the comment
     const comment = post.comments.id(req.params.commentId);
+    console.log('Comment found:', !!comment);
 
     if (!comment) {
+      console.log('Comment not found');
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
+    console.log('Adding reply to comment...');
     // Add the reply
     comment.replies.push({
       user: req.user.id,
       text
     });
 
+    console.log('Saving post...');
     await post.save();
+    console.log('Post saved successfully');
 
     // Create notification for comment owner if someone else replied to the comment
     if (comment.user.toString() !== req.user.id) {
+      console.log('Creating notification...');
       const Notification = require('../models/Notification');
-      const newNotification = new Notification({
-        recipient: comment.user,
-        sender: req.user.id,
-        type: 'reply',
-        post: post._id,
-        message: `replied to your comment: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
-      });
+      
+      try {
+        const newNotification = new Notification({
+          recipient: comment.user,
+          sender: req.user.id,
+          type: 'comment', // Changed from 'reply' to 'comment' (use a valid enum value)
+          post: post._id,
+          message: `replied to your comment: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
+        });
 
-      await newNotification.save();
+        await newNotification.save();
+        console.log('Notification saved successfully');
 
-      // Emit socket event for real-time notification
-      const io = req.app.get('io');
-      io.to(`user-${comment.user}`).emit('notification', newNotification);
+        // Emit socket event for real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user-${comment.user}`).emit('notification', newNotification);
+          console.log('Socket notification emitted');
+        }
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Don't fail the entire request if notification fails
+      }
     }
 
+    console.log('Populating post data...');
     // Populate the updated post with user data
     const populatedPost = await Post.findById(post._id)
+      .populate({
+        path: 'user',
+        select: 'username profileImage walletAddress'
+      })
       .populate({
         path: 'comments.user',
         select: 'username profileImage name walletAddress'
@@ -833,24 +902,61 @@ router.post('/comment/reply/:postId/:commentId', auth, async (req, res) => {
         path: 'comments.replies.user',
         select: 'username profileImage name walletAddress'
       })
-      .populate({
-        path: 'user',
-        select: 'username profileImage walletAddress'
-      });
+      .lean();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', populatedPost);
+    console.log('Post populated:', !!populatedPost);
+
+    if (!populatedPost) {
+      console.log('Failed to populate post');
+      return res.status(404).json({ success: false, message: 'Failed to fetch updated post' });
+    }
 
     // Find the updated comment to return it specifically
-    const updatedComment = populatedPost.comments.id(req.params.commentId);
+    const updatedComment = populatedPost.comments.find(
+      c => c._id.toString() === req.params.commentId
+    );
 
-    res.json({
+    console.log('Updated comment found:', !!updatedComment);
+    console.log('Updated comment replies count:', updatedComment?.replies?.length || 0);
+
+    if (!updatedComment) {
+      console.log('Updated comment not found after population');
+      return res.status(404).json({ success: false, message: 'Updated comment not found' });
+    }
+
+    // Emit socket event for real-time updates with populated data
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('postUpdated', populatedPost);
+      console.log('Socket postUpdated emitted');
+    }
+
+    console.log('Sending success response...');
+    // Return both the updated comment and all comments for flexibility
+    const response = {
       success: true,
       comments: populatedPost.comments,
-      updatedComment: updatedComment
+      updatedComment: updatedComment,
+      message: 'Reply added successfully'
+    };
+
+    console.log('Response includes:', {
+      success: response.success,
+      commentsCount: response.comments.length,
+      updatedCommentRepliesCount: response.updatedComment.replies.length,
+      updatedCommentId: response.updatedComment._id
     });
+
+    res.json(response);
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error adding reply:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -881,7 +987,11 @@ router.delete('/comment/reply/:postId/:commentId/:replyId', auth, async (req, re
 
     // Check if the user is authorized to delete this reply
     const reply = comment.replies[replyIndex];
-    if (reply.user.toString() !== req.user.id) {
+    const isReplyOwner = reply.user.toString() === req.user.id;
+    const isPostOwner = post.user.toString() === req.user.id;
+    const isCommentOwner = comment.user.toString() === req.user.id;
+
+    if (!isReplyOwner && !isPostOwner && !isCommentOwner) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this reply' });
     }
 
@@ -889,8 +999,23 @@ router.delete('/comment/reply/:postId/:commentId/:replyId', auth, async (req, re
     comment.replies.splice(replyIndex, 1);
     await post.save();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', post);
+    // Populate the updated post with user data before emitting
+    const populatedPost = await Post.findById(req.params.postId)
+      .populate({
+        path: 'user',
+        select: 'username profileImage walletAddress'
+      })
+      .populate({
+        path: 'comments.user',
+        select: 'username profileImage name walletAddress'
+      })
+      .populate({
+        path: 'comments.replies.user',
+        select: 'username profileImage name walletAddress'
+      });
+
+    // Emit socket event for real-time updates with populated data
+    req.app.get('io').emit('postUpdated', populatedPost);
 
     res.json({ success: true, message: 'Reply deleted successfully' });
   } catch (error) {
@@ -934,6 +1059,7 @@ router.post('/view/:id', auth, async (req, res) => {
 });
 
 // Like a comment
+// Comment Like Route
 router.post('/comment/like/:postId/:commentId', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
@@ -966,35 +1092,67 @@ router.post('/comment/like/:postId/:commentId', auth, async (req, res) => {
 
       // Create notification for comment owner if someone else liked the comment
       if (comment.user.toString() !== req.user.id) {
-        const Notification = require('../models/Notification');
-        const newNotification = new Notification({
-          recipient: comment.user,
-          sender: req.user.id,
-          type: 'like',
-          post: post._id,
-          message: `liked your comment`
-        });
+        try {
+          const Notification = require('../models/Notification');
+          const newNotification = new Notification({
+            recipient: comment.user,
+            sender: req.user.id,
+            type: 'like',
+            post: post._id,
+            message: `liked your comment`
+          });
 
-        await newNotification.save();
+          await newNotification.save();
 
-        // Emit socket event for real-time notification
-        const io = req.app.get('io');
-        io.to(`user-${comment.user}`).emit('notification', newNotification);
+          // Emit socket event for real-time notification
+          const io = req.app.get('io');
+          if (io) {
+            io.to(`user-${comment.user}`).emit('notification', newNotification);
+          }
+        } catch (notificationError) {
+          console.error('Error creating notification:', notificationError);
+          // Don't fail the entire request if notification fails
+        }
       }
     }
 
     await post.save();
 
-    // Emit socket event for real-time updates
-    req.app.get('io').emit('postUpdated', post);
+    // Populate the post with ALL user data including replies - THIS IS THE KEY FIX
+    const populatedPost = await Post.findById(req.params.postId)
+      .populate({
+        path: 'user',
+        select: 'username profileImage walletAddress'
+      })
+      .populate({
+        path: 'comments.user',
+        select: 'username profileImage name walletAddress'
+      })
+      .populate({
+        path: 'comments.replies.user', // THIS WAS MISSING - causing replies to lose user data
+        select: 'username profileImage name walletAddress'
+      })
+      .lean(); // Use lean() for better performance
+
+    // Emit socket event for real-time updates with populated data
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('postUpdated', populatedPost);
+    }
 
     res.json({
       success: true,
       likes: comment.likes,
-      isLiked: !wasLiked
+      isLiked: !wasLiked,
+      message: wasLiked ? 'Comment unliked' : 'Comment liked'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error liking/unliking comment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
