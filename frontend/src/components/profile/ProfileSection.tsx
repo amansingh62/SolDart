@@ -247,7 +247,8 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
         if (!isOwnProfile && userData.followers) {
           setIsFollowing(userData.isFollowing || false);
         }
-
+        console.log(userData.isFollowing, "FOLLOWING")
+        console.log(userData, "FOLLOWING")
         // User is authenticated
         setIsAuthenticated(true);
       }

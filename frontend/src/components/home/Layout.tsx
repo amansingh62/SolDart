@@ -625,7 +625,10 @@ export default function Layout({ children }: LayoutProps) {
       <nav className="fixed top-0 w-full z-99 border-b border-[#ffffff]/30 backdrop-blur-md shadow-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo on the left for both mobile and desktop */}
-          <div className="flex items-center">
+          <div
+            className="flex items-center cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <Image
               src="/solecho_logo.png"
               alt="SolEcho Logo"

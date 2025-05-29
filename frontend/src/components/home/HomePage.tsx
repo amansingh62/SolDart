@@ -251,27 +251,29 @@ export function HomePage() {
   };
 
   // Handle comment deletion
-  const handleCommentDelete = async (postId: string, commentId: string) => {
-    try {
-      await api.delete(`/posts/comment/${postId}/${commentId}`);
+const handleCommentDelete = async (postId: string, commentId: string) => {
+  try {
+    await api.delete(`/posts/comment/${postId}/${commentId}`);
 
-      // Update local state for immediate UI feedback
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post._id === postId) {
-            return {
-              ...post,
-              comments: post.comments.filter(comment => comment._id !== commentId)
-            };
-          }
-          return post;
-        })
-      );
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast.error('Failed to delete comment');
-    }
-  };
+    // Update local state after successful API call - only filter out the deleted comment
+    // This preserves all existing user data in remaining comments
+    setPosts(prevPosts =>
+      prevPosts.map(post => {
+        if (post._id === postId) {
+          // Create a shallow copy of the post and filter comments
+          const updatedPost = { ...post };
+          updatedPost.comments = post.comments.filter(comment => comment._id !== commentId);
+          return updatedPost;
+        }
+        return post;
+      })
+    );
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    // Re-throw the error so the child component knows the operation failed
+    throw error;
+  }
+};
 
   // Handle comment pin/unpin
   const handleCommentPin = async (postId: string, commentId: string) => {

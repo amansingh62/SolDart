@@ -543,6 +543,10 @@ export function DynamicPostCard({
     }
   };
 
+  useEffect(() => {
+    setLocalComments(comments);
+  }, [comments]);
+
   // Handle comment like
   const handleCommentLike = async (commentId: string) => {
     try {
@@ -646,6 +650,10 @@ export function DynamicPostCard({
   const handleReplySubmit = async () => {
     if (!replyText.trim() || !replyingTo) return;
 
+    // Store the current values before any state changes
+    const currentReplyingTo = replyingTo;
+    const replyTextForApi = replyText;
+
     try {
       // Check if wallet is connected
       const storedWalletInfo = localStorage.getItem('connectedWalletInfo');
@@ -662,8 +670,8 @@ export function DynamicPostCard({
       }
 
       // Sign a non-gas transaction message
-      const message = `Sign this message to reply to comment: ${replyingTo}`;
-      const wallet = (window as any).solana; // Assuming Phantom wallet is used
+      const message = `Sign this message to reply to comment: ${currentReplyingTo}`;
+      const wallet = (window as any).solana;
       if (!wallet) {
         toast.error('Wallet not found');
         return;
@@ -672,7 +680,7 @@ export function DynamicPostCard({
       const signature = await wallet.signMessage(new TextEncoder().encode(message));
       console.log('Reply transaction signed:', signature);
 
-      // Get current user data similar to comment submission
+      // Get current user data - ENSURE we have complete user data before proceeding
       let currentUserData = {
         _id: currentUserId || '',
         username: '',
@@ -689,18 +697,35 @@ export function DynamicPostCard({
           walletAddress: user.walletAddress
         };
       } else {
-        const currentUserComment = localComments.find(comment => comment.user._id === currentUserId);
-        if (currentUserComment?.user) {
+        // Check if current user data exists in any of the comments or replies
+        const findUserInComments = (comments: Comment[]): any => {
+          for (const comment of comments) {
+            if (comment.user._id === currentUserId) {
+              return comment.user;
+            }
+            if (comment.replies) {
+              for (const reply of comment.replies) {
+                if (reply.user._id === currentUserId) {
+                  return reply.user;
+                }
+              }
+            }
+          }
+          return null;
+        };
+
+        const foundUser = findUserInComments(localComments);
+        if (foundUser) {
           currentUserData = {
             _id: currentUserId || '',
-            username: currentUserComment.user.username,
-            profileImage: currentUserComment.user.profileImage,
-            walletAddress: currentUserComment.user.walletAddress
+            username: foundUser.username,
+            profileImage: foundUser.profileImage,
+            walletAddress: foundUser.walletAddress
           };
         }
       }
 
-      // If still no user data, fetch from API
+      // If still no user data, fetch from API BEFORE proceeding
       if (!currentUserData.username) {
         try {
           const userResponse = await api.get('/auth/current-user');
@@ -714,79 +739,145 @@ export function DynamicPostCard({
           }
         } catch (userError) {
           console.error('Error fetching user data from API:', userError);
+          // If we still can't get user data, don't proceed with optimistic update
+          toast.error('Unable to get user information. Please try again.');
+          return;
         }
       }
 
-      // Create the new reply
-      const newReply: Comment = {
-        _id: Date.now().toString(), // Temporary ID until real one from server
+      // Final check - don't proceed if we still don't have a username
+      if (!currentUserData.username) {
+        console.error('Unable to get current user data');
+        toast.error('Unable to get user information. Please try again.');
+        return;
+      }
+
+      // Create the new reply for optimistic update with verified user data
+      const tempReply: Comment = {
+        _id: `temp-${Date.now()}`, // Temporary ID
         user: {
           _id: currentUserData._id,
-          username: currentUserData.username || 'Anonymous',
+          username: currentUserData.username, // Now guaranteed to have a username
           profileImage: currentUserData.profileImage,
           walletAddress: currentUserData.walletAddress
         },
-        text: replyText,
+        text: replyTextForApi,
         date: new Date().toISOString(),
         likes: [],
         replies: []
       };
 
+      console.log('Creating optimistic reply with user data:', {
+        username: currentUserData.username,
+        hasProfileImage: !!currentUserData.profileImage
+      });
+
       // Update local state first for immediate UI feedback
       setLocalComments(prevComments =>
         prevComments.map(comment => {
-          if (comment._id === replyingTo) {
+          if (comment._id === currentReplyingTo) {
             return {
               ...comment,
-              replies: [...(comment.replies || []), newReply]
+              replies: [...(comment.replies || []), tempReply]
             };
           }
           return comment;
         })
       );
 
-      // Reset reply state
+      // Reset reply state immediately for better UX
       setReplyingTo(null);
       setReplyText('');
 
-      // Call API to save reply with signature
+      console.log('Making API call with commentId:', currentReplyingTo);
+
+      // Call API to save reply
       try {
-        const response = await api.post(`/posts/comment/reply/${_id}/${replyingTo}`, {
-          text: replyText,
+        const response = await api.post(`/posts/comment/reply/${_id}/${currentReplyingTo}`, {
+          text: replyTextForApi,
           signature
         });
 
-        // If the API call was successful, update the local state with the response data
+        console.log('API Response:', response.data);
+
+        // If the API call was successful, replace the temp reply with real data
         if (response.data && response.data.success) {
-          // Update the comment with the real reply from the API response
-          if (response.data.comments) {
-            // Find the updated comment in the response
+          if (response.data.updatedComment) {
+            console.log('Updating with updatedComment, replies count:', response.data.updatedComment.replies?.length);
+
+            // Update the specific comment with the server response
+            setLocalComments(prevComments =>
+              prevComments.map(comment => {
+                if (comment._id === currentReplyingTo) {
+                  return {
+                    ...comment,
+                    replies: response.data.updatedComment.replies || []
+                  };
+                }
+                return comment;
+              })
+            );
+          } else if (response.data.comments) {
+            console.log('Updating with comments array');
+
+            // Fallback: update with all comments from response
             const updatedComment = response.data.comments.find(
-              (c: Comment) => c._id === replyingTo
+              (c: Comment) => c._id === currentReplyingTo
             );
 
             if (updatedComment) {
+              console.log('Found updated comment, replies count:', updatedComment.replies?.length);
               setLocalComments(prevComments =>
                 prevComments.map(comment => {
-                  if (comment._id === replyingTo) {
+                  if (comment._id === currentReplyingTo) {
                     return updatedComment;
                   }
                   return comment;
                 })
               );
+            } else {
+              console.log('Updated comment not found in response');
             }
           }
+
+          // Only show success message after API succeeds
+          toast.success('Reply added successfully');
+        } else {
+          throw new Error(response.data?.message || 'API response indicates failure');
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
         console.error('Error saving reply to database:', apiError);
-        // Keep the local state as is, since we've already updated it for immediate feedback
-        toast.error('Failed to save reply');
+        console.error('API Error response:', apiError.response?.data);
+
+        // Remove the temporary reply since API failed
+        setLocalComments(prevComments =>
+          prevComments.map(comment => {
+            if (comment._id === currentReplyingTo) {
+              return {
+                ...comment,
+                replies: (comment.replies || []).filter(reply => reply._id !== tempReply._id)
+              };
+            }
+            return comment;
+          })
+        );
+
+        // Show appropriate error message
+        const errorMessage = apiError.response?.data?.message || 'Failed to save reply';
+        toast.error(errorMessage);
+
+        // Reset reply state to allow user to try again
+        setReplyingTo(currentReplyingTo);
+        setReplyText(replyTextForApi);
       }
 
-      toast.success('Reply added');
-    } catch (error) {
-      console.error('Error adding reply:', error);
+    } catch (error: any) {
+      console.error('General error adding reply:', error);
       toast.error('Failed to add reply');
+
+      // Reset reply state in case of general error
+      setReplyingTo(currentReplyingTo);
+      setReplyText(replyTextForApi);
     }
   };
 
@@ -824,26 +915,32 @@ export function DynamicPostCard({
   // Handle comment deletion
   const handleCommentDelete = async (commentId: string) => {
     try {
-      // Update local state first for immediate UI feedback
-      setLocalComments(prevComments =>
-        prevComments.filter(comment => comment._id !== commentId)
-      );
-
       // Call the parent callback if available
       if (onCommentDelete) {
-        onCommentDelete(_id, commentId);
+        await onCommentDelete(_id, commentId);
+        toast.success('Comment deleted');
       } else {
-        // Otherwise, call the API directly
-        await api.delete(`/posts/comment/${_id}/${commentId}`);
-      }
+        // Store the original state before making changes (only for standalone component)
+        const originalComments = [...localComments];
 
-      toast.success('Comment deleted');
+        // Update local state first for immediate UI feedback
+        setLocalComments(prevComments =>
+          prevComments.filter(comment => comment._id !== commentId)
+        );
+
+        // Call the API directly
+        await api.delete(`/posts/comment/${_id}/${commentId}`);
+        toast.success('Comment deleted');
+      }
     } catch (error) {
       console.error('Error deleting comment:', error);
       toast.error('Failed to delete comment');
 
-      // Revert to original comments if the API call fails
-      setLocalComments(comments);
+      // Only revert local state if we're not using parent callback
+      if (!onCommentDelete) {
+        // Revert to the original comments state
+        setLocalComments(comments);
+      }
     }
   };
 
@@ -857,23 +954,38 @@ export function DynamicPostCard({
       // Get current pin status
       const wasAlreadyPinned = commentToUpdate.isPinned || false;
 
-      // Update local state first
-      setLocalComments(prevComments =>
-        prevComments.map(comment => ({
-          ...comment,
-          // Only one comment can be pinned at a time
-          isPinned: comment._id === commentId
-            ? !wasAlreadyPinned
-            : wasAlreadyPinned ? comment.isPinned : false
-        }))
-      );
-
-      // Call the parent callback if available
+      // Call the API first (don't update state optimistically)
+      let response;
       if (onCommentPin) {
-        onCommentPin(_id, commentId);
+        response = await onCommentPin(_id, commentId);
       } else {
-        // Otherwise, call the API directly
-        await api.post(`/posts/comment/pin/${_id}/${commentId}`, {});
+        response = await api.post(`/posts/comment/pin/${_id}/${commentId}`, {});
+      }
+
+      // Update local state based on API response
+      if (response?.data?.post) {
+        // If we got the full post back, update comments from the response
+        setLocalComments(response.data.post.comments);
+      } else {
+        // Fallback: update local state manually
+        setLocalComments(prevComments =>
+          prevComments.map(comment => {
+            if (comment._id === commentId) {
+              // Toggle pin status for target comment
+              return {
+                ...comment,
+                isPinned: !wasAlreadyPinned
+              };
+            } else if (!wasAlreadyPinned && comment.isPinned) {
+              // If we're pinning a new comment, unpin previously pinned ones
+              return {
+                ...comment,
+                isPinned: false
+              };
+            }
+            return comment;
+          })
+        );
       }
 
       toast.success(wasAlreadyPinned ? 'Comment unpinned' : 'Comment pinned');
@@ -881,8 +993,7 @@ export function DynamicPostCard({
       console.error('Error pinning comment:', error);
       toast.error('Failed to pin comment');
 
-      // Revert to original comments if the API call fails
-      setLocalComments(comments);
+      // No need to revert since we didn't update optimistically
     }
   };
 
