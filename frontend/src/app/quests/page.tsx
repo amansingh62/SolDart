@@ -400,7 +400,7 @@ const QuestsContent = () => {
                   </div>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-sm font-medium text-amber-700">100 {t('points')}</span>
+                  <span className="text-sm font-medium text-amber-700">500 {t('points')}</span>
                 </div>
               </div>
             </div>
@@ -424,7 +424,7 @@ const QuestsContent = () => {
                   </div>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-sm font-medium text-gray-400">300 {t('points')}</span>
+                  <span className="text-sm font-medium text-gray-400">2500 {t('points')}</span>
                 </div>
               </div>
             </div>
@@ -448,7 +448,7 @@ const QuestsContent = () => {
                   </div>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-sm font-medium text-yellow-500">600 {t('points')}</span>
+                  <span className="text-sm font-medium text-yellow-500">7500 {t('points')}</span>
                 </div>
               </div>
             </div>
@@ -472,7 +472,7 @@ const QuestsContent = () => {
                   </div>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-sm font-medium text-blue-400">1050 {t('points')}</span>
+                  <span className="text-sm font-medium text-blue-400">15000 {t('points')}</span>
                 </div>
               </div>
             </div>
@@ -496,7 +496,7 @@ const QuestsContent = () => {
                   </div>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-sm font-medium text-purple-500">2000 {t('points')}</span>
+                  <span className="text-sm font-medium text-purple-500">25000 {t('points')}</span>
                 </div>
               </div>
             </div>

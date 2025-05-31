@@ -54,14 +54,14 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
   const [showPollForm, setShowPollForm] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
-  
+
   // Add useEffect to inject styles on client-side only
   useEffect(() => {
     // Create and inject styles only on the client side
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
     document.head.appendChild(styleSheet);
-    
+
     // Cleanup function to remove the style when component unmounts
     return () => {
       if (styleSheet && document.head.contains(styleSheet)) {

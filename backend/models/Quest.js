@@ -56,15 +56,15 @@ const QuestSchema = new Schema({
 
 // Helper method to update reward tier based on points
 QuestSchema.methods.updateRewardTier = function() {
-  if (this.totalPoints >= 2000) {
+  if (this.totalPoints >= 25000) {
     this.rewardTier = 'diamond';
-  } else if (this.totalPoints >= 1050) {
+  } else if (this.totalPoints >= 15000) {
     this.rewardTier = 'platinum';
-  } else if (this.totalPoints >= 600) {
+  } else if (this.totalPoints >= 7500) {
     this.rewardTier = 'gold';
-  } else if (this.totalPoints >= 300) {
+  } else if (this.totalPoints >= 2500) {
     this.rewardTier = 'silver';
-  } else if (this.totalPoints >= 100) {
+  } else if (this.totalPoints >= 500) {
     this.rewardTier = 'bronze';
   } else {
     this.rewardTier = 'none';

@@ -30,11 +30,11 @@ const s3Upload = (folderName) => {
         // Determine subfolder based on file type for better organization
         const fileType = getFileType(file.mimetype);
         const subfolder = folderName ? `${folderName}/${fileType}` : fileType;
-        
+
         // Create a unique filename
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const filename = uniqueSuffix + path.extname(file.originalname);
-        
+
         // Full path in S3: folderName/fileType/filename
         cb(null, `${subfolder}/${filename}`);
       },
@@ -44,8 +44,8 @@ const s3Upload = (folderName) => {
     fileFilter: (req, file, cb) => {
       // Accept images, videos, and gifs
       if (file.mimetype.startsWith('image/') ||
-          file.mimetype.startsWith('video/') ||
-          file.mimetype === 'image/gif') {
+        file.mimetype.startsWith('video/') ||
+        file.mimetype === 'image/gif') {
         cb(null, true);
       } else {
         cb(new Error('Unsupported file type'), false);
@@ -69,7 +69,7 @@ const extractKeyFromUrl = (url) => {
     const bucket = process.env.AWS_BUCKET_NAME;
     const region = process.env.AWS_REGION;
     const baseUrl = `https://${bucket}.s3.${region}.amazonaws.com/`;
-    
+
     if (url.startsWith(baseUrl)) {
       return url.substring(baseUrl.length);
     }
@@ -85,17 +85,17 @@ const deleteFileFromS3 = async (fileUrl) => {
   try {
     const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
     const key = extractKeyFromUrl(fileUrl);
-    
+
     if (!key) {
       console.error('Invalid S3 URL or key:', fileUrl);
       return false;
     }
-    
+
     const deleteParams = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key
     };
-    
+
     const command = new DeleteObjectCommand(deleteParams);
     await s3.send(command);
     console.log(`Successfully deleted file from S3: ${key}`);
