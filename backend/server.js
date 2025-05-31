@@ -26,7 +26,7 @@ const io = socketIo(server, {
   cors: {
       origin: process.env.FRONTEND_URL || "http://localhost:3000",
       methods: ["GET", "POST"],
-    credentials: false // ⚠️ credentials can't be used with origin: "*"
+      credentials: true // ⚠️ credentials can't be used with origin: "*"
   }
 });
 
