@@ -19,6 +19,7 @@ interface CoinDisplay {
 
 export function HotCoins() {
   const [trendingCoins, setTrendingCoins] = useState<CoinDisplay[]>([]);
+  const [displayCoins, setDisplayCoins] = useState<CoinDisplay[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef<boolean>(true);
 
@@ -142,11 +143,22 @@ export function HotCoins() {
     { symbol: "LINK", number: 10, percentChange: 4.3, color: "text-green-500", image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1975.png", price: 15.67 },
   ];
 
-  // Only use fallback data if we have no trending coins and no cached data
-  const displayCoins = trendingCoins.length > 0 ? trendingCoins : 
-    (typeof window !== 'undefined' && localStorage.getItem('hotCoinsData') ? 
-      JSON.parse(localStorage.getItem('hotCoinsData')!) : 
-      fallbackCoins);
+  // Set displayCoins after mount to avoid SSR/CSR mismatch
+  useEffect(() => {
+    if (trendingCoins.length > 0) {
+      setDisplayCoins(trendingCoins);
+    } else {
+      // Try to load from localStorage if available
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('hotCoinsData');
+        if (cached) {
+          setDisplayCoins(JSON.parse(cached));
+          return;
+        }
+      }
+      setDisplayCoins(fallbackCoins);
+    }
+  }, [trendingCoins]);
 
   return (
     <div className="flex justify-center items-center w-6/12 mx-auto">

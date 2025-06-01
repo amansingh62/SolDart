@@ -415,7 +415,13 @@ router.put('/profile', auth, upload.fields([
 
 // User logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    // domain: '.yourdomain.com', // Uncomment and set if you use a custom domain
+  });
   res.json({ message: 'Logged out successfully' });
 });
 

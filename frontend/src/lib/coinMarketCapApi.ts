@@ -170,11 +170,9 @@ export const fetchGraduatedTokens = async (): Promise<TrendingCoin[]> => {
 export const fetchFearGreedIndex = async (): Promise<FearGreedData> => {
   try {
     // Remove the timestamp parameter as CoinMarketCap doesn't allow it
-    const response = await axios.get('/api/fear-greed');
-    
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/fear-greed`);
     // Store in localStorage as a backup
     localStorage.setItem('fearGreedData', JSON.stringify(response.data));
-    
     return response.data;
   } catch (error) {
     console.error('Error fetching Fear & Greed Index:', error);
