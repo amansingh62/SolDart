@@ -27,7 +27,7 @@ const PollSchema = new Schema({
   options: [PollOptionSchema],
   expiresAt: {
     type: Date,
-    default: () => new Date(+new Date() + 7*24*60*60*1000) // Default 7 days from now
+    default: () => new Date(+new Date() + 7 * 24 * 60 * 60 * 1000) // Default 7 days from now
   }
 });
 
@@ -53,7 +53,7 @@ const PostSchema = new Schema({
   },
   content: {
     type: String,
-    maxlength: 500
+    maxlength: 1000
   },
   hashtags: {
     type: [String],

@@ -72,7 +72,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [isOverLimit, setIsOverLimit] = useState(false);
-  const MAX_CHARS = 500;
+  const MAX_CHARS = 1000;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate character count whenever content changes
@@ -294,7 +294,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           form.classList.add('animate-post-creation');
           setTimeout(() => {
             form.classList.remove('animate-post-creation');
-          }, 500);
+          }, 1000);
         }
 
         setContent('');

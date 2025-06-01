@@ -245,4 +245,3 @@ const migrateSavedPosts = async () => {
 
 // Run migration after database connection is established
 migrateSavedPosts();
-

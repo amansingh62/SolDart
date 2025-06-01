@@ -111,6 +111,7 @@ export function Sidebar() {
     { icon: "lucide:message-circle", label: t('Live Chat'), path: "/live-chat" },
     { icon: "lucide:trophy", label: t('Quests'), path: "/quests" },
     { icon: "lucide:plus", label: t('Advertise'), path: "" },
+    { icon: "lucide:git-branch", label: "v0.2", path: "" },
   ];
 
   // Function to check if a menu item is active based on the current path or popup state
