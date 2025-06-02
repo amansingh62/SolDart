@@ -55,7 +55,7 @@ const QuestSchema = new Schema({
 });
 
 // Helper method to update reward tier based on points
-QuestSchema.methods.updateRewardTier = function() {
+QuestSchema.methods.updateRewardTier = function () {
   if (this.totalPoints >= 25000) {
     this.rewardTier = 'diamond';
   } else if (this.totalPoints >= 15000) {

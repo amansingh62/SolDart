@@ -21,7 +21,7 @@ async function fetchTrendingCoins() {
   try {
     // Get API key from environment variables
     const apiKey = process.env.COIN_MARKET_API_KEY;
-    
+
     if (!apiKey) {
       console.error('CoinMarketCap API key is not configured');
       return [];
@@ -65,18 +65,18 @@ async function fetchTrendingCoins() {
 function setupCryptoWebSocket(io) {
   // Store connected clients interested in crypto updates
   const cryptoClients = new Set();
-  
+
   // Handle client connections
   io.on('connection', (socket) => {
     // Listen for crypto subscription requests
     socket.on('subscribeToCryptoUpdates', () => {
       console.log(`Client ${socket.id} subscribed to crypto updates`);
       cryptoClients.add(socket.id);
-      
-      // Add to crypto room for easier broadcasting
+
+      // Add to crypto-updates room for easier broadcasting
       socket.join('crypto-updates');
     });
-    
+
     // Handle disconnections
     socket.on('disconnect', () => {
       if (cryptoClients.has(socket.id)) {
@@ -85,13 +85,13 @@ function setupCryptoWebSocket(io) {
       }
     });
   });
-  
-  // Start periodic updates (every 30 seconds)
-  const updateInterval = 30 * 1000; // 30 seconds
-  
+
+  // Start periodic updates (every 2 minutes)
+  const updateInterval = 120 * 1000; // 120 seconds
+
   // Initial fetch and broadcast
   fetchAndBroadcastCryptoData(io);
-  
+
   // Set up interval for regular updates
   setInterval(() => fetchAndBroadcastCryptoData(io), updateInterval);
 }
@@ -100,7 +100,7 @@ function setupCryptoWebSocket(io) {
 async function fetchAndBroadcastCryptoData(io) {
   try {
     const trendingCoins = await fetchTrendingCoins();
-    
+
     if (trendingCoins.length > 0) {
       // Broadcast to all clients in the crypto-updates room
       io.to('crypto-updates').emit('cryptoUpdate', trendingCoins);

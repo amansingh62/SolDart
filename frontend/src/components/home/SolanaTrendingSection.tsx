@@ -28,10 +28,10 @@ export default function SolanaTrendingSection() {
       } else {
         setIsUpdating(true);
       }
-      
+
       const response = await fetch('/api/tokens');
       const data = await response.json();
-  
+
       // Track liquidity changes
       const changes: Record<string, 'up' | 'down' | null> = {};
       data.forEach((token: Token) => {
@@ -42,7 +42,7 @@ export default function SolanaTrendingSection() {
         }
         previousLiquidity.current[token.address] = token.liquidity;
       });
-  
+
       setLiquidityChanges(changes);
       setTokens(data);
       setError(null);
@@ -54,17 +54,17 @@ export default function SolanaTrendingSection() {
       setIsUpdating(false);
     }
   };
-  
+
   useEffect(() => {
     fetchTokens(true); // first load, show spinner
-  
+
     const interval = setInterval(() => {
       fetchTokens(); // future updates, no spinner but track update state
-    }, 5000);
-  
+    }, 60000);
+
     return () => clearInterval(interval);
   }, []);
-  
+
   const formatNumber = (num: number) => {
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + 'B';
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + 'M';
@@ -84,7 +84,7 @@ export default function SolanaTrendingSection() {
           {isUpdating && (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
           )}
-          
+
         </div>
       </div>
 
@@ -133,10 +133,9 @@ export default function SolanaTrendingSection() {
               <div className="flex-1">
                 <div className="flex justify-between items-center">
                   <p className="font-medium text-sm">{token.symbol}</p>
-                  <p className={`text-sm font-medium ${
-                    liquidityChanges[token.address] === 'up' ? 'text-green-500' :
+                  <p className={`text-sm font-medium ${liquidityChanges[token.address] === 'up' ? 'text-green-500' :
                     liquidityChanges[token.address] === 'down' ? 'text-red-500' : ''
-                  }`}>
+                    }`}>
                     {token.liquidity ? `$${formatNumber(token.liquidity)}` : 'N/A'}
                   </p>
                 </div>

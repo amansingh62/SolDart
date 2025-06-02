@@ -7,19 +7,19 @@ router.get('/tokens', async (req, res) => {
   try {
     const tokens = await fetchSolanaTokens();
     if (tokens.length === 0) {
-      return res.status(404).json({ 
-        statusCode: 404, 
-        error: 'Not Found', 
-        message: 'No Solana tokens found' 
+      return res.status(404).json({
+        statusCode: 404,
+        error: 'Not Found',
+        message: 'No Solana tokens found'
       });
     }
     res.json(tokens);
   } catch (error) {
     console.error('Error fetching Solana tokens:', error);
-    res.status(500).json({ 
-      statusCode: 500, 
-      error: 'Internal Server Error', 
-      message: 'Failed to fetch Solana tokens' 
+    res.status(500).json({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch Solana tokens'
     });
   }
 });
@@ -48,7 +48,7 @@ async function fetchSolanaTokens() {
     });
 
     console.log('Solscan response:', response.data);
-    
+
     if (response.data && response.data.data) {
       // Transform the API response to match our needs
       return response.data.data.map((token, index) => ({
@@ -136,18 +136,18 @@ async function fetchSolanaTokens() {
 function setupSolanaWebSocket(io) {
   // Store connected clients interested in Solana token updates
   const solanaClients = new Set();
-  
+
   // Handle client connections
   io.on('connection', (socket) => {
     // Listen for Solana token subscription requests
     socket.on('subscribeToSolanaUpdates', () => {
       console.log(`Client ${socket.id} subscribed to Solana token updates`);
       solanaClients.add(socket.id);
-      
+
       // Add to solana-updates room for easier broadcasting
       socket.join('solana-updates');
     });
-    
+
     // Handle disconnections
     socket.on('disconnect', () => {
       if (solanaClients.has(socket.id)) {
@@ -156,13 +156,13 @@ function setupSolanaWebSocket(io) {
       }
     });
   });
-  
-  // Start periodic updates (every 30 seconds)
-  const updateInterval = 30 * 1000; // 30 seconds
-  
+
+  // Start periodic updates (every 60 seconds)
+  const updateInterval = 60 * 1000; // 60 seconds
+
   // Initial fetch and broadcast
   fetchAndBroadcastSolanaData(io);
-  
+
   // Set up interval for regular updates
   setInterval(() => fetchAndBroadcastSolanaData(io), updateInterval);
 }
@@ -171,10 +171,10 @@ function setupSolanaWebSocket(io) {
 async function fetchAndBroadcastSolanaData(io) {
   try {
     const tokens = await fetchSolanaTokens();
-    
+
     if (tokens.length > 0) {
       console.log(`Broadcasting ${tokens.length} Solana tokens to clients`);
-      
+
       // Broadcast to all clients in the solana-updates room
       io.to('solana-updates').emit('solanaUpdate', tokens);
     } else {
@@ -182,9 +182,9 @@ async function fetchAndBroadcastSolanaData(io) {
     }
   } catch (error) {
     console.error('Error in Solana token update cycle:', error);
-    
+
     // Even on error, send a notification to clients so they know there was an issue
-    io.to('solana-updates').emit('solanaError', { 
+    io.to('solana-updates').emit('solanaError', {
       message: 'Error fetching Solana token data',
       timestamp: new Date().toISOString()
     });
