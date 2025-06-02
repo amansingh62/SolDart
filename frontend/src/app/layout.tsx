@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { HashtagProvider } from "@/context/HashtagContext";
 import { Toaster } from 'react-hot-toast';
+import ForceLogoutHandler from '@/components/ForceLogoutHandler';
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} font-poppins antialiased`}
       >
+        <ForceLogoutHandler />
         <AuthProvider>
           <LanguageProvider>
             <HashtagProvider>

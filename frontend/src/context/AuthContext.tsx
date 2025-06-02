@@ -54,18 +54,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const checkAuthStatus = async () => {
       console.log("AuthContext: Checking authentication status");
       try {
-        const response = await api.get('/auth/me');
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/user`, { withCredentials: true });
         if (response.data) {
           console.log("AuthContext: User is authenticated:", response.data);
           setUser(response.data);
         } else {
-          console.log("AuthContext: No user data returned from /auth/me");
+          console.log("AuthContext: No user data returned from /auth/user");
         }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
+      } catch (error: any) {
+        if (error.response && error.response.status === 401) {
+          // Not authenticated, clear user state
+          setUser(null);
+        } else {
+          console.error('Authentication check failed:', error);
+        }
         // Clear any potentially invalid auth state
         localStorage.removeItem('token');
-        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -124,14 +128,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     console.log("AuthContext: Logging out");
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      // Ignore errors, proceed to clear state
+    }
     // Remove token from localStorage
     localStorage.removeItem('token');
-
     // Update auth state
     setUser(null);
-    
     // Dispatch a custom event to notify components about logout
     if (typeof window !== 'undefined') {
       console.log("AuthContext: Dispatching userLoggedOut event");

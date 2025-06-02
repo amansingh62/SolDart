@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useState, useEffect } from "react";
+import React, { ReactNode, useState, useEffect, useContext } from "react";
 import { Button, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Sidebar } from "@/components/home/Sidebar";
@@ -22,6 +22,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { RecentSearches } from "@/components/home/RecentSearches";
 import api from '@/lib/apiUtils';
 import Image from 'next/image';
+import { useAuth } from '@/context/AuthContext';
 
 const EMOJIS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐙", "🦄", "🐳", "🦋", "🐝", "🦖", "🐢"];
 
@@ -391,7 +392,17 @@ export default function Layout({ children }: LayoutProps) {
           }));
         }
       } catch (error) {
-        console.error('Error checking auth status:', error);
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          // Not authenticated, clear user state
+          setAuthState(prev => ({
+            ...prev,
+            user: null
+          }));
+          // Optionally, redirect to login or show a message here
+          // e.g. router.push('/login');
+        } else {
+          console.error('Error checking auth status:', error);
+        }
       }
     };
 
@@ -411,6 +422,8 @@ export default function Layout({ children }: LayoutProps) {
       }
     }
   }, []);
+
+  const { logout } = useAuth();
 
   const handleConnect = (walletAddress: string) => {
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
@@ -522,21 +535,11 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-      localStorage.removeItem('token');
-      setToken(null);
-      toast.success("Logged out successfully");
-
-      // Clear any wallet info
-      localStorage.removeItem('connectedWalletInfo');
-
-      // Reload the page to clear all state
-      window.location.reload();
-    } catch (error: any) {
-      console.error("Logout error:", error);
-      toast.error(error.response?.data?.message || "Failed to logout");
-    }
+    await logout();
+    // Clear any wallet info
+    localStorage.removeItem('connectedWalletInfo');
+    // Reload the page to clear all state
+    window.location.reload();
   };
 
   // Calculate the available height for the columns (viewport height minus navbar and HotCoins section)

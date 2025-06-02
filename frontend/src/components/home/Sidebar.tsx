@@ -71,7 +71,10 @@ export function Sidebar() {
           setUnreadMessages(response.data.count);
         }
       } catch (error) {
-        console.error('Error fetching unread message count:', error);
+        if (error) {
+          console.error('Error fetching unread message count:', error);
+        }
+        // else do nothing (silent fail)
       }
     };
 

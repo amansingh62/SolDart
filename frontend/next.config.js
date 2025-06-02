@@ -3,7 +3,20 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: true,
   images: {
-    domains: ['s2.coinmarketcap.com', 'ui-avatars.com', 'solecho.s3.eu-north-1.amazonaws.com'],
+    domains: [
+      's2.coinmarketcap.com',
+      'ui-avatars.com',
+      'solecho.s3.eu-north-1.amazonaws.com',
+      'localhost',
+    ],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/uploads/**',
+      },
+    ],
   },
   async rewrites() {
     return [
