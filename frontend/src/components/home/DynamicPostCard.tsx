@@ -338,6 +338,34 @@ export function DynamicPostCard({
     return date.toLocaleDateString(undefined, options);
   };
 
+  // Add this function after the formatDate function
+  const detectAndFormatLinks = (text: string) => {
+    // URL regex pattern
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+
+    // Split text by URLs
+    const parts = text.split(urlPattern);
+
+    // Map through parts and format URLs
+    return parts.map((part, index) => {
+      if (part.match(urlPattern)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   // Calculate total votes for poll
   const totalVotes = poll?.options.reduce((sum, option) => sum + option.votes, 0) || 0;
 
@@ -1448,6 +1476,21 @@ export function DynamicPostCard({
                       </span>
                     );
                   }
+                  // Check if the word is a URL
+                  if (word.match(/^https?:\/\/[^\s]+$/)) {
+                    return (
+                      <a
+                        key={wordIndex}
+                        href={word}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline break-all"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
+                      </a>
+                    );
+                  }
                   return (
                     <span key={wordIndex}>
                       {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
@@ -1461,53 +1504,53 @@ export function DynamicPostCard({
         )}
 
         {/* Media Content */}
-       {media && media.length > 0 && (
-  <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-    {media.map((item, index) => (
-      <div key={index} className="rounded-lg overflow-hidden p-5 shadow-md">
-        {item.type === 'image' && (
-          <div className="relative w-full max-h-96 mx-auto">
-            <Image
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
-              alt="Post media"
-              width={400}
-              height={384}
-              className="w-auto mx-auto max-h-96 rounded-lg object-contain"
-              style={{ maxHeight: '384px' }}
-              priority={index === 0} // Prioritize first image for LCP
-            />
+        {media && media.length > 0 && (
+          <div className={`grid ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+            {media.map((item, index) => (
+              <div key={index} className="rounded-lg overflow-hidden p-5 shadow-md">
+                {item.type === 'image' && (
+                  <div className="relative w-full max-h-96 mx-auto">
+                    <Image
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      alt="Post media"
+                      width={400}
+                      height={384}
+                      className="w-auto mx-auto max-h-96 rounded-lg object-contain"
+                      style={{ maxHeight: '384px' }}
+                      priority={index === 0} // Prioritize first image for LCP
+                    />
+                  </div>
+                )}
+                {item.type === 'video' && (
+                  <video
+                    controls
+                    className="w-full h-auto rounded-lg max-h-64 sm:max-h-80 md:max-h-96 object-contain"
+                    preload="metadata"
+                  >
+                    <source
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      type="video/mp4"
+                    />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+                {item.type === 'gif' && (
+                  <div className="relative w-full max-h-96">
+                    <Image
+                      src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
+                      alt="Post GIF"
+                      width={400}
+                      height={384}
+                      className="w-auto max-h-96 rounded-lg object-contain"
+                      style={{ maxHeight: '384px' }}
+                      unoptimized // GIFs should remain unoptimized to preserve animation
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
-        {item.type === 'video' && (
-          <video 
-            controls 
-            className="w-full h-auto rounded-lg max-h-64 sm:max-h-80 md:max-h-96 object-contain" 
-            preload="metadata"
-          >
-            <source
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
-              type="video/mp4"
-            />
-            Your browser does not support the video tag.
-          </video>
-        )}
-        {item.type === 'gif' && (
-          <div className="relative w-full max-h-96">
-            <Image
-              src={item.url.startsWith('http') ? item.url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${item.url}`}
-              alt="Post GIF"
-              width={400}
-              height={384}
-              className="w-auto max-h-96 rounded-lg object-contain"
-              style={{ maxHeight: '384px' }}
-              unoptimized // GIFs should remain unoptimized to preserve animation
-            />
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-)}
 
         {/* Poll Content */}
         {poll && (
