@@ -8,7 +8,7 @@ interface Token {
   symbol: string;
   address: string;
   logo: string;
-  liquidity: number;
+  marketCap: number;
   fullyDilutedValuation: number;
 }
 
@@ -16,8 +16,8 @@ export default function SolanaTrendingSection() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const previousLiquidity = useRef<Record<string, number>>({});
-  const [liquidityChanges, setLiquidityChanges] = useState<Record<string, 'up' | 'down' | null>>({});
+  const previousMCV = useRef<Record<string, number>>({});
+  const [mcvChanges, setMcvChanges] = useState<Record<string, 'up' | 'down' | null>>({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -32,18 +32,18 @@ export default function SolanaTrendingSection() {
       const response = await fetch('/api/tokens');
       const data = await response.json();
 
-      // Track liquidity changes
+      // Track Mcap changes
       const changes: Record<string, 'up' | 'down' | null> = {};
       data.forEach((token: Token) => {
-        const previous = previousLiquidity.current[token.address];
+        const previous = previousMCV.current[token.address];
         if (previous !== undefined) {
-          if (token.liquidity > previous) changes[token.address] = 'up';
-          else if (token.liquidity < previous) changes[token.address] = 'down';
+          if (token.fullyDilutedValuation > previous) changes[token.address] = 'up';
+          else if (token.fullyDilutedValuation < previous) changes[token.address] = 'down';
         }
-        previousLiquidity.current[token.address] = token.liquidity;
+        previousMCV.current[token.address] = token.fullyDilutedValuation;
       });
 
-      setLiquidityChanges(changes);
+      setMcvChanges(changes);
       setTokens(data);
       setError(null);
     } catch (err) {
@@ -56,10 +56,10 @@ export default function SolanaTrendingSection() {
   };
 
   useEffect(() => {
-    fetchTokens(true); // first load, show spinner
+    fetchTokens(true);
 
     const interval = setInterval(() => {
-      fetchTokens(); // future updates, no spinner but track update state
+      fetchTokens();
     }, 60000);
 
     return () => clearInterval(interval);
@@ -84,7 +84,6 @@ export default function SolanaTrendingSection() {
           {isUpdating && (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
           )}
-
         </div>
       </div>
 
@@ -105,7 +104,7 @@ export default function SolanaTrendingSection() {
       <div className="max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         {!isLoading && tokens.map((token, idx) => (
           <div
-            key={token.address} // Using address as key instead of index for better React reconciliation
+            key={token.address}
             className="p-2 rounded-lg bg-[#f3f3f3] transition duration-200 hover:bg-gray-200 cursor-pointer mb-2"
             onClick={() => window.open(`https://dexscreener.com/solana/${token.address}`, '_blank')}
           >
@@ -133,20 +132,16 @@ export default function SolanaTrendingSection() {
               <div className="flex-1">
                 <div className="flex justify-between items-center">
                   <p className="font-medium text-sm">{token.symbol}</p>
-                  <p className={`text-sm font-medium ${liquidityChanges[token.address] === 'up' ? 'text-green-500' :
-                    liquidityChanges[token.address] === 'down' ? 'text-red-500' : ''
+                  <p className={`text-sm font-medium ${mcvChanges[token.address] === 'up' ? 'text-green-500' :
+                    mcvChanges[token.address] === 'down' ? 'text-red-500' : ''
                     }`}>
-                    {token.liquidity ? `$${formatNumber(token.liquidity)}` : 'N/A'}
+                    mcap: ${formatNumber(token.fullyDilutedValuation)}
                   </p>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
                     <p className="text-xs text-gray-500">{token.name}</p>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    FDV:
-                    <span className="text-gray-700">{token.fullyDilutedValuation ? `$${formatNumber(token.fullyDilutedValuation)}` : 'N/A'}</span>
                   </div>
                 </div>
               </div>

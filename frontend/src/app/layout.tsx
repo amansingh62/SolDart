@@ -16,7 +16,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: {
-    default: "SolEcho",
+    default: "SolEcho: Post, Share, Earn. Decentralized.",
     template: "%s | SolEcho"
   },
   description: "SolEcho - Your Next-Generation Platform",

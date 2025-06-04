@@ -10,6 +10,8 @@ import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { verifyRegisteredWallet } from '@/lib/walletUtils';
 import Image from 'next/image';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import { useClickOutside } from '@/lib/hooks';
 
 interface CreateDartFormProps {
   onPostCreated?: () => void;
@@ -54,6 +56,9 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
   const [showPollForm, setShowPollForm] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Add useEffect to inject styles on client-side only
   useEffect(() => {
@@ -209,6 +214,24 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
     setPollOptions(newOptions);
   };
 
+  // Handle emoji selection
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setContent(prev => prev + emojiData.emoji);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  // Toggle emoji picker
+  const toggleEmojiPicker = () => {
+    setShowEmojiPicker(prev => !prev);
+  };
+
+  // Close emoji picker when clicking outside
+  useClickOutside(emojiPickerRef as React.RefObject<HTMLElement>, () => {
+    if (showEmojiPicker) setShowEmojiPicker(false);
+  });
+
   // Submit the post
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -329,6 +352,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
     <Card className="p-4 bg-white shadow-md rounded-lg mb-4">
       <div className="relative">
         <Textarea
+          ref={textareaRef}
           placeholder="Write your Echo...."
           className={`w-full mb-2 h-28 shadow-md rounded-lg p-3 dart-textarea ${isOverLimit ? 'border-red-500' : ''}`}
           value={content}
@@ -337,82 +361,82 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
         <div className={`text-xs absolute bottom-4 right-4 ${isOverLimit ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
           {charCount}/{MAX_CHARS}
         </div>
-      </div>
 
-      {/* Media Preview */}
-      {mediaPreview.length > 0 && (
-        <div className={`grid ${mediaPreview.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mb-3`}>
-          {mediaPreview.map((preview, index) => (
-            <div key={index} className="relative rounded-lg overflow-hidden">
-              {mediaFiles[index].type.startsWith('image/') ? (
-                <div className="relative w-full h-32">
-                  <Image
-                    src={preview}
-                    alt="Preview"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
-                </div>
-              ) : mediaFiles[index].type.startsWith('video/') && (
-                <video className="w-full h-32 object-cover" controls>
-                  <source src={preview} type={mediaFiles[index].type} />
-                  Your browser does not support the video tag.
-                </video>
-              )}
-              <button
-                className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1"
-                onClick={() => removeMedia(index)}
-              >
-                <Icon icon="lucide:x" className="text-sm" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Poll Form */}
-      {showPollForm && (
-        <div className="bg-gray-100 p-3 rounded-lg mb-3">
-          <input
-            type="text"
-            placeholder="Ask a question..."
-            className="w-full p-2 border rounded mb-2"
-            value={pollQuestion}
-            onChange={(e) => setPollQuestion(e.target.value)}
-          />
-
-          {pollOptions.map((option, index) => (
-            <div key={index} className="flex items-center mb-2">
-              <input
-                type="text"
-                placeholder={`Option ${index + 1}`}
-                className="flex-1 p-2 border rounded"
-                value={option}
-                onChange={(e) => updatePollOption(index, e.target.value)}
-              />
-              {pollOptions.length > 2 && (
+        {/* Media Preview */}
+        {mediaPreview.length > 0 && (
+          <div className={`grid ${mediaPreview.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mb-3`}>
+            {mediaPreview.map((preview, index) => (
+              <div key={index} className="relative rounded-lg overflow-hidden">
+                {mediaFiles[index].type.startsWith('image/') ? (
+                  <div className="relative w-full h-32">
+                    <Image
+                      src={preview}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  </div>
+                ) : mediaFiles[index].type.startsWith('video/') && (
+                  <video className="w-full h-32 object-cover" controls>
+                    <source src={preview} type={mediaFiles[index].type} />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
                 <button
-                  className="ml-2 text-red-500"
-                  onClick={() => removePollOption(index)}
+                  className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1"
+                  onClick={() => removeMedia(index)}
                 >
-                  <Icon icon="lucide:trash-2" />
+                  <Icon icon="lucide:x" className="text-sm" />
                 </button>
-              )}
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
+        )}
 
-          {pollOptions.length < 5 && (
-            <button
-              className="text-blue-500 flex items-center gap-1 text-sm"
-              onClick={addPollOption}
-            >
-              <Icon icon="lucide:plus-circle" />
-              Add Option
-            </button>
-          )}
-        </div>
-      )}
+        {/* Poll Form */}
+        {showPollForm && (
+          <div className="bg-gray-100 p-3 rounded-lg mb-3">
+            <input
+              type="text"
+              placeholder="Ask a question..."
+              className="w-full p-2 border rounded mb-2"
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+            />
+
+            {pollOptions.map((option, index) => (
+              <div key={index} className="flex items-center mb-2">
+                <input
+                  type="text"
+                  placeholder={`Option ${index + 1}`}
+                  className="flex-1 p-2 border rounded"
+                  value={option}
+                  onChange={(e) => updatePollOption(index, e.target.value)}
+                />
+                {pollOptions.length > 2 && (
+                  <button
+                    className="ml-2 text-red-500"
+                    onClick={() => removePollOption(index)}
+                  >
+                    <Icon icon="lucide:trash-2" />
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {pollOptions.length < 5 && (
+              <button
+                className="text-blue-500 flex items-center gap-1 text-sm"
+                onClick={addPollOption}
+              >
+                <Icon icon="lucide:plus-circle" />
+                Add Option
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start">
@@ -469,6 +493,36 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           >
             <Icon icon="mdi:file-gif-box" className="text-lg sm:text-3xl" />
           </Button>
+
+          {/* Emoji button */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="p-2 sm:p-3 rounded-lg shadow-md hover:bg-gray-200"
+              onClick={toggleEmojiPicker}
+              disabled={isSubmitting}
+            >
+              <Icon icon="lucide:smile" className="text-lg sm:text-3xl" />
+            </Button>
+
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div
+                ref={emojiPickerRef}
+                className="absolute bottom-full right-0 mb-2 z-[100]"
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  width={200}
+                  height={250}
+                  previewConfig={{ showPreview: false }}
+                  lazyLoadEmojis
+                  className="sm:!w-[250px] sm:!h-[300px]"
+                />
+              </div>
+            )}
+          </div>
         </div>
         <Button
           className={`bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
@@ -487,7 +541,6 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
             'Echo'
           )}
         </Button>
-
       </div>
     </Card>
   );

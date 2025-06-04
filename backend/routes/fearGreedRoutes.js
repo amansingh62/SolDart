@@ -25,14 +25,14 @@ async function fetchFearGreedIndex() {
   try {
     // Get API key from environment variables
     const apiKey = process.env.COIN_MARKET_API_KEY;
-    
+
     if (!apiKey) {
       console.error('CoinMarketCap API key is not configured');
       return null;
     }
 
     console.log('Fetching Fear & Greed data from CoinMarketCap API...');
-    
+
     // Make request to CoinMarketCap API
     const response = await axios.get(
       'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest',
@@ -58,23 +58,19 @@ async function fetchFearGreedIndex() {
     // Higher alt dominance and lower BTC dominance typically indicates greed
     // Also factor in market cap and volume
     const volumeToCapRatio = (totalVolume24h / totalMarketCap) * 100;
-    
-    const value = Math.round(
-      50 + // Base neutral value
-      (altDominance - 30) * 0.5 + // Alt dominance impact
-      (btcDominance - 40) * -0.3 + // BTC dominance impact
-      (volumeToCapRatio - 5) * 2 // Volume to market cap ratio impact
-    );
+
+    // Return fixed value of 57 (Neutral)
+    const value = 57;
 
     // Clamp value between 0 and 100
     const clampedValue = Math.max(0, Math.min(100, value));
 
     // Determine classification
     let value_classification = 'Neutral';
-    if (clampedValue >= 75) value_classification = 'Extreme Greed';
-    else if (clampedValue >= 55) value_classification = 'Greed';
-    else if (clampedValue >= 45) value_classification = 'Neutral';
-    else if (clampedValue >= 25) value_classification = 'Fear';
+    if (clampedValue >= 80) value_classification = 'Extreme Greed';
+    else if (clampedValue >= 60) value_classification = 'Greed';
+    else if (clampedValue >= 40) value_classification = 'Neutral';
+    else if (clampedValue >= 20) value_classification = 'Fear';
     else value_classification = 'Extreme Fear';
 
     return {
@@ -97,17 +93,17 @@ async function fetchFearGreedIndex() {
 function setupFearGreedWebSocket(io) {
   // Store connected clients interested in fear & greed updates
   const fearGreedClients = new Set();
-  
+
   // Handle client connections
   io.on('connection', (socket) => {
     // Listen for fear & greed subscription requests
     socket.on('subscribeToFearGreedUpdates', async () => {
       console.log(`Client ${socket.id} subscribed to Fear & Greed updates`);
       fearGreedClients.add(socket.id);
-      
+
       // Add to fear-greed room for easier broadcasting
       socket.join('fear-greed-updates');
-      
+
       // Send immediate update to the newly subscribed client
       try {
         const fearGreedData = await fetchFearGreedIndex();
@@ -119,7 +115,7 @@ function setupFearGreedWebSocket(io) {
         console.error(`Error sending immediate Fear & Greed update to client ${socket.id}:`, error);
       }
     });
-    
+
     // Handle disconnections
     socket.on('disconnect', () => {
       if (fearGreedClients.has(socket.id)) {
@@ -128,13 +124,13 @@ function setupFearGreedWebSocket(io) {
       }
     });
   });
-  
+
   // Start periodic updates (every 1 minute for more frequent data)
   const updateInterval = 1 * 60 * 1000; // 1 minute
-  
+
   // Initial fetch and broadcast
   fetchAndBroadcastFearGreedData(io);
-  
+
   // Set up interval for regular updates
   setInterval(() => fetchAndBroadcastFearGreedData(io), updateInterval);
 }
@@ -144,7 +140,7 @@ async function fetchAndBroadcastFearGreedData(io) {
   try {
     console.log('Fetching Fear & Greed data for broadcast...');
     const fearGreedData = await fetchFearGreedIndex();
-    
+
     if (fearGreedData) {
       console.log('Broadcasting Fear & Greed data to clients:', fearGreedData.value, fearGreedData.value_classification);
       // Broadcast to all clients in the fear-greed-updates room
