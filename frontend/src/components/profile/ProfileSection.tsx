@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Button, Card, Badge, Tooltip } from "@heroui/react";
+import { Button, Card, Badge, Tooltip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { DynamicPostCard } from "@/components/home/DynamicPostCard";
 import EditProfileModal from "@/components/profile/EditProfileModal";
@@ -90,6 +90,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
   const [isFollowingModalOpen, setIsFollowingModalOpen] = useState(false);
+  const [isDeleteWalletModalOpen, setIsDeleteWalletModalOpen] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     _id: "",
@@ -719,6 +720,26 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
     };
   }, []);
 
+  const handleDeleteWallet = async () => {
+    try {
+      const response = await api.post('/wallet/disconnect');
+      if (response.data.success) {
+        // Update local state
+        setProfileData(prev => ({
+          ...prev,
+          walletAddress: ''
+        }));
+        // Clear wallet info from localStorage
+        localStorage.removeItem('connectedWalletInfo');
+        toast.success('Wallet disconnected successfully');
+        setIsDeleteWalletModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error);
+      toast.error('Failed to disconnect wallet');
+    }
+  };
+
   return (
     <div className="max-w-full md:max-w-[1000px] mx-auto px-0 sm:px-6 lg:px-8">
       {loading ? (
@@ -951,6 +972,14 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                         <Icon icon="lucide:copy" className="text-sm" />
                       </button>
                     </Tooltip>
+                    <Tooltip content="Delete wallet" className="bg-black text-white px-2 py-1 rounded">
+                      <button
+                        onClick={() => setIsDeleteWalletModalOpen(true)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Icon icon="lucide:trash-2" className="text-sm" />
+                      </button>
+                    </Tooltip>
                     <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
                   </div>
                 )}
@@ -1145,6 +1174,49 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
           </div>
         </Card>
       )}
+
+      {/* Add Delete Wallet Confirmation Modal */}
+      <Modal 
+        isOpen={isDeleteWalletModalOpen} 
+        onClose={() => setIsDeleteWalletModalOpen(false)}
+        size="sm"
+        placement="center"
+        className="z-[100] modal"
+      >
+        <ModalContent className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 modal-content">
+          <ModalHeader className="flex flex-col gap-1 text-center">
+            <h3 className="text-xl font-bold text-white">Delete Wallet</h3>
+          </ModalHeader>
+          <ModalBody className="px-2 sm:px-4 py-4">
+            <p className="text-white text-center">
+              Are you sure you want to remove this wallet? You can connect a new wallet later.
+            </p>
+            {profileData.walletAddress && (
+              <p className="text-gray-400 text-sm text-center mt-2 break-all">
+                {profileData.walletAddress}
+              </p>
+            )}
+          </ModalBody>
+          <ModalFooter className="flex justify-center gap-2">
+            <Button
+              color="danger"
+              variant="flat"
+              onPress={handleDeleteWallet}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete Wallet
+            </Button>
+            <Button
+              color="default"
+              variant="flat"
+              onPress={() => setIsDeleteWalletModalOpen(false)}
+              className="bg-gray-700 hover:bg-gray-600 text-white"
+            >
+              Cancel
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
