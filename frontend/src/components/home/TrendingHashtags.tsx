@@ -91,10 +91,10 @@ export function TrendingHashtags() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl overflow-hidden bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] p-4">
+      <div className="rounded-2xl overflow-hidden bg-[rgba(50,205,50,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Icon icon="lucide:hash" className="text-[#B671FF]" />
+            <Icon icon="lucide:hash" className="text-[#32CD32]" />
             Trending Hashtags
           </h3>
         </div>
@@ -112,10 +112,10 @@ export function TrendingHashtags() {
 
   if (error) {
     return (
-      <div className="rounded-2xl overflow-hidden bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] p-4">
+      <div className="rounded-2xl overflow-hidden bg-[rgba(50,205,50,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Icon icon="lucide:hash" className="text-[#B671FF]" />
+            <Icon icon="lucide:hash" className="text-[#32CD32]" />
             Trending Hashtags
           </h3>
         </div>
@@ -127,8 +127,8 @@ export function TrendingHashtags() {
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(182,113,255,0.15)]">
-      <div className="p-4 bg-gradient-to-r from-[#B671FF] to-[#E282CA] text-white">
+    <div className="rounded-2xl overflow-hidden bg-[rgba(50,205,50,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(50,205,50,0.15)]">
+      <div className="p-4 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-white">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Icon icon="lucide:hash" className="text-xl" />
           Trending Hashtags
@@ -147,24 +147,24 @@ export function TrendingHashtags() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[#B671FF] group-hover:text-black transition-colors">{item.hashtag}</span>
+                    <span className="text-[#32CD32] group-hover:text-black transition-colors">{item.hashtag}</span>
                     <span className="text-xs text-gray-500 bg-white/50 px-2 py-0.5 rounded-full">
                       {formatCount(item.postCount)} posts
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <svg 
-        className="w-3 h-3 mr-1"
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      >
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
+                    <svg
+                      className="w-3 h-3 mr-1"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                     <span>{formatCount(item.totalViews)}</span>
                   </div>
                 </div>

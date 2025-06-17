@@ -582,330 +582,330 @@ const MessagePopup = ({
     );
   };
 
- return (
-  <Popover
-    isOpen={isOpen}
-    onOpenChange={setIsOpen}
-    placement={fromUserProfile ? "left-start" : "top-start"}
-    showArrow={false}
-    offset={fromUserProfile ? 20 : 10}
-  >
-    <PopoverTrigger>{children}</PopoverTrigger>
-       <PopoverContent className="p-0 w-[300px] sm:w-[350px] md:w-[350px] lg:w-[350px] max-w-[90vw] bg-white rounded-lg shadow-xl">
- <div className="flex flex-col h-[450px] sm:h-[500px] max-h-[80vh]">        {/* Header */}
-        <div className="p-2 sm:p-3 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
-          <div className="flex items-center min-w-0 flex-1">
-            {activeContact ? (
-              <div className="flex items-center min-w-0 flex-1">
-                <button
-                  onClick={backToContacts}
-                  className="mr-1 sm:mr-2 text-gray-500 hover:text-black flex-shrink-0"
-                >
-                  <Icon icon="lucide:chevron-left" className="w-5 h-5" />
-                </button>
-                <div className="relative mr-2 sm:mr-3 flex-shrink-0">
-                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 shadow-sm">
-                    <AvatarImage src={activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png'} alt={activeContact.username} className="object-cover" />
-                    <AvatarFallback className="text-xs sm:text-sm">{activeContact.username.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {activeContact.isOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-white bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black"></div>
-                  )}
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="font-semibold text-sm sm:text-base truncate">{activeContact.username}</span>
-                  <span className={`text-xs ${activeContact.isOnline ? 'text-[B671FF]' : 'text-gray-500'}`}>
-                    {activeContact.isOnline ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <h3 className="font-semibold text-base sm:text-lg">Messages</h3>
-            )}
-          </div>
-          <div className="flex items-center flex-shrink-0">
-            {activeContact && (
-              <Dropdown>
-                <DropdownTrigger>
-                  <button className="mr-1 sm:mr-2 text-gray-500 hover:text-black p-1">
-                    <Icon icon="lucide:more-vertical" className="w-4 h-4 sm:w-5 sm:h-5" />
+  return (
+    <Popover
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      placement={fromUserProfile ? "left-start" : "top-start"}
+      showArrow={false}
+      offset={fromUserProfile ? 20 : 10}
+    >
+      <PopoverTrigger>{children}</PopoverTrigger>
+      <PopoverContent className="p-0 w-[300px] sm:w-[350px] md:w-[350px] lg:w-[350px] max-w-[90vw] bg-white rounded-lg shadow-xl">
+        <div className="flex flex-col h-[450px] sm:h-[500px] max-h-[80vh]">        {/* Header */}
+          <div className="p-2 sm:p-3 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+            <div className="flex items-center min-w-0 flex-1">
+              {activeContact ? (
+                <div className="flex items-center min-w-0 flex-1">
+                  <button
+                    onClick={backToContacts}
+                    className="mr-1 sm:mr-2 text-gray-500 hover:text-black flex-shrink-0"
+                  >
+                    <Icon icon="lucide:chevron-left" className="w-5 h-5" />
                   </button>
-                </DropdownTrigger>
-                <DropdownMenu>
-                  <DropdownItem key="clear-chat" onPress={clearChat} className="text-red-600">
-                    Clear Chat
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            )}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-gray-500 hover:text-black p-1"
-            >
-              <Icon icon="lucide:x" className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        {!activeContact ? (
-          // Contacts List View
-          <div className="flex-1 overflow-hidden flex flex-col">
-            {/* Search Box */}
-            <div className="p-2 sm:p-3 border-b relative">
-              <div className="relative search-container">
-                <Input
-                  placeholder="Search users"
-                  className="pl-8 sm:pl-9 pr-4 w-full bg-gray-100 text-black rounded-lg text-sm sm:text-base"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onFocus={() => searchQuery.trim() && setShowSearchResults(true)}
-                />
-                <div className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2">
-                  <Icon icon="lucide:search" className="text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                  <div className="relative mr-2 sm:mr-3 flex-shrink-0">
+                    <Avatar className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 shadow-sm">
+                      <AvatarImage src={activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png'} alt={activeContact.username} className="object-cover" />
+                      <AvatarFallback className="text-xs sm:text-sm">{activeContact.username.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {activeContact.isOnline && (
+                      <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-white bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black"></div>
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-semibold text-sm sm:text-base truncate">{activeContact.username}</span>
+                    <span className={`text-xs ${activeContact.isOnline ? 'text-[#32CD32]' : 'text-gray-500'}`}>
+                      {activeContact.isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Search Results */}
-              {showSearchResults && (
-                <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-10 max-h-48 sm:max-h-60 overflow-y-auto mx-2 sm:mx-0" style={{ width: 'calc(100% - 1rem)' }}>
-                  {isSearching ? (
-                    <div className="flex justify-center items-center p-3 sm:p-4">
-                      <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-[#B671FF]"></div>
-                    </div>
-                  ) : searchResults.length > 0 ? (
-                    <div className="p-1 sm:p-2">
-                      {searchResults.map(user => (
-                        <div
-                          key={user._id}
-                          className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
-                          onClick={() => selectContact(user)}
-                        >
-                          <Avatar className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mr-2 sm:mr-3 border border-gray-200">
-                            <AvatarImage src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'} alt={user.username} className="object-cover" />
-                            <AvatarFallback className="text-xs sm:text-sm">{user.username.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium text-sm sm:text-base truncate">{user.username}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">
-                      No users found
-                    </div>
-                  )}
-                </div>
+              ) : (
+                <h3 className="font-semibold text-base sm:text-lg">Messages</h3>
               )}
             </div>
+            <div className="flex items-center flex-shrink-0">
+              {activeContact && (
+                <Dropdown>
+                  <DropdownTrigger>
+                    <button className="mr-1 sm:mr-2 text-gray-500 hover:text-black p-1">
+                      <Icon icon="lucide:more-vertical" className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </DropdownTrigger>
+                  <DropdownMenu>
+                    <DropdownItem key="clear-chat" onPress={clearChat} className="text-red-600">
+                      Clear Chat
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-500 hover:text-black p-1"
+              >
+                <Icon icon="lucide:x" className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          </div>
 
-            {/* Contacts List */}
-            <div className="flex-1 overflow-y-auto">
-              {isLoading && contacts.length === 0 ? (
-                <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#B671FF]"></div>
+          {/* Content */}
+          {!activeContact ? (
+            // Contacts List View
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Search Box */}
+              <div className="p-2 sm:p-3 border-b relative">
+                <div className="relative search-container">
+                  <Input
+                    placeholder="Search users"
+                    className="pl-8 sm:pl-9 pr-4 w-full bg-gray-100 text-black rounded-lg text-sm sm:text-base"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => searchQuery.trim() && setShowSearchResults(true)}
+                  />
+                  <div className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2">
+                    <Icon icon="lucide:search" className="text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
                 </div>
-              ) : contacts.length > 0 ? (
-                contacts.map(contact => (
-                  <div
-                    key={contact._id}
-                    className="flex items-center p-2 sm:p-3 hover:bg-gray-100 cursor-pointer border-b"
-                    onClick={() => selectContact(contact)}
-                  >
-                    <div className="relative flex-shrink-0">
-                      <Avatar className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mr-2 sm:mr-3 border border-gray-200">
-                        <AvatarImage src={contact.profileImage ? (contact.profileImage.startsWith('http') ? contact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${contact.profileImage}`) : '/svg.png'} alt={contact.username} className="object-cover" />
-                        <AvatarFallback className="text-xs sm:text-sm">{contact.username.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      {(contact?.unreadCount ?? 0) > 0 && (
-                        <div className="absolute -top-1 -right-0 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                          {(contact?.unreadCount ?? 0) > 9 ? '9+' : contact?.unreadCount}
-                        </div>
-                      )}
-                      {contact.isOnline && (
-                        <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-white bg-[#B671FF]"></div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium truncate text-sm sm:text-base">{contact.username}</h4>
-                        {contact.lastMessageTime && (
-                          <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                            {formatTime(contact.lastMessageTime)}
-                          </span>
+
+                {/* Search Results */}
+                {showSearchResults && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-lg z-10 max-h-48 sm:max-h-60 overflow-y-auto mx-2 sm:mx-0" style={{ width: 'calc(100% - 1rem)' }}>
+                    {isSearching ? (
+                      <div className="flex justify-center items-center p-3 sm:p-4">
+                        <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-[#B671FF]"></div>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="p-1 sm:p-2">
+                        {searchResults.map(user => (
+                          <div
+                            key={user._id}
+                            className="flex items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer"
+                            onClick={() => selectContact(user)}
+                          >
+                            <Avatar className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mr-2 sm:mr-3 border border-gray-200">
+                              <AvatarImage src={user.profileImage ? (user.profileImage.startsWith('http') ? user.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${user.profileImage}`) : '/svg.png'} alt={user.username} className="object-cover" />
+                              <AvatarFallback className="text-xs sm:text-sm">{user.username.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-sm sm:text-base truncate">{user.username}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">
+                        No users found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Contacts List */}
+              <div className="flex-1 overflow-y-auto">
+                {isLoading && contacts.length === 0 ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#B671FF]"></div>
+                  </div>
+                ) : contacts.length > 0 ? (
+                  contacts.map(contact => (
+                    <div
+                      key={contact._id}
+                      className="flex items-center p-2 sm:p-3 hover:bg-gray-100 cursor-pointer border-b"
+                      onClick={() => selectContact(contact)}
+                    >
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mr-2 sm:mr-3 border border-gray-200">
+                          <AvatarImage src={contact.profileImage ? (contact.profileImage.startsWith('http') ? contact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${contact.profileImage}`) : '/svg.png'} alt={contact.username} className="object-cover" />
+                          <AvatarFallback className="text-xs sm:text-sm">{contact.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        {(contact?.unreadCount ?? 0) > 0 && (
+                          <div className="absolute -top-1 -right-0 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                            {(contact?.unreadCount ?? 0) > 9 ? '9+' : contact?.unreadCount}
+                          </div>
+                        )}
+                        {contact.isOnline && (
+                          <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-white bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90]"></div>
                         )}
                       </div>
-                      {contact.lastMessage && (
-                        <p className="text-xs sm:text-sm text-gray-500 truncate max-w-full overflow-hidden text-ellipsis whitespace-nowrap w-full" style={{ maxWidth: '140px' }}>
-                          {contact.lastMessage.length > 20 ? `${contact.lastMessage.substring(0, 20)}...` : contact.lastMessage}
-                        </p>
-                      )}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-medium truncate text-sm sm:text-base">{contact.username}</h4>
+                          {contact.lastMessageTime && (
+                            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                              {formatTime(contact.lastMessageTime)}
+                            </span>
+                          )}
+                        </div>
+                        {contact.lastMessage && (
+                          <p className="text-xs sm:text-sm text-gray-500 truncate max-w-full overflow-hidden text-ellipsis whitespace-nowrap w-full" style={{ maxWidth: '140px' }}>
+                            {contact.lastMessage.length > 20 ? `${contact.lastMessage.substring(0, 20)}...` : contact.lastMessage}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col justify-center items-center h-full p-3 sm:p-4 text-center text-gray-500">
+                    <Icon icon="lucide:message-square" className="text-3xl sm:text-4xl mb-2" />
+                    <p className="text-sm sm:text-base">No messages yet</p>
+                    <p className="text-xs sm:text-sm">Search for users to start a conversation</p>
                   </div>
-                ))
-              ) : (
-                <div className="flex flex-col justify-center items-center h-full p-3 sm:p-4 text-center text-gray-500">
-                  <Icon icon="lucide:message-square" className="text-3xl sm:text-4xl mb-2" />
-                  <p className="text-sm sm:text-base">No messages yet</p>
-                  <p className="text-xs sm:text-sm">Search for users to start a conversation</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          // Chat View
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-2 sm:p-3">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#B671FF]"></div>
-                </div>
-              ) : messages.length > 0 ? (
-                <div className="space-y-2 sm:space-y-3">
-                  {messages.map((message, index) => {
-                    const isMe = message.sender === 'me';
-                    return (
-                      <div
-                        key={message._id || index}
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 sm:mb-2 relative`}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setContextMenu({
-                            isOpen: true,
-                            position: { x: e.clientX, y: e.clientY },
-                            messageId: message._id,
-                            isOwnMessage: isMe
-                          });
-                        }}
-                        onTouchStart={(e) => {
-                          const touchTimeout = setTimeout(() => {
-                            const touch = e.touches[0];
+          ) : (
+            // Chat View
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-2 sm:p-3">
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#B671FF]"></div>
+                  </div>
+                ) : messages.length > 0 ? (
+                  <div className="space-y-2 sm:space-y-3">
+                    {messages.map((message, index) => {
+                      const isMe = message.sender === 'me';
+                      return (
+                        <div
+                          key={message._id || index}
+                          className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 sm:mb-2 relative`}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
                             setContextMenu({
                               isOpen: true,
-                              position: { x: touch.clientX, y: touch.clientY },
+                              position: { x: e.clientX, y: e.clientY },
                               messageId: message._id,
                               isOwnMessage: isMe
                             });
-                          }, 500);
+                          }}
+                          onTouchStart={(e) => {
+                            const touchTimeout = setTimeout(() => {
+                              const touch = e.touches[0];
+                              setContextMenu({
+                                isOpen: true,
+                                position: { x: touch.clientX, y: touch.clientY },
+                                messageId: message._id,
+                                isOwnMessage: isMe
+                              });
+                            }, 500);
 
-                          const touchEndHandler = () => {
-                            clearTimeout(touchTimeout);
-                            document.removeEventListener('touchend', touchEndHandler);
-                          };
+                            const touchEndHandler = () => {
+                              clearTimeout(touchTimeout);
+                              document.removeEventListener('touchend', touchEndHandler);
+                            };
 
-                          document.addEventListener('touchend', touchEndHandler);
-                        }}
-                      >
-                        {!isMe && (
-                          <Avatar className="w-6 h-6 sm:w-10 sm:h-10 rounded-full mr-1 sm:mr-2 self-end border border-gray-200 flex-shrink-0">
-                            <AvatarImage src={message.senderInfo?.profileImage ? (message.senderInfo.profileImage.startsWith('http') ? message.senderInfo.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${message.senderInfo.profileImage}`) : (activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png')} alt={message.senderInfo?.username || activeContact.username} className="object-cover" />
-                            <AvatarFallback className="text-xs">{(message.senderInfo?.username || activeContact.username || 'User').charAt(0)}</AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div
-                          className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${isMe ? 'bg-[#B671FF] text-black' : 'bg-gray-200 text-black'} rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} overflow-hidden group relative`}
+                            document.addEventListener('touchend', touchEndHandler);
+                          }}
                         >
-                          <div className="text-xs sm:text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word' }}>{message.text}</div>
+                          {!isMe && (
+                            <Avatar className="w-6 h-6 sm:w-10 sm:h-10 rounded-full mr-1 sm:mr-2 self-end border border-gray-200 flex-shrink-0">
+                              <AvatarImage src={message.senderInfo?.profileImage ? (message.senderInfo.profileImage.startsWith('http') ? message.senderInfo.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${message.senderInfo.profileImage}`) : (activeContact.profileImage ? (activeContact.profileImage.startsWith('http') ? activeContact.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${activeContact.profileImage}`) : '/svg.png')} alt={message.senderInfo?.username || activeContact.username} className="object-cover" />
+                              <AvatarFallback className="text-xs">{(message.senderInfo?.username || activeContact.username || 'User').charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div
+                            className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${isMe ? 'bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black' : 'bg-gray-200 text-black'} rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} overflow-hidden group relative`}
+                          >
+                            <div className="text-xs sm:text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word' }}>{message.text}</div>
 
-                          <div className="text-xs text-gray-500 text-right mt-1 flex justify-end items-center">
-                            <button
-                              className="opacity-0 group-hover:opacity-100 mr-1 sm:mr-2 text-gray-400 hover:text-gray-600 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteMessage(message._id);
-                              }}
-                            >
-                              <Icon icon="lucide:trash-2" width={10} className="sm:w-3 sm:h-3" />
-                            </button>
-                            <span className="text-xs">{formatTime(message.createdAt)}</span>
+                            <div className="text-xs text-gray-500 text-right mt-1 flex justify-end items-center">
+                              <button
+                                className="opacity-0 group-hover:opacity-100 mr-1 sm:mr-2 text-gray-400 hover:text-gray-600 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteMessage(message._id);
+                                }}
+                              >
+                                <Icon icon="lucide:trash-2" width={10} className="sm:w-3 sm:h-3" />
+                              </button>
+                              <span className="text-xs">{formatTime(message.createdAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isTyping && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-200 text-black p-2 sm:p-3 rounded-lg">
+                          <div className="flex space-x-1">
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-gray-200 text-black p-2 sm:p-3 rounded-lg">
-                        <div className="flex space-x-1">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              ) : (
-                <div className="flex justify-center items-center h-full text-gray-500">
-                  <p className="text-sm sm:text-base">No messages yet. Start a conversation!</p>
-                </div>
-              )}
-            </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center h-full text-gray-500">
+                    <p className="text-sm sm:text-base">No messages yet. Start a conversation!</p>
+                  </div>
+                )}
+              </div>
 
-            {/* Message Input */}
-            <div className="border-t">
-              {/* Input Area */}
-              <div className="p-1.5 sm:p-2 flex items-center">
-                <div className="flex-1 relative mx-1 sm:mx-2">
-                  <Input
-                    ref={messageInputRef}
-                    placeholder="Type a message"
-                    className="w-full bg-gray-100 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 pr-8 sm:pr-10 text-sm sm:text-base"
-                    value={messageText}
-                    onChange={handleMessageChange}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  />
-                  <button
-                    className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={toggleEmojiPicker}
-                  >
-                    <Icon icon="lucide:smile" className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-
-                  {/* Emoji Picker */}
-                  {showEmojiPicker && (
-                    <div
-                      ref={emojiPickerRef}
-                      className="absolute bottom-full right-0 mb-2 z-50"
+              {/* Message Input */}
+              <div className="border-t">
+                {/* Input Area */}
+                <div className="p-1.5 sm:p-2 flex items-center">
+                  <div className="flex-1 relative mx-1 sm:mx-2">
+                    <Input
+                      ref={messageInputRef}
+                      placeholder="Type a message"
+                      className="w-full bg-gray-100 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 pr-8 sm:pr-10 text-sm sm:text-base"
+                      value={messageText}
+                      onChange={handleMessageChange}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    />
+                    <button
+                      className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      onClick={toggleEmojiPicker}
                     >
-                      <EmojiPicker
-                        onEmojiClick={handleEmojiClick}
-                        width={200}
-                        height={250}
-                        previewConfig={{ showPreview: false }}
-                        lazyLoadEmojis
-                        className="sm:!w-[250px] sm:!h-[300px]"
-                      />
-                    </div>
-                  )}
-                </div>
+                      <Icon icon="lucide:smile" className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
 
-                <Button
-                  className="p-2 sm:p-3 rounded-full bg-[#B671FF] text-black hover:bg-[#B671FF] shadow-sm flex-shrink-0"
-                  onPress={sendMessage}
-                  isDisabled={!messageText.trim()}
-                >
-                  <Icon icon="lucide:send" className="w-4 h-4 sm:w-5 sm:h-5" />
-                </Button>
+                    {/* Emoji Picker */}
+                    {showEmojiPicker && (
+                      <div
+                        ref={emojiPickerRef}
+                        className="absolute bottom-full right-0 mb-2 z-50"
+                      >
+                        <EmojiPicker
+                          onEmojiClick={handleEmojiClick}
+                          width={200}
+                          height={250}
+                          previewConfig={{ showPreview: false }}
+                          lazyLoadEmojis
+                          className="sm:!w-[250px] sm:!h-[300px]"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black px-3 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    onPress={sendMessage}
+                    isDisabled={!messageText.trim()}
+                  >
+                    <Icon icon="lucide:send" className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Context Menu */}
-      {renderMessageContextMenu({
-        isOpen: contextMenu.isOpen,
-        setIsOpen: (isOpen) => setContextMenu(prev => ({ ...prev, isOpen })),
-        position: contextMenu.position,
-        messageId: contextMenu.messageId,
-        isOwnMessage: contextMenu.isOwnMessage,
-        onDelete: deleteMessage
-      })}
-    </PopoverContent>
-  </Popover>
-);
+        {/* Context Menu */}
+        {renderMessageContextMenu({
+          isOpen: contextMenu.isOpen,
+          setIsOpen: (isOpen) => setContextMenu(prev => ({ ...prev, isOpen })),
+          position: contextMenu.position,
+          messageId: contextMenu.messageId,
+          isOwnMessage: contextMenu.isOwnMessage,
+          onDelete: deleteMessage
+        })}
+      </PopoverContent>
+    </Popover>
+  );
 };
 
 export default MessagePopup;

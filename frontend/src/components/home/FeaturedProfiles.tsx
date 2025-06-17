@@ -200,8 +200,8 @@ export function FeaturedProfiles() {
         <div className="w-full py-6 animate-fade-in">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <Icon icon="mdi:star" className="h-6 w-6 text-[#B671FF]" />
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-[#B671FF] to-[#E282CA] bg-clip-text text-transparent">
+                    <Icon icon="mdi:star" className="h-6 w-6 text-[#32CD32]" />
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-[#32CD32] to-[#90EE90] bg-clip-text text-transparent">
                         Featured Profiles
                     </h3>
                 </div>
@@ -217,7 +217,7 @@ export function FeaturedProfiles() {
                         <Link
                             href={`/profile/${profile.username}`}
                             key={profile.id}
-                            className="profile-card flex-none w-[160px] bg-gradient-to-br from-[#B671FF] to-[#E282CA] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+                            className="profile-card flex-none w-[160px] bg-gradient-to-br from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
                             onMouseEnter={(e) => e.currentTarget.classList.add('animate-profile-hover')}
                             onMouseLeave={(e) => e.currentTarget.classList.remove('animate-profile-hover')}
                             onClick={(e) => e.currentTarget.classList.add('animate-profile-click')}
@@ -250,7 +250,7 @@ export function FeaturedProfiles() {
                     <Link
                         href={`/profile/${profile.username}`}
                         key={profile.id}
-                        className="profile-card bg-gradient-to-br from-[#B671FF] to-[#E282CA] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+                        className="profile-card bg-gradient-to-br from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
                         onMouseEnter={(e) => e.currentTarget.classList.add('animate-profile-hover')}
                         onMouseLeave={(e) => e.currentTarget.classList.remove('animate-profile-hover')}
                         onClick={(e) => e.currentTarget.classList.add('animate-profile-click')}

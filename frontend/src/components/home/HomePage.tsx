@@ -251,29 +251,29 @@ export function HomePage() {
   };
 
   // Handle comment deletion
-const handleCommentDelete = async (postId: string, commentId: string) => {
-  try {
-    await api.delete(`/posts/comment/${postId}/${commentId}`);
+  const handleCommentDelete = async (postId: string, commentId: string) => {
+    try {
+      await api.delete(`/posts/comment/${postId}/${commentId}`);
 
-    // Update local state after successful API call - only filter out the deleted comment
-    // This preserves all existing user data in remaining comments
-    setPosts(prevPosts =>
-      prevPosts.map(post => {
-        if (post._id === postId) {
-          // Create a shallow copy of the post and filter comments
-          const updatedPost = { ...post };
-          updatedPost.comments = post.comments.filter(comment => comment._id !== commentId);
-          return updatedPost;
-        }
-        return post;
-      })
-    );
-  } catch (error) {
-    console.error('Error deleting comment:', error);
-    // Re-throw the error so the child component knows the operation failed
-    throw error;
-  }
-};
+      // Update local state after successful API call - only filter out the deleted comment
+      // This preserves all existing user data in remaining comments
+      setPosts(prevPosts =>
+        prevPosts.map(post => {
+          if (post._id === postId) {
+            // Create a shallow copy of the post and filter comments
+            const updatedPost = { ...post };
+            updatedPost.comments = post.comments.filter(comment => comment._id !== commentId);
+            return updatedPost;
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      // Re-throw the error so the child component knows the operation failed
+      throw error;
+    }
+  };
 
   // Handle comment pin/unpin
   const handleCommentPin = async (postId: string, commentId: string) => {
@@ -315,7 +315,7 @@ const handleCommentDelete = async (postId: string, commentId: string) => {
         <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg">
           <div className="flex items-center gap-2">
             <span className="font-medium">Showing posts with hashtag:</span>
-            <span className="font-semibold text-[#CD7BE4]">{selectedHashtag}</span>
+            <span className="font-semibold bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-transparent bg-clip-text">{selectedHashtag}</span>
           </div>
           <button
             onClick={() => setSelectedHashtag(null)}

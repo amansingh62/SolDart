@@ -43,7 +43,7 @@ export default function UserListModal({ isOpen, onClose, userId, type, title, on
                 toast.error('Cannot load users: User ID is missing');
                 return;
             }
-            
+
             const response = await api.get(`/users/${type}/${userId}`);
             if (response.data.success) {
                 setUsers(response.data.users);
@@ -131,7 +131,7 @@ export default function UserListModal({ isOpen, onClose, userId, type, title, on
                                             onClick={() => handleFollow(user._id, user.isFollowing || false)}
                                             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${user.isFollowing
                                                 ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                                                : 'bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:opacity-90'
+                                                : 'bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black hover:opacity-90'
                                                 }`}
                                         >
                                             {user.isFollowing ? 'Following' : 'Follow'}

@@ -28,12 +28,12 @@ interface ConnectWalletModalProps {
 // Update the API URL to use the proxy
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-export function ConnectWalletModal({ 
-  isOpen, 
-  onClose, 
+export function ConnectWalletModal({
+  isOpen,
+  onClose,
   onConnect,
   onDisconnect,
-  connectedWalletInfo 
+  connectedWalletInfo
 }: ConnectWalletModalProps) {
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
 
@@ -98,7 +98,7 @@ export function ConnectWalletModal({
         try {
           // First check if user is already authenticated
           const authResponse = await axios.get(API_URL + "/auth/user", { withCredentials: true });
-          
+
           if (authResponse.data) {
             // User is authenticated, check if they already have a registered wallet
             if (authResponse.data.walletAddress) {
@@ -156,16 +156,16 @@ export function ConnectWalletModal({
       // Clear wallet info from localStorage
       localStorage.removeItem('connectedWalletInfo');
       localStorage.removeItem('walletModalSource');
-      
+
       // Reset all state variables
       setConnectedWallet(null);
-      
+
       // Close the modal
       onClose();
-      
+
       // Show success message
       toast.success("Wallet disconnected successfully");
-      
+
       // Dispatch custom event for wallet disconnection
       window.dispatchEvent(new Event('walletDisconnected'));
 

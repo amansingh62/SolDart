@@ -105,7 +105,7 @@ export function FearGreedIndex() {
 
         {/* Fear & Greed Badge */}
         <Badge variant="outline" className="flex items-center bg-black gap-1 px-4 py-3 rounded-l-lg rounded-tr-none rounded-br-none z-10">
-          <Icon icon="mdi:gauge" className="text-[#B671FF]" />
+          <Icon icon="mdi:gauge" className="text-[#32CD32]" />
           <span className="text-md text-white whitespace-nowrap">Fear & Greed</span>
         </Badge>
 

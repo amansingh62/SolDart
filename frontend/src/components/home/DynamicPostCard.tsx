@@ -1308,7 +1308,7 @@ export function DynamicPostCard({
             {/* Follow button that appears on hover */}
             {currentUserId && user && currentUserId !== user._id && (
               <button
-                className="absolute -top-2 -right-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md"
+                className="absolute -top-2 -right-2 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md"
                 onClick={() => handleFollow()}
               >
                 <Icon icon="lucide:user-plus" className="h-3 w-3" />
@@ -1320,7 +1320,7 @@ export function DynamicPostCard({
             <div className="flex items-center gap-1 md:gap-2">
               <div className="relative group flex items-center gap-2">
                 <span
-                  className="font-semibold hover:text-purple-400 text-black text-sm md:text-md cursor-pointer hover:textgradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA"
+                  className="font-semibold hover:text-green-400 text-black text-sm md:text-md cursor-pointer hover:textgradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90"
                   onClick={() => {
                     if (user?._id) {
                       try {
@@ -1463,7 +1463,7 @@ export function DynamicPostCard({
                     return (
                       <span
                         key={wordIndex}
-                        className="text-blue-500 font-medium hover:underline cursor-pointer break-all"
+                        className="text-[#32CD32] cursor-pointer hover:underline"
                         onClick={() => {
                           try {
                             router.push(`/hashtag/${word.substring(1)}`);
@@ -1472,7 +1472,7 @@ export function DynamicPostCard({
                           }
                         }}
                       >
-                        {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
+                        {word}
                       </span>
                     );
                   }
@@ -1487,14 +1487,12 @@ export function DynamicPostCard({
                         className="text-blue-500 hover:underline break-all"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
+                        {word}
                       </a>
                     );
                   }
                   return (
-                    <span key={wordIndex}>
-                      {word}{wordIndex < line.split(' ').length - 1 ? ' ' : ''}
-                    </span>
+                    <span key={wordIndex}>{word} </span>
                   );
                 })}
                 {lineIndex < content.split('\n').length - 1 && '\n'}
@@ -1573,7 +1571,7 @@ export function DynamicPostCard({
                     style={{ '--fill-width': `${percentage}%` } as React.CSSProperties}
                   >
                     <div
-                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg animate-poll-bar"
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black rounded-lg animate-poll-bar"
                       style={{ width: `${percentage}%` }}
                     />
                     <div className="relative flex justify-between font-medium px-2 text-black text-xs md:text-sm">
@@ -1605,7 +1603,7 @@ export function DynamicPostCard({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={`text-[#B671FF] ${isLiking ? 'animate-like' : ''}`}
+                  className={`text-[#32CD32] ${isLiking ? 'animate-like' : ''}`}
                 >
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
@@ -1620,12 +1618,12 @@ export function DynamicPostCard({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={isLiking ? 'animate-like-pulse' : ''}
+                  className={`hover:text-[#32CD32] ${isLiking ? 'animate-like-pulse' : ''}`}
                 >
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
               )}
-              <span className={`${isLiked ? "text-[#B671FF]" : ""} ${isLiking ? 'animate-like-count' : ''}`}>
+              <span className={`${isLiked ? "text-[#32CD32]" : ""} ${isLiking ? 'animate-like-count' : ''}`}>
                 {likeCount}
               </span>
             </div>
@@ -1645,12 +1643,12 @@ export function DynamicPostCard({
               >
                 <Icon
                   icon={isSavedState ? "lucide:bookmark" : "lucide:bookmark-plus"}
-                  className={`text-lg ${isSavedState ? "text-[#B671FF]" : ""} ${isSaving ? 'animate-save' : ''}`}
-                  style={{ color: isSavedState ? "#B671FF" : "" }}
+                  className={`text-lg ${isSavedState ? "text-[#32CD32]" : ""} ${isSaving ? 'animate-save' : ''}`}
+                  style={{ color: isSavedState ? "#32CD32" : "" }}
                 />
                 <span
-                  className={`${isSavedState ? "text-[#B671FF]" : ""} ${isSaving ? 'animate-save-text' : ''}`}
-                  style={{ color: isSavedState ? "#B671FF" : "" }}
+                  className={`${isSavedState ? "text-[#32CD32]" : ""} ${isSaving ? 'animate-save-text' : ''}`}
+                  style={{ color: isSavedState ? "#32CD32" : "" }}
                 >
                   Save
                 </span>
@@ -1819,7 +1817,7 @@ export function DynamicPostCard({
                       />
                       <button
                         onClick={handleReplySubmit}
-                        className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black px-2 py-1 rounded-lg text-xs font-medium"
+                        className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black px-2 py-1 rounded-lg text-xs font-medium"
                       >
                         Reply
                       </button>
@@ -1935,7 +1933,7 @@ export function DynamicPostCard({
               />
               <button
                 onClick={handleCommentSubmit}
-                className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black  px-3 py-1 rounded-lg text-sm font-medium"
+                className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black px-3 py-1 rounded-lg text-sm font-medium"
               >
                 Post
               </button>

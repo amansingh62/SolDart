@@ -94,7 +94,7 @@ const styles = `
   .gradient-border {
     position: relative;
     background: linear-gradient(white, white) padding-box,
-                linear-gradient(to right, #B671FF, #C577EE, #E282CA) border-box;
+                linear-gradient(to right, #32CD32, #7CFC00, #90EE90) border-box;
     border: 2px solid transparent;
   }
 
@@ -241,7 +241,7 @@ const QuestsContent = () => {
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8 gradient-border">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] bg-clip-text text-transparent">
                 {t('Quests & Rewards')}
               </h1>
               <p className="text-gray-600 mt-2 text-lg">
@@ -249,7 +249,7 @@ const QuestsContent = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-full p-4 animate-float">
+              <div className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-full p-4 animate-float">
                 <Icon icon="lucide:trophy" className="text-white w-8 h-8" />
               </div>
             </div>
@@ -257,7 +257,7 @@ const QuestsContent = () => {
 
           {questData && (
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-xl p-6 text-white shadow-lg">
+              <div className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-xl p-6 text-white shadow-lg">
                 <span className="text-sm opacity-80">{t('Total Points')}</span>
                 <h2 className="text-4xl font-bold mt-1">{questData.totalPoints}</h2>
                 <div className="mt-4 flex items-center gap-2">
@@ -288,7 +288,7 @@ const QuestsContent = () => {
         {/* Quests Section */}
         {questData && (
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8 gradient-border">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] bg-clip-text text-transparent">
+            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] bg-clip-text text-transparent">
               {t('Available Quests')}
             </h2>
 
@@ -297,25 +297,25 @@ const QuestsContent = () => {
               <div className="quest-card bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-lg p-2">
+                    <div className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-lg p-2">
                       <Icon icon="lucide:pencil" className="text-white w-5 h-5" />
                     </div>
                     <span className="font-medium text-lg">{t('Create Posts')}</span>
                   </div>
                   <div className="text-sm bg-white px-3 py-1 rounded-full shadow-sm">
-                    <span className="font-bold text-[#B671FF]">{questData.posts.count}</span>
+                    <span className="font-bold text-[#32CD32]">{questData.posts.count}</span>
                     <span className="text-gray-500">/{questData.limits.POSTS}</span>
                   </div>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] h-3 rounded-full animate-progress"
+                    className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] h-3 rounded-full animate-progress"
                     style={{ '--fill-width': `${calculateProgress(questData.posts.count, questData.limits.POSTS)}%` } as React.CSSProperties}
                   ></div>
                 </div>
                 <div className="flex justify-between text-sm mt-3">
                   <span className="text-gray-600">{questData.pointValues.POST} {t('points per post')}</span>
-                  <span className="font-medium text-[#B671FF]">{questData.posts.points} {t('points earned')}</span>
+                  <span className="font-medium text-[#32CD32]">{questData.posts.points} {t('points earned')}</span>
                 </div>
               </div>
 
@@ -323,25 +323,25 @@ const QuestsContent = () => {
               <div className="quest-card bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-lg p-2">
+                    <div className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-lg p-2">
                       <Icon icon="lucide:heart" className="text-white w-5 h-5" />
                     </div>
                     <span className="font-medium text-lg">{t('Like Posts')}</span>
                   </div>
                   <div className="text-sm bg-white px-3 py-1 rounded-full shadow-sm">
-                    <span className="font-bold text-[#B671FF]">{questData.likes.count}</span>
+                    <span className="font-bold text-[#32CD32]">{questData.likes.count}</span>
                     <span className="text-gray-500">/{questData.limits.LIKES}</span>
                   </div>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] h-3 rounded-full animate-progress"
+                    className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] h-3 rounded-full animate-progress"
                     style={{ '--fill-width': `${calculateProgress(questData.likes.count, questData.limits.LIKES)}%` } as React.CSSProperties}
                   ></div>
                 </div>
                 <div className="flex justify-between text-sm mt-3">
                   <span className="text-gray-600">{questData.pointValues.LIKE} {t('points per like')}</span>
-                  <span className="font-medium text-[#B671FF]">{questData.likes.points} {t('points earned')}</span>
+                  <span className="font-medium text-[#32CD32]">{questData.likes.points} {t('points earned')}</span>
                 </div>
               </div>
 
@@ -349,25 +349,25 @@ const QuestsContent = () => {
               <div className="quest-card bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-lg p-2">
+                    <div className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-lg p-2">
                       <Icon icon="lucide:message-circle" className="text-white w-5 h-5" />
                     </div>
                     <span className="font-medium text-lg">{t('Comment on Posts')}</span>
                   </div>
                   <div className="text-sm bg-white px-3 py-1 rounded-full shadow-sm">
-                    <span className="font-bold text-[#B671FF]">{questData.comments.count}</span>
+                    <span className="font-bold text-[#32CD32]">{questData.comments.count}</span>
                     <span className="text-gray-500">/{questData.limits.COMMENTS}</span>
                   </div>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] h-3 rounded-full animate-progress"
+                    className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] h-3 rounded-full animate-progress"
                     style={{ '--fill-width': `${calculateProgress(questData.comments.count, questData.limits.COMMENTS)}%` } as React.CSSProperties}
                   ></div>
                 </div>
                 <div className="flex justify-between text-sm mt-3">
                   <span className="text-gray-600">{questData.pointValues.COMMENT} {t('points per comment')}</span>
-                  <span className="font-medium text-[#B671FF]">{questData.comments.points} {t('points earned')}</span>
+                  <span className="font-medium text-[#32CD32]">{questData.comments.points} {t('points earned')}</span>
                 </div>
               </div>
             </div>
@@ -376,7 +376,7 @@ const QuestsContent = () => {
 
         {/* Rewards Section */}
         <div className="bg-white rounded-xl shadow-lg p-8 gradient-border">
-          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] bg-clip-text text-transparent">
             {t('Reward Tiers')}
           </h2>
 

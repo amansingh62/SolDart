@@ -35,7 +35,7 @@ export function WalletDropdown({ isOpen, onClose, connectedWallet, onConnect, on
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
-      
+
       // Check if Phantom is installed
       if (!checkWalletInstalled("phantom")) {
         // Show installation prompt
@@ -47,7 +47,7 @@ export function WalletDropdown({ isOpen, onClose, connectedWallet, onConnect, on
 
       // This will trigger the Phantom wallet UI popup
       const walletAddress = await connectWallet("phantom");
-      
+
       if (walletAddress) {
         // Store wallet info in localStorage
         const walletInfo = {

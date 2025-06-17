@@ -112,7 +112,7 @@ const LiveChatPage = () => {
                 const isOwnMessage = message.sender._id === userId;
 
                 return (
-                    <div 
+                    <div
                         key={message._id}
                         onContextMenu={(e) => handleMessageContextMenu(e, message)}
                     >
@@ -266,11 +266,11 @@ const LiveChatPage = () => {
         <div className="flex flex-col h-[calc(100vh-4rem)] max-h-screen bg-gray-50">
             <div className="py-3 px-4 border-b bg-black text-white flex justify-between items-center shadow-md">
                 <h1 className="text-xl font-bold flex items-center gap-2">
-                    <Icon icon="lucide:message-circle" className="text-[#B671FF]" />
+                    <Icon icon="lucide:message-circle" className="text-[#32CD32]" />
                     {t('Global Chat')}
                 </h1>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black px-3 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
+                    <span className="text-sm bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black px-3 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
                         <span className="w-2 h-2 bg-black rounded-full animate-pulse"></span>
                         <span className="font-bold text-sm">{onlineUsersCount}</span> {t('online')}
                     </span>
@@ -300,7 +300,7 @@ const LiveChatPage = () => {
                 </Suspense>
 
                 {Object.keys(typingUsers).length > 0 && (
-                    <div className="fixed bottom-16 left-4 flex items-center gap-1 text-xs bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black bg-opacity-90 py-1.5 px-4 rounded-full shadow-md z-10 w-fit animate-pulse">
+                    <div className="fixed bottom-16 left-4 flex items-center gap-1 text-xs bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black bg-opacity-90 py-1.5 px-4 rounded-full shadow-md z-10 w-fit animate-pulse">
                         <span className="font-medium text-black">{Object.values(typingUsers).join(', ')}</span>
                         <span className="text-black font-medium">{t('typing')}</span>
                         <div className="flex gap-0.5">
@@ -345,7 +345,7 @@ const LiveChatPage = () => {
                     />
                     <Button
                         isIconOnly
-                        className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
+                        className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] 
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
              hover:text-white rounded transition-colors shadow-sm"
                         onPress={handleSendMessage}

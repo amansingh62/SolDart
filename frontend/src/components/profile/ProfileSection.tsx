@@ -810,10 +810,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                   {isAuthenticated !== false && profileData.isVerified && <Badge color="primary" variant="flat"><Icon icon="lucide:check" className="text-lg" /></Badge>}
                 </div>
                 {isAuthenticated === false ? (
-                  <p className="text-[#B671FF] text-sm md:text-base"><span className="text-[#B671FF]">@username</span></p>
+                  <p className="text-[#32CD32] text-sm md:text-base"><span className="text-[#32CD32]">@username</span></p>
                 ) : (
-                  <p className="text-[#B671FF] text-sm md:text-base">
-                    {profileData.username ? `@${profileData.username}` : <span className="text-[#B671FF]">@username</span>}
+                  <p className="text-[#32CD32] text-sm md:text-base">
+                    {profileData.username ? `@${profileData.username}` : <span className="text-[#32CD32]">@username</span>}
                   </p>
                 )}
 
@@ -852,7 +852,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                   {!isOwnProfile && (
                     <>
                       <Button
-                        className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
+                        className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] 
              text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
              hover:text-white font-semibold rounded-md px-3 py-2 md:px-4 md:py-2 transition-all shadow-lg"
                         onPress={handleFollow}
@@ -900,9 +900,9 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
                   <Button
-                    className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
-             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
-             hover:text-white font-semibold rounded-md px-6 py-2 transition-all shadow-lg"
+                    className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] 
+                             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
+                             hover:text-white font-semibold rounded-md px-6 py-2 transition-all shadow-lg"
                     onClick={() => setIsAuthModalOpen(true)}
                   >
                     Sign In
@@ -949,7 +949,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
             <div className="flex items-center gap-2 text-white text-xs md:text-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg w-full max-w-full overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Icon icon="lucide:wallet" className="text-[#B671FF] text-base sm:text-lg flex-shrink-0" />
+                  <Icon icon="lucide:wallet" className="text-[#32CD32] text-base sm:text-lg flex-shrink-0" />
                   {profileData.walletAddress ? (
                     <span className="text-white font-medium truncate sm:truncate-none max-w-[200px] sm:max-w-none">
                       {profileData.walletAddress}
@@ -967,7 +967,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                           navigator.clipboard.writeText(profileData.walletAddress);
                           toast.success('Wallet address copied to clipboard!');
                         }}
-                        className="text-gray-400 hover:text-[#B671FF] transition-colors"
+                        className="text-gray-400 hover:text-[#32CD32] transition-colors"
                       >
                         <Icon icon="lucide:copy" className="text-sm" />
                       </button>
@@ -990,7 +990,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
             <div className="flex w-full rounded-lg border-b mt-10 border-default-200 shadow-[0px_4px_15px_rgba(128,128,128,0.4)]">
               <Button
                 variant="light"
-                className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Darts" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
+                className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Darts" ? 'bg-black text-[#32CD32] hover:bg-black hover:text-[#32CD32]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                 onClick={() => setActiveTab("Darts")}
               >
                 Echos
@@ -998,7 +998,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
               {isOwnProfile ? (
                 <Button
                   variant="light"
-                  className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Saved" ? 'bg-black text-[#B671FF] hover:bg-black hover:text-[#B671FF]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
+                  className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Saved" ? 'bg-black text-[#32CD32] hover:bg-black hover:text-[#32CD32]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                   onClick={() => setActiveTab("Saved")}
                 >
                   Saved

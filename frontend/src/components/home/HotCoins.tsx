@@ -40,13 +40,13 @@ export function HotCoins() {
       try {
         // Check if we have cached data in localStorage
         const cachedData = typeof window !== 'undefined' ? localStorage.getItem('hotCoinsData') : null;
-        
+
         if (cachedData && initialLoadRef.current) {
           // Use cached data for initial render to prevent flickering
           const parsedData = JSON.parse(cachedData);
           setTrendingCoins(parsedData);
         }
-        
+
         // Always fetch fresh data from API
         const coins = await fetchTrendingCoins();
 
@@ -64,12 +64,12 @@ export function HotCoins() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('hotCoinsData', JSON.stringify(formattedCoins));
         }
-        
+
         setTrendingCoins(formattedCoins);
         initialLoadRef.current = false;
       } catch (error) {
         console.error('Error loading trending coins:', error);
-        
+
         // If error and we have cached data, use it
         const cachedData = typeof window !== 'undefined' ? localStorage.getItem('hotCoinsData') : null;
         if (cachedData) {
@@ -163,7 +163,7 @@ export function HotCoins() {
   return (
     <div className="flex justify-center items-center w-6/12 mx-auto">
       <div
-        className="bg-[rgba(243,144,236,0.21)] rounded-2xl text-xs font-extrabold shadow-[0_8px_32px_rgba(0,0,0,0.1)] flex items-center gap-1 w-fit mx-auto overflow-hidden border border-white/30 backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(182,113,255,0.15)]"
+        className="bg-[rgba(50,205,50,0.21)] rounded-2xl text-xs font-extrabold shadow-[0_8px_32px_rgba(0,0,0,0.1)] flex items-center gap-1 w-fit mx-auto overflow-hidden border border-white/30 backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(50,205,50,0.15)]"
       >
         {/* Add coin logo/image display to the CoinDisplay interface */}
 
@@ -186,12 +186,12 @@ export function HotCoins() {
               className={clsx("font-medium px-3 py-1.5 flex items-center bg-white/20 rounded-lg hover:bg-white/30 transition-all duration-300", coin.color)}
             >
               {coin.image && (
-                <Image 
-                  src={coin.image} 
-                  alt={coin.symbol} 
+                <Image
+                  src={coin.image}
+                  alt={coin.symbol}
                   width={16}
                   height={16}
-                  className="mr-1.5 rounded-full" 
+                  className="mr-1.5 rounded-full"
                 />
               )}
               <span className="text-xs font-bold mr-1">#{coin.number}</span> {coin.symbol}
@@ -205,7 +205,7 @@ export function HotCoins() {
               </span>
               {coin.price !== undefined && (
                 <span className="ml-1.5 text-xs font-bold text-white bg-black/30 px-1.5 py-0.5 rounded">
-                  ${coin.price < 0.01 ? coin.price.toFixed(6) : coin.price < 1 ? coin.price.toFixed(4) : coin.price < 1000 ? coin.price.toFixed(2) : coin.price.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                  ${coin.price < 0.01 ? coin.price.toFixed(6) : coin.price < 1 ? coin.price.toFixed(4) : coin.price < 1000 ? coin.price.toFixed(2) : coin.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>
               )}
             </span>

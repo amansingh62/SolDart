@@ -137,8 +137,8 @@ export default function SupportChat() {
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(182,113,255,0.15)]">
-      <div className="p-4 bg-gradient-to-r from-[#B671FF] to-[#E282CA] text-white">
+    <div className="rounded-2xl overflow-hidden bg-[rgba(50,205,50,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(50,205,50,0.15)]">
+      <div className="p-4 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-white">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Icon icon="lucide:message-circle-question" className="text-xl" />
           Support Chat
@@ -150,7 +150,7 @@ export default function SupportChat() {
         {messages.map((msg, index) => (
           <div key={index} className={`mb-4 ${msg.role === 'user' ? 'flex justify-end' : ''}`}>
             <div className={`max-w-[80%] rounded-2xl p-3 ${msg.role === 'user'
-              ? 'bg-gradient-to-r from-[#B671FF] to-[#E282CA] text-white rounded-tr-none'
+              ? 'bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-white rounded-tr-none'
               : 'bg-white/80 text-gray-800 rounded-tl-none shadow-sm'
               }`}>
               {msg.image && (
@@ -239,7 +239,7 @@ export default function SupportChat() {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleImageUpload}
-            className="p-2 text-gray-600 hover:text-[#B671FF] transition-colors"
+            className="p-2 text-gray-600 hover:text-[#32CD32] transition-colors"
             title="Attach image"
           >
             <ImageIcon size={20} />
@@ -250,7 +250,7 @@ export default function SupportChat() {
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 p-2 rounded-xl bg-white/30 focus:outline-none focus:ring-2 focus:ring-[#B671FF]/50 text-sm overflow-hidden text-ellipsis break-words whitespace-normal overflow-wrap-break-word"
+            className="flex-1 p-2 rounded-xl bg-white/30 focus:outline-none focus:ring-2 focus:ring-[#32CD32]/50 text-sm overflow-hidden text-ellipsis break-words whitespace-normal overflow-wrap-break-word"
             style={{ wordWrap: 'break-word' }}
           />
           <button
@@ -258,7 +258,7 @@ export default function SupportChat() {
             disabled={isLoading || (!message.trim() && !selectedImage)}
             className={`p-2 rounded-full ${isLoading || (!message.trim() && !selectedImage)
               ? 'bg-gray-300 text-gray-500'
-              : 'bg-gradient-to-r from-[#B671FF] to-[#E282CA] text-white hover:shadow-md'
+              : 'bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-white hover:shadow-md'
               } transition-all`}
           >
             <Send size={18} />

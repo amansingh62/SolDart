@@ -16,7 +16,7 @@ const DartAIButton: React.FC<DartAIButtonProps> = ({ className }) => {
       {/* Floating button - only visible on mobile */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black shadow-lg flex items-center justify-center z-50 md:hidden ${className}`}
+        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black shadow-lg flex items-center justify-center z-50 md:hidden ${className}`}
         aria-label="Open DarAI"
       >
         <Icon icon="lucide:bot" className="text-2xl" />

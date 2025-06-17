@@ -360,7 +360,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, pr
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
               Cancel
             </button>
-            <button type="submit" className="px-4 py-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black  rounded hover:bg-[#B671FF] hover:text-white transition-colors">
+            <button type="submit" className="px-4 py-2 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black  rounded hover:bg-[#32CD32] hover:text-white transition-colors">
               Save Changes
             </button>
           </div>

@@ -5,7 +5,7 @@ import { Popover, PopoverTrigger, PopoverContent, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { initializeSocket, getSocket } from "../../lib/socketUtils";
 import api from "../../lib/apiUtils";
-                                               
+
 interface Notification {
   id: string;
   title: string;
@@ -26,14 +26,14 @@ interface NotificationPopupProps {
 export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, setIsOpen, children, onUnreadCountChange }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  
+
   // Memoize the onUnreadCountChange callback to prevent unnecessary re-renders
   const memoizedOnUnreadCountChange = useCallback((count: number) => {
     if (onUnreadCountChange) {
       onUnreadCountChange(count);
     }
   }, [onUnreadCountChange]);
-  
+
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     try {
@@ -49,7 +49,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
             username: string;
           };
         }
-        
+
         const apiNotifications = response.data.notifications.map((notification: ApiNotification) => ({
           id: notification._id,
           title: getNotificationTitle(notification.type),
@@ -62,7 +62,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         const newUnreadCount = apiNotifications.filter((n: Notification) => !n.isRead).length;
         setNotifications(apiNotifications);
         setUnreadCount(newUnreadCount);
-        
+
         // Update parent component's unread count
         memoizedOnUnreadCountChange(newUnreadCount);
       }
@@ -70,7 +70,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
       console.error('Error fetching notifications:', error);
     }
   }, [memoizedOnUnreadCountChange]);
-  
+
   // Get notification title based on type
   const getNotificationTitle = (type: string) => {
     switch (type) {
@@ -81,7 +81,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
       default: return 'Notification';
     }
   };
-  
+
   // Format time ago
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -97,7 +97,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
   };
-  
+
   // Initialize socket and fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
@@ -106,7 +106,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         if (response.data.user) {
           // Initialize socket with user ID
           const socket = initializeSocket(response.data.user._id);
-          
+
           // Listen for real-time notifications
           interface SocketNotification {
             _id: string;
@@ -118,7 +118,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
               username: string;
             };
           }
-          
+
           socket.on('notification', (newNotification: SocketNotification) => {
             const formattedNotification = {
               id: newNotification._id,
@@ -129,7 +129,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
               type: newNotification.type,
               senderUsername: newNotification.sender?.username
             };
-            
+
             setNotifications(prev => [formattedNotification, ...prev]);
             setUnreadCount(prevCount => {
               const newCount = prevCount + 1;
@@ -143,10 +143,10 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         console.error('Error fetching user data:', error);
       }
     };
-    
+
     fetchUserData();
     fetchNotifications();
-    
+
     return () => {
       const socket = getSocket();
       if (socket) {
@@ -158,8 +158,8 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
   const [activeTab, setActiveTab] = useState("all");
   // Modified filtering logic to ensure read notifications only appear in the 'Read' tab
   // and unread notifications only appear in the 'All' tab
-  const filteredNotifications = activeTab === "read" 
-    ? notifications.filter(n => n.isRead) 
+  const filteredNotifications = activeTab === "read"
+    ? notifications.filter(n => n.isRead)
     : notifications.filter(n => !n.isRead);
 
   const handleClearAll = async () => {
@@ -168,7 +168,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
       if (response.data.success) {
         setNotifications([]);
         setUnreadCount(0);
-        
+
         // Update parent component's unread count
         memoizedOnUnreadCountChange(0);
       }
@@ -185,7 +185,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
           prev.map((n) => ({ ...n, isRead: true }))
         );
         setUnreadCount(0);
-        
+
         // Update parent component's unread count
         memoizedOnUnreadCountChange(0);
       }
@@ -254,17 +254,15 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({ isOpen, se
         </div>
         <div className="flex justify-center gap-2 sm:gap-4 my-2 sm:my-3">
           <button
-            className={`px-3 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-md ${
-              activeTab === "all" ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black" : "bg-gray-200 text-gray-700"
-            }`}
+            className={`px-3 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-md ${activeTab === "all" ? "bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto" : "bg-gray-200 text-gray-700"
+              }`}
             onClick={() => setActiveTab("all")}
           >
             All
           </button>
           <button
-            className={`px-3 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-md ${
-              activeTab === "read" ? "bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black" : "bg-gray-200 text-gray-700"
-            }`}
+            className={`px-3 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-md ${activeTab === "read" ? "bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto" : "bg-gray-200 text-gray-700"
+              }`}
             onClick={() => setActiveTab("read")}
           >
             Read

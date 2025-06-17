@@ -147,10 +147,10 @@ export default function WalletPage() {
       console.log('Fetching portfolio for address:', address);
       const response = await api.get(`/wallet/portfolio/${address}`);
       console.log('Raw API Response:', response);
-      
+
       if (response.data.success) {
         const apiData = response.data as ApiResponse;
-        
+
         // Log the exact structure of the response
         console.log('Response data structure:', {
           success: apiData.success,
@@ -180,10 +180,10 @@ export default function WalletPage() {
           console.log('Processed token:', processedToken);
           return processedToken;
         });
-        
+
         console.log('Final processed portfolio:', validPortfolio);
         setPortfolio(validPortfolio);
-        
+
         // Save to localStorage
         localStorage.setItem('walletPortfolio', JSON.stringify(validPortfolio));
       } else {
@@ -222,50 +222,50 @@ export default function WalletPage() {
         </div>
 
         {/* Search Bar */}
-       <form onSubmit={handleSearch} className="mb-6 w-full">
-  <div className="flex flex-col sm:flex-row gap-2">
-    <input
-      type="text"
-      value={searchAddress}
-      onChange={(e) => setSearchAddress(e.target.value)}
-      placeholder="Enter Solana wallet address to search"
-      className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border border-[#2a2a2a] focus:outline-none focus:border-[#B671FF] w-full"
-    />
-    <button
-      type="submit"
-      className="px-4 py-2 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto"
-    >
-      Search
-    </button>
-  </div>
-</form>
+        <form onSubmit={handleSearch} className="mb-6 w-full">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={searchAddress}
+              onChange={(e) => setSearchAddress(e.target.value)}
+              placeholder="Enter Solana wallet address to search"
+              className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a1a] text-white border border-[#2a2a2a] focus:outline-none focus:border-[#B671FF] w-full"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto"
+            >
+              Search
+            </button>
+          </div>
+        </form>
 
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6 w-full max-w-full overflow-hidden">
-  <div className="flex items-center gap-2">
-    <Icon icon="lucide:wallet" className="text-[#B671FF] text-base sm:text-lg" />
-    <span className="text-white font-medium truncate max-w-[200px] sm:max-w-[250px]">
-      {walletAddress ? walletAddress : "No wallet connected"}
-    </span>
-  </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-[#1a1a1a] px-3 py-2 rounded-lg border border-[#2a2a2a] shadow-lg mb-6 w-full max-w-full overflow-hidden">
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:wallet" className="text-[#32CD32] text-base sm:text-lg" />
+            <span className="text-white font-medium truncate max-w-[200px] sm:max-w-[250px]">
+              {walletAddress ? walletAddress : "No wallet connected"}
+            </span>
+          </div>
 
-  {walletAddress && (
-    <div className="flex items-center gap-2">
-      <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(walletAddress);
-            toast.success('Wallet address copied to clipboard!', TOAST_CONFIG);
-          }}
-          className="text-gray-400 hover:text-[#B671FF] transition-colors"
-        >
-          <Icon icon="lucide:copy" className="text-sm" />
-        </button>
-      </Tooltip>
-      <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
-    </div>
-  )}
-</div>
+          {walletAddress && (
+            <div className="flex items-center gap-2">
+              <Tooltip content="Copy to clipboard" className="bg-black text-white px-2 py-1 rounded">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(walletAddress);
+                    toast.success('Wallet address copied to clipboard!', TOAST_CONFIG);
+                  }}
+                  className="text-gray-400 hover:text-[#B671FF] transition-colors"
+                >
+                  <Icon icon="lucide:copy" className="text-sm" />
+                </button>
+              </Tooltip>
+              <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+            </div>
+          )}
+        </div>
 
         {!walletAddress ? (
           <div className="text-center py-8 text-white">Connect your wallet to view your portfolio.</div>
@@ -295,12 +295,12 @@ export default function WalletPage() {
                       <td className="px-4 py-3 whitespace-nowrap align-middle">
                         <div className="inline-flex items-center gap-2">
                           {token.logo ? (
-                            <Image 
-                              src={token.logo} 
-                              alt={token.symbol} 
+                            <Image
+                              src={token.logo}
+                              alt={token.symbol}
                               width={28}
                               height={28}
-                              className="rounded-full border border-gray-700" 
+                              className="rounded-full border border-gray-700"
                             />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-white font-bold">
@@ -343,7 +343,7 @@ export default function WalletPage() {
           </>
         )}
       </Card>
-      <ConnectWalletModal 
+      <ConnectWalletModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
         isFromUserProfile={false}

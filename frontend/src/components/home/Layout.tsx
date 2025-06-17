@@ -457,7 +457,7 @@ export default function Layout({ children }: LayoutProps) {
       return (
         <div className="flex gap-2">
           <Button
-            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
             onPress={() => {
               setIsProfileModalOpen(true);
               // Close the mobile menu when wallet button is clicked
@@ -492,7 +492,7 @@ export default function Layout({ children }: LayoutProps) {
       return (
         <div className="flex gap-2">
           <Button
-            className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+            className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
             onPress={() => {
               localStorage.setItem("walletModalSource", "userProfile");
               setIsWalletModalOpen(true);
@@ -521,7 +521,7 @@ export default function Layout({ children }: LayoutProps) {
     // If not signed in, show Sign In button
     return (
       <Button
-        className="w-full bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
+        className="w-full bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black hover:text-white px-4 py-2 rounded-md border border-white shadow-md"
         onPress={() => {
           setIsAuthModalOpen(true);
           // Close the mobile menu when sign in is clicked
@@ -625,7 +625,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="fixed top-0 w-full z-99 border-b border-[#ffffff]/30 backdrop-blur-md shadow-sm">
+      <nav className="fixed top-0 w-full z-99 border-b border-[#ffffff]/30 backdrop-blur-md bg-black shadow-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo on the left for both mobile and desktop */}
           <div
@@ -640,8 +640,8 @@ export default function Layout({ children }: LayoutProps) {
               className="w-10"
               priority
             />
-            <h1 className="text-2xl font-bold">
-              Sol<span className="bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282C9] text-transparent bg-clip-text">
+            <h1 className="text-2xl font-bold text-white">
+              Sol<span className="text-[#9dff46]">
                 Echo
               </span>
             </h1>
@@ -666,7 +666,7 @@ export default function Layout({ children }: LayoutProps) {
               }}
             />
             <div
-              className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
+              className="absolute right-0 top-0 h-full flex items-center px-3 bg-[#9dff46] rounded-tr-2xl rounded-br-2xl cursor-pointer"
               onClick={handleSearchButtonClick}
             >
               <Icon icon="lucide:search" className="text-black" />
@@ -726,7 +726,7 @@ export default function Layout({ children }: LayoutProps) {
               {/* Search Icon */}
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="text-black hover:text-[#B671FF] transition-colors"
+                className="text-black hover:text-[#9dff46] transition-colors"
               >
                 <Icon icon="lucide:search" className="text-xl" />
               </button>
@@ -734,24 +734,24 @@ export default function Layout({ children }: LayoutProps) {
               {/* Check-in (Calendar) Icon */}
               <button
                 onClick={() => setIsEventsOpen(true)}
-                className="text-black hover:text-[#B671FF] transition-colors"
+                className="text-white hover:text-[#9dff46] transition-colors"
               >
                 <Icon icon="lucide:calendar" className="text-xl" />
               </button>
 
               {/* Twitter Icon */}
-              <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+              <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
                 <Icon icon="mdi:twitter" className="text-xl" />
               </a>
 
               {/* Telegram Icon */}
-              <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+              <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
                 <Icon icon="mdi:telegram" className="text-xl" />
               </a>
             </div>
 
             {/* Mobile Menu Button - now on the right */}
-            <button className="text-black text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
+            <button className="text-white text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
               <Icon icon="mdi:menu" />
             </button>
           </div>
@@ -764,7 +764,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="relative mt-2">
               <button
                 onClick={() => setIsEventsOpen(true)}
-                className="text-black hover:text-[#B671FF] transition-colors"
+                className="text-white hover:text-[#9dff46] transition-colors"
               >
                 <Icon icon="lucide:calendar" className="text-xl" />
               </button>
@@ -777,10 +777,10 @@ export default function Layout({ children }: LayoutProps) {
               </EventsPopup>
             </div>
             {/* Social Media Icons */}
-            <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+            <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
               <Icon icon="mdi:twitter" className="text-xl" />
             </a>
-            <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-black hover:text-[#B671FF] transition-colors">
+            <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
               <Icon icon="mdi:telegram" className="text-xl" />
             </a>
             {renderAuthButton()}
@@ -808,7 +808,7 @@ export default function Layout({ children }: LayoutProps) {
                 }}
               />
               <div
-                className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] rounded-tr-2xl rounded-br-2xl cursor-pointer"
+                className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-tr-2xl rounded-br-2xl cursor-pointer"
                 onClick={handleSearchButtonClick}
               >
                 <Icon icon="lucide:search" className="text-black" />
@@ -866,7 +866,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] text-transparent bg-clip-text">Menu</h2>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] text-transparent bg-clip-text">Menu</h2>
                 <button
                   className="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110"
                   onClick={() => setMenuOpen(false)}
@@ -919,7 +919,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex flex-col md:flex-row gap-6">
           {/* Left sidebar - fixed position with scrollable content */}
           <aside
-            className="md:w-1/4 hidden md:block fixed left-6 right-auto overflow-y-auto"
+            className="md:w-1/4 hidden md:block fixed left-6 right-auto overflow-y-auto bg-gradient-to-br from-[#32CD32]/10 via-[#7CFC00]/10 to-[#90EE90]/10 rounded-lg"
             style={{
               width: 'calc(25% - 1.5rem)',
               height: columnHeight,
@@ -961,7 +961,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Right sidebar - fixed position with scrollable content */}
           <aside
-            className="md:w-1/4 hidden md:block fixed right-6 left-auto overflow-y-auto"
+            className="md:w-1/4 hidden md:block fixed right-6 left-auto overflow-y-auto bg-gradient-to-br from-[#32CD32]/10 via-[#7CFC00]/10 to-[#90EE90]/10 rounded-lg"
             style={{
               width: 'calc(25% - 1.5rem)',
               height: columnHeight,

@@ -77,12 +77,12 @@ export default function SolanaTrendingSection() {
   };
 
   return (
-    <div className="max-w-full text-xl font-medium rounded-lg space-y-2 p-3 bg-[rgba(243,144,236,0.21)] border border-white shadow-[0_4px_30px_rgba(0,0,0,0.1)] backdrop-blur-[11.1px]">
+    <div className="max-w-full text-xl font-medium rounded-lg space-y-2 p-3 bg-[rgba(50,205,50,0.21)] border border-white shadow-[0_4px_30px_rgba(0,0,0,0.1)] backdrop-blur-[11.1px]">
       <div className="flex items-center justify-between px-2">
-        <h3 className="text-lg font-bold">Graduated Tokens (pump.fun)</h3>
+        <h3 className="text-lg font-bold bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] bg-clip-text text-transparent">Graduated Tokens (pump.fun)</h3>
         <div className="flex items-center gap-2">
           {isUpdating && (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#32CD32]"></div>
           )}
         </div>
       </div>

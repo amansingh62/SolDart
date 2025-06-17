@@ -525,7 +525,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
           </div>
         </div>
         <Button
-          className={`bg-gradient-to-r from-[#B671FF] via-[#C577EE] to-[#E282CA] 
+          className={`bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] 
             text-black hover:!bg-black hover:!from-black hover:!via-black hover:!to-black 
             hover:text-white px-4 sm:px-6 py-2 font-medium rounded-md shadow-md w-full sm:w-auto 
             transition duration-200 ${isSubmitting ? 'animate-button-pulse' : ''}`}

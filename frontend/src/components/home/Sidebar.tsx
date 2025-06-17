@@ -147,7 +147,7 @@ export function Sidebar() {
   };
 
   return (
-    <div className="max-w-full text-xl font-medium rounded-2xl space-y-2 p-4 bg-[rgba(243,144,236,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(182,113,255,0.15)]"
+    <div className="max-w-full text-xl font-medium rounded-2xl space-y-2 p-4 bg-[rgba(50,205,50,0.21)] border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-[12px] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(50,205,50,0.15)]"
     >
       {menuItems.map((item) => (
         <div key={item.label} className="relative">
@@ -161,7 +161,7 @@ export function Sidebar() {
             <Button
               variant="light"
               className={`w-full justify-start rounded-xl transition duration-300 relative ${isActive(item) ? 'text-white bg-black shadow-md' : 'hover:bg-white/20 hover:shadow-sm'}`}
-              startContent={<Icon icon={item.icon} className={isActive(item) ? 'text-white' : 'text-[#B671FF]'} />}
+              startContent={<Icon icon={item.icon} className={isActive(item) ? 'text-white' : 'text-[#32CD32]'} />}
               onPress={() => {
                 if (item.action) {
                   item.action();
