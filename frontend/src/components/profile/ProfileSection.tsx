@@ -972,14 +972,16 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                         <Icon icon="lucide:copy" className="text-sm" />
                       </button>
                     </Tooltip>
-                    <Tooltip content="Delete wallet" className="bg-black text-white px-2 py-1 rounded">
-                      <button
-                        onClick={() => setIsDeleteWalletModalOpen(true)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Icon icon="lucide:trash-2" className="text-sm" />
-                      </button>
-                    </Tooltip>
+                    {isOwnProfile && (
+                      <Tooltip content="Delete wallet" className="bg-black text-white px-2 py-1 rounded">
+                        <button
+                          onClick={() => setIsDeleteWalletModalOpen(true)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Icon icon="lucide:trash-2" className="text-sm" />
+                        </button>
+                      </Tooltip>
+                    )}
                     <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
                   </div>
                 )}
