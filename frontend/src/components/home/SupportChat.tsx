@@ -16,7 +16,7 @@ export default function SupportChat() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([{
     role: 'assistant',
-    content: 'Hello! I\'m EchoAI. What can I help you with?',
+    content: 'Hello! I\'m DartAI. What can I help you with?',
     timestamp: new Date()
   }]);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,7 +143,7 @@ export default function SupportChat() {
           <Icon icon="lucide:message-circle-question" className="text-xl" />
           Support Chat
         </h3>
-        <p className="text-sm text-white/80">Ask EchoAI for help</p>
+        <p className="text-sm text-white/80">Ask DartAI for help</p>
       </div>
 
       <div className="p-4 h-[300px] overflow-y-auto scrollbar-hide">

@@ -16,13 +16,13 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: {
-    default: "SolEcho: Post, Share, Earn. Decentralized.",
+    default: "SolDart: Post, Share, Earn. Decentralized.",
     template: "%s | SolEcho"
   },
-  description: "SolEcho - Your Next-Generation Platform",
+  description: "SolDart - Your Next-Generation Platform",
   icons: {
-    icon: '/solecho (1).png',
-    shortcut: '/solecho (1).png',
+    icon: '/soldart_svg.png',
+    shortcut: '/soldart_svg.png',
   },
 };
 

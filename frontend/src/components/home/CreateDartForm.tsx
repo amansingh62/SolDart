@@ -353,7 +353,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
       <div className="relative">
         <Textarea
           ref={textareaRef}
-          placeholder="Write your Echo...."
+          placeholder="Write your Dart...."
           className={`w-full mb-2 h-28 shadow-md rounded-lg p-3 dart-textarea ${isOverLimit ? 'border-red-500' : ''}`}
           value={content}
           onChange={handleContentChange}
@@ -538,7 +538,7 @@ const CreateDartForm: React.FC<CreateDartFormProps> = ({ onPostCreated }) => {
               Posting...
             </span>
           ) : (
-            'Echo'
+            'Dart'
           )}
         </Button>
       </div>

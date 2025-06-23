@@ -916,7 +916,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                 <>
                   <div><span className="font-bold">0</span> <span className="text-default-500">Followers</span></div>
                   <div><span className="font-bold">0</span> <span className="text-default-500">Following</span></div>
-                  <div><span className="font-bold">0</span> <span className="text-default-500">Echos</span></div>
+                  <div><span className="font-bold">0</span> <span className="text-default-500">Darts</span></div>
                   <div><span className="font-bold">0</span> <span className="text-default-500">Events</span></div>
                 </>
               ) : (
@@ -935,7 +935,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                     <span className="font-bold">{profileData.following}</span>{' '}
                     <span className="text-default-500">Following</span>
                   </button>
-                  <div className="text-left"><span className="font-bold">{profileData.darts}</span> <span className="text-default-500">Echos</span></div>
+                  <div className="text-left"><span className="font-bold">{profileData.darts}</span> <span className="text-default-500">Darts</span></div>
                 </>
               )}
             </div>
@@ -993,7 +993,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ userId, username }) => 
                 className={`transition rounded-lg duration-200 w-1/2 ${activeTab === "Darts" ? 'bg-black text-[#32CD32] hover:bg-black hover:text-[#32CD32]' : 'bg-white text-black hover:bg-[#f3f3f3]'}`}
                 onClick={() => setActiveTab("Darts")}
               >
-                Echos
+                Darts
               </Button>
               {isOwnProfile ? (
                 <Button

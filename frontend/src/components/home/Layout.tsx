@@ -633,16 +633,16 @@ export default function Layout({ children }: LayoutProps) {
             onClick={() => router.push('/')}
           >
             <Image
-              src="/solecho_logo.png"
+              src="/soldart_1.png"
               alt="SolEcho Logo"
-              width={40}
-              height={40}
-              className="w-10"
+              width={50}
+              height={50}
+              className="w-12"
               priority
             />
             <h1 className="text-2xl font-bold text-white">
-              Sol<span className="text-[#9dff46]">
-                Echo
+              Sol<span className="bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] bg-clip-text text-transparent">
+                Dart
               </span>
             </h1>
           </div>
@@ -666,7 +666,7 @@ export default function Layout({ children }: LayoutProps) {
               }}
             />
             <div
-              className="absolute right-0 top-0 h-full flex items-center px-3 bg-[#9dff46] rounded-tr-2xl rounded-br-2xl cursor-pointer"
+              className="absolute right-0 top-0 h-full flex items-center px-3 bg-gradient-to-r from-[#32CD32] via-[#7CFC00] to-[#90EE90] rounded-tr-2xl rounded-br-2xl cursor-pointer"
               onClick={handleSearchButtonClick}
             >
               <Icon icon="lucide:search" className="text-black" />
@@ -714,22 +714,17 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          {/* Mobile Search Button */}
-
-
-
-
           {/* Mobile icons and menu button */}
           <div className="flex items-center gap-3 md:hidden">
             {/* Mobile Social Media and Check-in Icons */}
             <div className="flex items-center gap-3">
               {/* Search Icon */}
-              <button
+              <div
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="text-black hover:text-[#9dff46] transition-colors"
+                className="p-2 rounded-full cursor-pointer"
               >
-                <Icon icon="lucide:search" className="text-xl" />
-              </button>
+                <Icon icon="lucide:search" className="text-xl text-white" />
+              </div>
 
               {/* Check-in (Calendar) Icon */}
               <button
