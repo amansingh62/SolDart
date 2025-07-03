@@ -139,6 +139,52 @@ const styles = `
     100% { transform: translateY(0); opacity: 1; }
   }
 
+  @keyframes popoverFadeIn {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .animate-popover-fade-in {
+    animation: popoverFadeIn 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes tipIconBounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+    60% { transform: translateY(2px); }
+  }
+  .animate-tip-bounce {
+    animation: tipIconBounce 0.7s;
+  }
+  .tip-gradient-btn {
+    background: linear-gradient(90deg, #32CD32 0%, #7CFC00 50%, #90EE90 100%);
+    color: #111;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px 0 rgba(50,205,50,0.08);
+  }
+  .tip-gradient-btn:hover, .tip-gradient-btn:focus {
+    transform: scale(1.04);
+    box-shadow: 0 4px 16px 0 rgba(50,205,50,0.18);
+  }
+  .tip-gradient-outline {
+    background: #fff;
+    border: 2px solid transparent;
+    background-clip: padding-box, border-box;
+    border-radius: 0.75rem;
+    position: relative;
+    z-index: 1;
+  }
+  .tip-gradient-outline:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+    padding: 2px;
+    background: linear-gradient(90deg, #32CD32 0%, #7CFC00 50%, #90EE90 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+  }
+
   .animate-like {
     animation: likeAnimation 0.3s ease-out;
   }
@@ -252,6 +298,11 @@ export function DynamicPostCard({
   const [isSaving, setIsSaving] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
   const [animatingPollOption, setAnimatingPollOption] = useState<number | null>(null);
+  const [showTipPopover, setShowTipPopover] = useState(false);
+  const [tipIconBounce, setTipIconBounce] = useState(false);
+  const [customTipOpen, setCustomTipOpen] = useState(false);
+  const [customTipValue, setCustomTipValue] = useState('');
+  const [customTipError, setCustomTipError] = useState('');
 
   // Track view when component mounts - only once per user ID
   React.useEffect(() => {
@@ -1634,7 +1685,6 @@ export function DynamicPostCard({
               <Icon icon="lucide:message-circle" className="text-lg" />
               <span>{localComments.length}</span>
             </div>
-            {/* Removed view counter from here */}
             {/* Save button */}
             {currentUserId && (
               <div
@@ -1654,6 +1704,78 @@ export function DynamicPostCard({
                 </span>
               </div>
             )}
+            {/* Tip Button */}
+            <Popover open={showTipPopover} onOpenChange={(open) => {
+              setShowTipPopover(open);
+              setCustomTipOpen(false);
+              setCustomTipValue('');
+              setCustomTipError('');
+              if (open) {
+                setTipIconBounce(true);
+                setTimeout(() => setTipIconBounce(false), 700);
+              }
+            }}>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-1 cursor-pointer px-2 py-1 rounded-md hover:bg-gray-100"
+                  onClick={() => setShowTipPopover(true)}
+                  type="button"
+                >
+                  <Icon icon="solar:hand-money-linear" className={`text-lg text-[#32CD32] ${tipIconBounce ? 'animate-tip-bounce' : ''}`} />
+                  <span className="text-black font-medium">Tip</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-6 flex flex-col items-center gap-4 bg-white rounded-2xl shadow-xl border border-gray-100 animate-popover-fade-in">
+                <div className="text-xl font-bold mb-2 text-black">Tip</div>
+                <button
+                  className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-btn mb-2 focus:outline-none"
+                  type="button"
+                  onClick={() => {/* handle 0.1 SOL tip here */ }}
+                >
+                  0.1 SOL
+                </button>
+                {!customTipOpen ? (
+                  <button
+                    className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-outline text-black bg-white focus:outline-none relative overflow-hidden"
+                    type="button"
+                    style={{ position: 'relative', zIndex: 1 }}
+                    onClick={() => setCustomTipOpen(true)}
+                  >
+                    Custom tip
+                  </button>
+                ) : (
+                  <div className="w-full flex flex-col items-center animate-popover-fade-in">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="Enter SOL amount"
+                      className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#32CD32] text-center text-lg"
+                      value={customTipValue}
+                      onChange={e => {
+                        setCustomTipValue(e.target.value);
+                        setCustomTipError('');
+                      }}
+                    />
+                    {customTipError && <div className="text-red-500 text-xs mb-1">{customTipError}</div>}
+                    <button
+                      className="w-full py-2 rounded-xl text-lg font-semibold tip-gradient-btn focus:outline-none"
+                      type="button"
+                      onClick={() => {
+                        const val = parseFloat(customTipValue);
+                        if (isNaN(val) || val <= 0) {
+                          setCustomTipError('Enter a valid amount');
+                          return;
+                        }
+                        // handle custom tip here
+                      }}
+                    >
+                      Send Tip
+                    </button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             {/* Timestamp moved to right side */}
             <div className="text-gray-500 text-xs md:text-sm">
               {formatDate(createdAt)}
