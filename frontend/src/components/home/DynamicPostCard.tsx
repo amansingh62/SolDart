@@ -1328,7 +1328,7 @@ export function DynamicPostCard({
   }
 
   return (
-    <Card className="shadow-md rounded-lg bg-white w-full max-w-screen-md mx-auto mb-4 text-black border border-shadow-lg">
+    <Card className="relative shadow-md rounded-lg bg-white w-full max-w-screen-md mx-auto mb-4 text-black border border-shadow-lg">
       <CardContent className="space-y-4 p-4">
         {/* Top Section: Avatar & User Info */}
         <div className="flex gap-2 md:gap-3 ">
@@ -1704,78 +1704,6 @@ export function DynamicPostCard({
                 </span>
               </div>
             )}
-            {/* Tip Button */}
-            <Popover open={showTipPopover} onOpenChange={(open) => {
-              setShowTipPopover(open);
-              setCustomTipOpen(false);
-              setCustomTipValue('');
-              setCustomTipError('');
-              if (open) {
-                setTipIconBounce(true);
-                setTimeout(() => setTipIconBounce(false), 700);
-              }
-            }}>
-              <PopoverTrigger asChild>
-                <button
-                  className="flex items-center gap-1 cursor-pointer px-2 py-1 rounded-md hover:bg-gray-100"
-                  onClick={() => setShowTipPopover(true)}
-                  type="button"
-                >
-                  <Icon icon="solar:hand-money-linear" className={`text-lg text-[#32CD32] ${tipIconBounce ? 'animate-tip-bounce' : ''}`} />
-                  <span className="text-black font-medium">Tip</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-6 flex flex-col items-center gap-4 bg-white rounded-2xl shadow-xl border border-gray-100 animate-popover-fade-in">
-                <div className="text-xl font-bold mb-2 text-black">Tip</div>
-                <button
-                  className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-btn mb-2 focus:outline-none"
-                  type="button"
-                  onClick={() => {/* handle 0.1 SOL tip here */ }}
-                >
-                  0.1 SOL
-                </button>
-                {!customTipOpen ? (
-                  <button
-                    className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-outline text-black bg-white focus:outline-none relative overflow-hidden"
-                    type="button"
-                    style={{ position: 'relative', zIndex: 1 }}
-                    onClick={() => setCustomTipOpen(true)}
-                  >
-                    Custom tip
-                  </button>
-                ) : (
-                  <div className="w-full flex flex-col items-center animate-popover-fade-in">
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      placeholder="Enter SOL amount"
-                      className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#32CD32] text-center text-lg"
-                      value={customTipValue}
-                      onChange={e => {
-                        setCustomTipValue(e.target.value);
-                        setCustomTipError('');
-                      }}
-                    />
-                    {customTipError && <div className="text-red-500 text-xs mb-1">{customTipError}</div>}
-                    <button
-                      className="w-full py-2 rounded-xl text-lg font-semibold tip-gradient-btn focus:outline-none"
-                      type="button"
-                      onClick={() => {
-                        const val = parseFloat(customTipValue);
-                        if (isNaN(val) || val <= 0) {
-                          setCustomTipError('Enter a valid amount');
-                          return;
-                        }
-                        // handle custom tip here
-                      }}
-                    >
-                      Send Tip
-                    </button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
             {/* Timestamp moved to right side */}
             <div className="text-gray-500 text-xs md:text-sm">
               {formatDate(createdAt)}
@@ -2063,6 +1991,83 @@ export function DynamicPostCard({
           </div>
         )}
       </CardContent>
+      {/* Tip Button - Fixed at bottom right of the post card */}
+      <div
+        className="absolute bottom-4 right-4 z-10"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <Popover open={showTipPopover} onOpenChange={(open) => {
+          setShowTipPopover(open);
+          setCustomTipOpen(false);
+          setCustomTipValue('');
+          setCustomTipError('');
+          if (open) {
+            setTipIconBounce(true);
+            setTimeout(() => setTipIconBounce(false), 700);
+          }
+        }}>
+          <PopoverTrigger asChild>
+            <button
+              className="flex items-center gap-1 cursor-pointer px-2 py-1 rounded-md hover:bg-gray-100"
+              onClick={() => setShowTipPopover(true)}
+              type="button"
+            >
+              <Icon icon="solar:hand-money-linear" className={`text-lg text-[#32CD32] ${tipIconBounce ? 'animate-tip-bounce' : ''}`} />
+              <span className="text-black font-medium">Tip</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-6 flex flex-col items-center gap-4 bg-white rounded-2xl shadow-xl border border-gray-100 animate-popover-fade-in">
+            <div className="text-xl font-bold mb-2 text-black">Tip</div>
+            <button
+              className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-btn mb-2 focus:outline-none"
+              type="button"
+              onClick={() => {/* handle 0.1 SOL tip here */ }}
+            >
+              0.1 SOL
+            </button>
+            {!customTipOpen ? (
+              <button
+                className="w-full py-3 rounded-xl text-lg font-semibold tip-gradient-outline text-black bg-white focus:outline-none relative overflow-hidden"
+                type="button"
+                style={{ position: 'relative', zIndex: 1 }}
+                onClick={() => setCustomTipOpen(true)}
+              >
+                Custom tip
+              </button>
+            ) : (
+              <div className="w-full flex flex-col items-center animate-popover-fade-in">
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="Enter SOL amount"
+                  className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#32CD32] text-center text-lg"
+                  value={customTipValue}
+                  onChange={e => {
+                    setCustomTipValue(e.target.value);
+                    setCustomTipError('');
+                  }}
+                />
+                {customTipError && <div className="text-red-500 text-xs mb-1">{customTipError}</div>}
+                <button
+                  className="w-full py-2 rounded-xl text-lg font-semibold tip-gradient-btn focus:outline-none"
+                  type="button"
+                  onClick={() => {
+                    const val = parseFloat(customTipValue);
+                    if (isNaN(val) || val <= 0) {
+                      setCustomTipError('Enter a valid amount');
+                      return;
+                    }
+                    // handle custom tip here
+                  }}
+                >
+                  Send Tip
+                </button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
     </Card>
   );
 }
