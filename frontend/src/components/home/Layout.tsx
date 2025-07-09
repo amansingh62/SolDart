@@ -735,12 +735,12 @@ export default function Layout({ children }: LayoutProps) {
               </button>
 
               {/* Twitter Icon */}
-              <a href="https://x.com/SolEcho_io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
+              <a href="https://x.com/DartSol_io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
                 <Icon icon="mdi:twitter" className="text-xl" />
               </a>
 
               {/* Telegram Icon */}
-              <a href="https://t.me/SolEcho" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
+              <a href="https://t.me/SolDart_io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#9dff46] transition-colors">
                 <Icon icon="mdi:telegram" className="text-xl" />
               </a>
             </div>
