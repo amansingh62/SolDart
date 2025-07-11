@@ -56,6 +56,7 @@ export function HomePage() {
   const [socket, setSocket] = useState<Socket | undefined>(undefined);
   const { selectedHashtag, setSelectedHashtag } = useHashtag();
   const postsContainerRef = useRef<HTMLDivElement>(null);
+  const [currentFilter, setCurrentFilter] = useState<'all' | 'following'>('all');
 
   // Fetch posts on component mount
   useEffect(() => {
@@ -154,7 +155,11 @@ export function HomePage() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/posts/feed');
+      
+      // Determine which endpoint to use based on current filter
+      const endpoint = currentFilter === 'following' ? '/posts/following' : '/posts/feed';
+      
+      const response = await api.get(endpoint);
 
       if (response.data.success) {
         setPosts(response.data.posts);
@@ -166,6 +171,18 @@ export function HomePage() {
       setLoading(false);
     }
   };
+
+  // Handle filter change
+  const handleFilterChange = (filter: 'all' | 'following') => {
+    setCurrentFilter(filter);
+    // Clear hashtag filter when changing main filter
+    setSelectedHashtag(null);
+  };
+
+  // Fetch posts when filter changes
+  useEffect(() => {
+    fetchPosts();
+  }, [currentFilter]);
 
   // Fetch current user info
   const fetchCurrentUser = async () => {
@@ -254,53 +271,26 @@ export function HomePage() {
   const handleCommentDelete = async (postId: string, commentId: string) => {
     try {
       await api.delete(`/posts/comment/${postId}/${commentId}`);
-
-      // Update local state after successful API call - only filter out the deleted comment
-      // This preserves all existing user data in remaining comments
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post._id === postId) {
-            // Create a shallow copy of the post and filter comments
-            const updatedPost = { ...post };
-            updatedPost.comments = post.comments.filter(comment => comment._id !== commentId);
-            return updatedPost;
-          }
-          return post;
-        })
-      );
+      // Refresh posts to get updated comment count
+      fetchPosts();
     } catch (error) {
       console.error('Error deleting comment:', error);
-      // Re-throw the error so the child component knows the operation failed
-      throw error;
+      toast.error('Failed to delete comment');
     }
   };
 
-  // Handle comment pin/unpin
+  // Handle comment pin
   const handleCommentPin = async (postId: string, commentId: string) => {
     try {
-      await api.post(`/posts/comment/pin/${postId}/${commentId}`);
-
-      // Update local state for immediate UI feedback
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post._id === postId) {
-            return {
-              ...post,
-              comments: post.comments.map(comment => {
-                if (comment._id === commentId) {
-                  return { ...comment, isPinned: !comment.isPinned };
-                }
-                // Unpin other comments if this one is being pinned
-                if (!comment.isPinned && comment._id !== commentId) {
-                  return comment;
-                }
-                return { ...comment, isPinned: false };
-              })
-            };
-          }
-          return post;
-        })
-      );
+      const response = await api.post(`/posts/comment/pin/${postId}/${commentId}`, {});
+      if (response.data && response.data.post) {
+        // Update the specific post with the new comment data
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post._id === postId ? { ...post, comments: response.data.post.comments } : post
+          )
+        );
+      }
     } catch (error) {
       console.error('Error pinning comment:', error);
       toast.error('Failed to pin comment');
@@ -310,6 +300,30 @@ export function HomePage() {
   return (
     <div className="space-y-4">
       <CreateDartForm onPostCreated={handlePostCreated} />
+
+      {/* Filter Tabs */}
+      <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+        <button
+          onClick={() => handleFilterChange('all')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            currentFilter === 'all'
+              ? 'bg-black text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          All Posts
+        </button>
+        <button
+          onClick={() => handleFilterChange('following')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            currentFilter === 'following'
+              ? 'bg-black text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          Following
+        </button>
+      </div>
 
       {selectedHashtag && (
         <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg">
@@ -336,6 +350,11 @@ export function HomePage() {
           <div className="text-center py-8">
             {selectedHashtag ? (
               <p className="text-gray-500">No posts found with hashtag {selectedHashtag}.</p>
+            ) : currentFilter === 'following' ? (
+              <div className="space-y-4">
+                <p className="text-gray-500">No posts from people you follow yet.</p>
+                <p className="text-sm text-gray-400">Follow some users to see their posts here!</p>
+              </div>
             ) : (
               <p className="text-gray-500">No posts yet. Be the first to create a post!</p>
             )}

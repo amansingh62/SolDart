@@ -157,6 +157,33 @@ router.get('/feed', async (req, res) => {
   }
 });
 
+// Get posts from users that the authenticated user follows
+router.get('/following', auth, async (req, res) => {
+  try {
+    // Get the current user's following list
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // If user is not following anyone, return empty array
+    if (!user.followingList || user.followingList.length === 0) {
+      return res.json({ success: true, posts: [] });
+    }
+
+    // Get posts from users that the current user follows
+    const posts = await Post.find({ user: { $in: user.followingList } })
+      .sort({ createdAt: -1 })
+      .populate('user', 'username profileImage walletAddress darts')
+      .populate('comments.user', 'username profileImage name walletAddress')
+      .populate('comments.replies.user', 'username profileImage name walletAddress');
+
+    res.json({ success: true, posts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Helper function to get trending hashtags
 async function getTrendingHashtags() {
   try {
